@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +16,8 @@ import {
   Menu01Icon,
 } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { useLogout } from "@/lib/hooks";
+import { DashboardGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -146,94 +147,73 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading, user, school, logout } = useAuth();
-  const router = useRouter();
+  const { user, school } = useAuth();
+  const logoutMutation = useLogout();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push("/auth/login");
-      } else if (school && !school.signupFeePaid) {
-        router.push("/payment");
-      } else if (school && !school.onboardingComplete) {
-        router.push("/onboarding");
-      }
-    }
-  }, [isAuthenticated, isLoading, school, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <motion.div
-          className="flex flex-col items-center gap-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-          <p className="text-muted-foreground font-medium">Loading...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user || !school) {
-    return null;
-  }
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-[280px] bg-card border-r border-border">
-        <SidebarContent
-          pathname={pathname}
-          user={user}
-          school={school}
-          logout={logout}
-        />
-      </aside>
+    <DashboardGuard>
+      <div className="flex min-h-screen bg-muted/30">
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:block w-[280px] bg-card border-r border-border">
+          {user && school && (
+            <SidebarContent
+              pathname={pathname}
+              user={user}
+              school={school}
+              logout={handleLogout}
+            />
+          )}
+        </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
-        <div className="flex items-center justify-between p-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
-              <span className="text-sm font-bold text-white">CE</span>
-            </div>
-            <span className="font-bold">Connect-Ed</span>
-          </Link>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu01Icon size={24} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]">
-              <SidebarContent
-                pathname={pathname}
-                user={user}
-                school={school}
-                logout={logout}
-              />
-            </SheetContent>
-          </Sheet>
+        {/* Mobile Header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+          <div className="flex items-center justify-between p-4">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
+                <span className="text-sm font-bold text-white">CE</span>
+              </div>
+              <span className="font-bold">Connect-Ed</span>
+            </Link>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu01Icon size={24} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-[280px]">
+                {user && school && (
+                  <SidebarContent
+                    pathname={pathname}
+                    user={user}
+                    school={school}
+                    logout={handleLogout}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </DashboardGuard>
   );
 }

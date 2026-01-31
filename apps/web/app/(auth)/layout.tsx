@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { GuestGuard } from "@/components/auth-guard";
 
 export default function AuthLayout({
   children,
@@ -8,7 +9,8 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex">
+    <GuestGuard>
+      <div className="min-h-screen flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-darkest via-dark to-mid relative overflow-hidden">
         {/* Background pattern */}
@@ -78,5 +80,6 @@ export default function AuthLayout({
         </div>
       </div>
     </div>
+    </GuestGuard>
   );
 }
