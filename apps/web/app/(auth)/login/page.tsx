@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail01Icon, LockPasswordIcon, ArrowRight01Icon } from "@hugeicons/react";
-import { useAuth } from "@/lib/auth-context";
+import { useLogin } from "@/lib/hooks";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,25 +13,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      await login(email, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setIsLoading(false);
-    }
+    loginMutation.mutate({ email, password });
   };
+
+  const error = loginMutation.error instanceof ApiError 
+    ? loginMutation.error.message 
+    : loginMutation.error?.message;
 
   return (
     <motion.div
@@ -106,7 +100,7 @@ export default function LoginPage() {
               size="lg"
               loading={isLoading}
             >
-              {!isLoading && (
+              {!loginMutation.isPending && (
                 <>
                   Sign In
                   <ArrowRight01Icon size={20} />

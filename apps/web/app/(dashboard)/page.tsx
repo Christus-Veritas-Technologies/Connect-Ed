@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -13,7 +12,8 @@ import {
   MessageMultiple01Icon,
   Add01Icon,
 } from "@hugeicons/react";
-import { useAuth, useAuthFetch } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
+import { useDashboardStats } from "@/lib/hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,27 +78,7 @@ const quotaIcons = {
 
 export default function DashboardPage() {
   const { user, school } = useAuth();
-  const authFetch = useAuthFetch();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await authFetch("/api/dashboard/stats");
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [authFetch]);
+  const { data: stats, isLoading } = useDashboardStats();
 
   if (isLoading) {
     return (

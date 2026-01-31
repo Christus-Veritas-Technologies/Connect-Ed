@@ -1,18 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuthFetch } from "../../lib/auth-context";
-
-interface Expense {
-  id: string;
-  amount: number;
-  category: string;
-  description: string;
-  date: string;
-  receiptUrl?: string;
-  recordedBy: { id: string; name: string };
-  createdAt: string;
-}
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Receipt01Icon,
+  Add01Icon,
+  Cancel01Icon,
+} from "@hugeicons/react";
+import { useExpenses, useCreateExpense } from "@/lib/hooks";
+import { ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const EXPENSE_CATEGORIES = [
   "Supplies",
@@ -27,10 +50,6 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
-  const authFetch = useAuthFetch();
-  
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
 
@@ -40,238 +59,230 @@ export default function ExpensesPage() {
     description: "",
     date: new Date().toISOString().split("T")[0],
   });
-  const [formError, setFormError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchExpenses = async () => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (categoryFilter) params.set("category", categoryFilter);
-      
-      const response = await authFetch(`/api/expenses?${params}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setExpenses(data.data.expenses);
-      }
-    } catch (error) {
-      console.error("Failed to fetch expenses:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Query hooks
+  const { data, isLoading } = useExpenses({
+    category: categoryFilter || undefined,
+  });
+  const createMutation = useCreateExpense();
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [categoryFilter]);
+  const expenses = data?.expenses || [];
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError("");
-    setIsSubmitting(true);
-
-    try {
-      const response = await authFetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          amount: parseFloat(formData.amount),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to add expense");
+    createMutation.mutate(
+      {
+        amount: parseFloat(formData.amount),
+        category: formData.category,
+        description: formData.description,
+        date: formData.date,
+      },
+      {
+        onSuccess: () => {
+          setFormData({
+            amount: "",
+            category: "",
+            description: "",
+            date: new Date().toISOString().split("T")[0],
+          });
+          setShowAddModal(false);
+        },
       }
-
-      setFormData({
-        amount: "",
-        category: "",
-        description: "",
-        date: new Date().toISOString().split("T")[0],
-      });
-      setShowAddModal(false);
-      fetchExpenses();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to add expense");
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   };
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const formError = createMutation.error instanceof ApiError 
+    ? createMutation.error.message 
+    : createMutation.error?.message;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700 }}>Expenses</h1>
-          <p style={{ color: 'var(--muted-foreground)' }}>
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <Receipt01Icon size={28} className="text-brand" />
+            Expenses
+          </h1>
+          <p className="text-muted-foreground">
             Track and manage school expenses
           </p>
         </div>
-        <button 
-          className="btn btn-primary"
-          onClick={() => setShowAddModal(true)}
-        >
-          + Add Expense
-        </button>
+        <Button onClick={() => setShowAddModal(true)}>
+          <Add01Icon size={20} />
+          Add Expense
+        </Button>
       </div>
 
       {/* Summary Card */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Total Expenses</p>
-            <p style={{ fontSize: '2rem', fontWeight: 700 }}>${totalExpenses.toLocaleString()}</p>
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Expenses</p>
+              <p className="text-3xl font-bold">${totalExpenses.toLocaleString()}</p>
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Categories</SelectItem>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <select
-            className="form-input"
-            style={{ width: 'auto' }}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {EXPENSE_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Expenses Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {isLoading ? (
-          <div className="flex items-center justify-center" style={{ padding: '3rem' }}>
-            <div className="spinner"></div>
-          </div>
-        ) : expenses.length === 0 ? (
-          <div className="text-center" style={{ padding: '3rem', color: 'var(--muted-foreground)' }}>
-            <p>No expenses recorded</p>
-            <button 
-              className="btn btn-primary"
-              style={{ marginTop: '1rem' }}
-              onClick={() => setShowAddModal(true)}
-            >
-              Record Your First Expense
-            </button>
-          </div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Recorded By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense) => (
-                <tr key={expense.id}>
-                  <td>{new Date(expense.date).toLocaleDateString()}</td>
-                  <td>
-                    <span className="badge badge-primary">{expense.category}</span>
-                  </td>
-                  <td>{expense.description}</td>
-                  <td style={{ fontWeight: 600 }}>${expense.amount.toLocaleString()}</td>
-                  <td style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem' }}>
-                    {expense.recordedBy.name}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Add Expense Modal */}
-      {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: '500px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
-              Add Expense
-            </h2>
-
-            {formError && <div className="alert alert-error">{formError}</div>}
-
-            <form onSubmit={handleAddExpense}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label className="form-label">Amount ($)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    min="0"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Category</label>
-                <select
-                  className="form-input"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                >
-                  <option value="">Select category...</option>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : expenses.length === 0 ? (
+            <div className="text-center py-12">
+              <Receipt01Icon size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No expenses recorded</p>
+              <Button onClick={() => setShowAddModal(true)}>
+                <Add01Icon size={20} />
+                Record Your First Expense
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {expenses.map((expense, index) => (
+                    <motion.tr
+                      key={expense.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group"
+                    >
+                      <TableCell>
+                        {new Date(expense.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{expense.category}</Badge>
+                      </TableCell>
+                      <TableCell>{expense.description}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ${expense.amount.toLocaleString()}
+                      </TableCell>
+                    </motion.tr>
                   ))}
-                </select>
-              </div>
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Description</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Brief description of the expense"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+      {/* Add Expense Dialog */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Expense</DialogTitle>
+          </DialogHeader>
+
+          {formError && (
+            <Alert variant="destructive">
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleAddExpense} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Amount ($)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   required
                 />
               </div>
-
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSubmitting}>
-                  {isSubmitting ? "Adding..." : "Add Expense"}
-                </button>
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  required
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                placeholder="Brief description of the expense"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowAddModal(false)}
+              >
+                <Cancel01Icon size={18} />
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1" loading={createMutation.isPending}>
+                {!createMutation.isPending && (
+                  <>
+                    <Add01Icon size={18} />
+                    Add Expense
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

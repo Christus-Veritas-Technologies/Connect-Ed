@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,8 @@ import {
   PencilEdit01Icon,
   Cancel01Icon,
 } from "@hugeicons/react";
-import { useAuthFetch } from "@/lib/auth-context";
+import { useStudents, useCreateStudent } from "@/lib/hooks";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,37 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface Student {
-  id: string;
-  firstName: string;
-  lastName: string;
-  admissionNumber: string;
-  isActive: boolean;
-  class?: { id: string; name: string } | null;
-  parent?: { id: string; name: string } | null;
-  createdAt: string;
-}
-
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
 export default function StudentsPage() {
   const searchParams = useSearchParams();
-  const authFetch = useAuthFetch();
 
-  const [students, setStudents] = useState<Student[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(
     searchParams.get("action") === "add"
   );
@@ -83,70 +59,49 @@ export default function StudentsPage() {
     gender: "",
     classId: "",
   });
-  const [formError, setFormError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchStudents = async (page = 1) => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: "20",
-        ...(search && { search }),
-      });
-
-      const response = await authFetch(`/api/students?${params}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setStudents(data.data.students);
-        setPagination(data.data.pagination);
-      }
-    } catch (error) {
-      console.error("Failed to fetch students:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Debounce search
   useEffect(() => {
-    fetchStudents();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to first page on search
+    }, 300);
+    return () => clearTimeout(timer);
   }, [search]);
+
+  // Query hooks
+  const { data, isLoading } = useStudents({
+    page,
+    limit: 20,
+    search: debouncedSearch || undefined,
+  });
+
+  const createMutation = useCreateStudent();
+
+  const students = data?.students || [];
+  const pagination = data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 };
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError("");
-    setIsSubmitting(true);
 
-    try {
-      const response = await authFetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to add student");
-      }
-
-      setFormData({
-        firstName: "",
-        lastName: "",
-        admissionNumber: "",
-        dateOfBirth: "",
-        gender: "",
-        classId: "",
-      });
-      setShowAddModal(false);
-      fetchStudents();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to add student");
-    } finally {
-      setIsSubmitting(false);
-    }
+    createMutation.mutate(formData, {
+      onSuccess: () => {
+        setFormData({
+          firstName: "",
+          lastName: "",
+          admissionNumber: "",
+          dateOfBirth: "",
+          gender: "",
+          classId: "",
+        });
+        setShowAddModal(false);
+      },
+    });
   };
+
+  const formError = createMutation.error instanceof ApiError 
+    ? createMutation.error.message 
+    : createMutation.error?.message;
 
   return (
     <div className="space-y-6">
@@ -272,7 +227,7 @@ export default function StudentsPage() {
                     variant="outline"
                     size="sm"
                     disabled={pagination.page <= 1}
-                    onClick={() => fetchStudents(pagination.page - 1)}
+                    onClick={() => setPage(pagination.page - 1)}
                   >
                     Previous
                   </Button>
@@ -280,7 +235,7 @@ export default function StudentsPage() {
                     variant="outline"
                     size="sm"
                     disabled={pagination.page >= pagination.totalPages}
-                    onClick={() => fetchStudents(pagination.page + 1)}
+                    onClick={() => setPage(pagination.page + 1)}
                   >
                     Next
                   </Button>
@@ -381,8 +336,8 @@ export default function StudentsPage() {
                 <Cancel01Icon size={18} />
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" loading={isSubmitting}>
-                {!isSubmitting && (
+              <Button type="submit" className="flex-1" loading={createMutation.isPending}>
+                {!createMutation.isPending && (
                   <>
                     <Add01Icon size={18} />
                     Add Student

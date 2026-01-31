@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail01Icon, ArrowLeft01Icon, CheckmarkCircle02Icon } from "@hugeicons/react";
+import { useForgotPassword } from "@/lib/hooks";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,35 +14,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const forgotPasswordMutation = useForgotPassword();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to send reset email");
-      }
-
-      setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send reset email");
-    } finally {
-      setIsLoading(false);
-    }
+    forgotPasswordMutation.mutate(email);
   };
+
+  const error = forgotPasswordMutation.error instanceof ApiError 
+    ? forgotPasswordMutation.error.message 
+    : forgotPasswordMutation.error?.message;
 
   if (success) {
     return (
@@ -124,9 +107,9 @@ export default function ForgotPasswordPage() {
               type="submit"
               className="w-full"
               size="lg"
-              loading={isLoading}
+              loading={forgotPasswordMutation.isPending}
             >
-              {!isLoading && "Send Reset Link"}
+              {!forgotPasswordMutation.isPending && "Send Reset Link"}
             </Button>
           </form>
 

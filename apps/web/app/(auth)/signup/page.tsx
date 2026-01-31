@@ -10,7 +10,8 @@ import {
   ArrowRight01Icon,
   CheckmarkCircle02Icon 
 } from "@hugeicons/react";
-import { useAuth } from "@/lib/auth-context";
+import { useSignup } from "@/lib/hooks";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,39 +26,34 @@ const passwordRequirements = [
 ];
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const signupMutation = useSignup();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setValidationError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setValidationError("Passwords do not match");
       return;
     }
 
     const failedRequirements = passwordRequirements.filter(r => !r.test(password));
     if (failedRequirements.length > 0) {
-      setError(failedRequirements[0].label);
+      setValidationError(failedRequirements[0].label);
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      await signup(email, password, name);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
-    } finally {
-      setIsLoading(false);
-    }
+    signupMutation.mutate({ email, password, name });
   };
+
+  const error = validationError || (signupMutation.error instanceof ApiError 
+    ? signupMutation.error.message 
+    : signupMutation.error?.message);
 
   return (
     <motion.div
@@ -179,9 +175,9 @@ export default function SignupPage() {
               type="submit"
               className="w-full"
               size="lg"
-              loading={isLoading}
+              loading={signupMutation.isPending}
             >
-              {!isLoading && (
+              {!signupMutation.isPending && (
                 <>
                   Create Account
                   <ArrowRight01Icon size={20} />
