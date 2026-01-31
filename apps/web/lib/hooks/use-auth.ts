@@ -1,0 +1,132 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, setAccessToken, clearAccessToken, ApiError } from "../api";
+import { useRouter } from "next/navigation";
+
+// Types
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+interface School {
+  id: string;
+  name: string | null;
+  plan: string;
+  isActive: boolean;
+  signupFeePaid: boolean;
+  onboardingComplete: boolean;
+}
+
+interface AuthResponse {
+  user: User;
+  school: School;
+  accessToken: string;
+}
+
+interface RefreshResponse {
+  user: User;
+  school: School;
+  accessToken: string;
+}
+
+// Auth Queries & Mutations
+export function useRefreshToken() {
+  return useQuery<RefreshResponse>({
+    queryKey: ["auth", "refresh"],
+    queryFn: async () => {
+      const data = await api.post<RefreshResponse>("/auth/refresh");
+      setAccessToken(data.accessToken);
+      return data;
+    },
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useLogin() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      return api.post<AuthResponse>("/auth/login", credentials);
+    },
+    onSuccess: (data) => {
+      setAccessToken(data.accessToken);
+      queryClient.setQueryData(["auth", "user"], data);
+      
+      // Redirect based on school status
+      if (!data.school.signupFeePaid) {
+        router.push("/payment");
+      } else if (!data.school.onboardingComplete) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
+    },
+  });
+}
+
+export function useSignup() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: { email: string; password: string; name: string }) => {
+      return api.post<AuthResponse>("/auth/signup", data);
+    },
+    onSuccess: (data) => {
+      setAccessToken(data.accessToken);
+      queryClient.setQueryData(["auth", "user"], data);
+      router.push("/payment");
+    },
+  });
+}
+
+export function useLogout() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async () => {
+      return api.post("/auth/logout");
+    },
+    onSuccess: () => {
+      clearAccessToken();
+      queryClient.clear();
+      router.push("/auth/login");
+    },
+    onError: () => {
+      // Clear anyway on error
+      clearAccessToken();
+      queryClient.clear();
+      router.push("/auth/login");
+    },
+  });
+}
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      return api.post<{ message: string }>("/auth/forgot-password", { email });
+    },
+  });
+}
+
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: { token: string; password: string }) => {
+      return api.post<{ message: string }>("/auth/reset-password", data);
+    },
+    onSuccess: () => {
+      router.push("/auth/login");
+    },
+  });
+}
