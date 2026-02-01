@@ -104,11 +104,15 @@ function LoginPageContent() {
           size="lg"
           loading={loginMutation.isPending}
         >
-          {!loginMutation.isPending && (
+          {loginMutation.isPending ? (
             <>
-              Sign In
+              Signing In
             </>
-          )}
+          )
+        : (
+          
+        )
+        }
         </Button>
       </form>
 
