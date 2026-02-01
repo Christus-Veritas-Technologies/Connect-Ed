@@ -6,13 +6,14 @@ import { motion } from "framer-motion";
 import { Mail01Icon, LockPasswordIcon, ArrowRight01Icon } from "@hugeicons/react";
 import { useLogin } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
+import { GuestGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,7 +99,7 @@ export default function LoginPage() {
               type="submit"
               className="w-full"
               size="lg"
-              loading={isLoading}
+              loading={loginMutation.isPending}
             >
               {!loginMutation.isPending && (
                 <>
@@ -129,5 +130,13 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <GuestGuard>
+      <LoginPageContent />
+    </GuestGuard>
   );
 }
