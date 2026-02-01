@@ -160,3 +160,26 @@ export function planHasFeature(
 ): boolean {
   return !!PLAN_FEATURES[plan][feature];
 }
+
+/**
+ * Auth guard middleware for Hono routes
+ * Verifies the user has a valid session and returns the token payload
+ * If no valid session exists, returns a 401 Unauthorized response
+ *
+ * Usage in routes:
+ *   const payload = await authGuard(c);
+ *   if (!payload) return c.json({ error: "Unauthorized" }, 401);
+ *
+ * @param c - Hono context
+ * @returns The access token payload containing user and school info, or null if unauthorized
+ */
+export async function authGuard(c: Context): Promise<AccessTokenPayload | null> {
+  // Try to get token from Authorization header
+  const user = await getCurrentUser(c);
+
+  if (!user) {
+    return null;
+  }
+
+  return user;
+}
