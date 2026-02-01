@@ -10,6 +10,6 @@ export default async function HomePage() {
     redirect("/dashboard");
   } else {
     // Not authenticated - redirect to login
-    redirect("/(auth)/login");
+    redirect("/auth/login");
   }
 }
