@@ -111,6 +111,7 @@ export function GuestGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if we've finished loading AND user is authenticated
     if (isLoading) return;
 
     if (isAuthenticated && school) {
@@ -125,19 +126,11 @@ export function GuestGuard({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, school, router]);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="size-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   // Don't render children if already authenticated
   if (isAuthenticated) {
     return null;
   }
 
+  // Show children even while loading - unauthenticated users should always access login
   return <>{children}</>;
 }
