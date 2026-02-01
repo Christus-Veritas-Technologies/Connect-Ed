@@ -4,11 +4,11 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
 import {
-  Alert01Icon,
-  CheckmarkCircle02Icon,
-  InformationCircleIcon,
-  AlertDiamondIcon,
-} from "@hugeicons/react"
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  AlertTriangle,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -31,11 +31,11 @@ const alertVariants = cva(
 )
 
 const iconMap = {
-  default: InformationCircleIcon,
-  info: InformationCircleIcon,
-  success: CheckmarkCircle02Icon,
-  warning: Alert01Icon,
-  destructive: AlertDiamondIcon,
+  default: Info,
+  info: Info,
+  success: CheckCircle2,
+  warning: AlertCircle,
+  destructive: AlertTriangle,
 }
 
 interface AlertProps
