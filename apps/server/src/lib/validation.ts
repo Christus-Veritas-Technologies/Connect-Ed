@@ -92,7 +92,8 @@ export const createUserSchema = z.object({
 // Payment schemas
 export const createCheckoutSchema = z.object({
   planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
-  paymentType: z.enum(["SIGNUP", "RECURRING"]),
+  paymentType: z.enum(["SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  email: z.string().email().optional(),
 });
 
 // School settings schema

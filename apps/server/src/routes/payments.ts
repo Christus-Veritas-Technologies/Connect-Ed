@@ -1,33 +1,47 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db, Plan, PaymentType, PaymentStatus, PaymentMethod } from "@repo/db";
+import { db, Plan, PaymentType, PaymentStatus, PaymentMethod, Prisma } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { createCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { PLAN_FEATURES } from "../lib/auth";
+import { Paynow } from "paynow";
 
 const payments = new Hono();
+
+// Initialize PayNow (using environment variables)
+const initializePaynow = () => {
+  const integrationId = process.env.PAYNOW_INTEGRATION_ID;
+  const integrationKey = process.env.PAYNOW_INTEGRATION_KEY;
+  
+  if (!integrationId || !integrationKey) {
+    console.warn("PayNow credentials not configured - using mock mode");
+    return null;
+  }
+  
+  return new Paynow(integrationId, integrationKey);
+};
 
 // Pricing configuration
 const PRICING = {
   LITE: {
     signupFee: 400,
     perTermCost: 50,
-    monthlyEstimate: 17,
+    monthlyEstimate: 40,
   },
   GROWTH: {
     signupFee: 750,
     perTermCost: 90,
-    monthlyEstimate: 30,
+    monthlyEstimate: 75,
   },
   ENTERPRISE: {
     signupFee: 1200,
     perTermCost: 150,
-    monthlyEstimate: 50,
+    monthlyEstimate: 120,
   },
 } as const;
 
-// POST /payments/create-checkout - Create checkout session
+// POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
   try {
     const schoolId = c.get("schoolId");
@@ -39,32 +53,162 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       ? planPricing.signupFee + planPricing.monthlyEstimate
       : planPricing.monthlyEstimate;
 
-    // Create pending payment record
-    const payment = await db.schoolPayment.create({
+    // Create intermediate payment record first
+    const intermediatePayment = await db.intermediatePayment.create({
       data: {
+        userId,
         schoolId,
-        amount,
-        type: data.paymentType === "SIGNUP" ? PaymentType.SIGNUP_FEE : PaymentType.TERM_PAYMENT,
-        status: PaymentStatus.PENDING,
-        paymentMethod: PaymentMethod.ONLINE,
-        reference: `checkout_${Date.now()}`,
+        amount: BigInt(Math.round(amount * 100)) / BigInt(100), // Convert to Decimal
+        plan: data.planType,
+        paid: false,
       },
     });
 
-    // In production, you would create a Dodo Payments checkout session here
-    // For now, return a mock checkout URL
-    const checkoutUrl = process.env.DODO_PAYMENTS_API_KEY
-      ? `https://checkout.dodopayments.com/${payment.id}` // Would be real URL
-      : `/payment/mock-checkout?amount=${amount}&plan=${data.planType}&type=${data.paymentType}&paymentId=${payment.id}`;
+    // Get PayNow instance
+    const paynow = initializePaynow();
+    
+    if (!paynow) {
+      // Mock mode for development
+      return successResponse(c, {
+        checkoutUrl: `/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+        intermediatePaymentId: intermediatePayment.id,
+        isDevelopment: true,
+      });
+    }
 
-    return successResponse(c, {
-      checkoutUrl,
-      paymentId: payment.id,
-      amount,
-      isDevelopment: !process.env.DODO_PAYMENTS_API_KEY,
-    });
+    // Set PayNow URLs
+    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    paynow.resultUrl = `${baseUrl}/api/payments/callback`;
+    paynow.returnUrl = `/payment/success?intermediatePaymentId=${intermediatePayment.id}`;
+
+    // Create PayNow payment
+    const payment = paynow.createPayment(`Invoice-${intermediatePayment.id}`, data.email);
+    payment.add(planPricing.name, amount);
+
+    try {
+      const response = await paynow.send(payment);
+      
+      if (response.success) {
+        // Save the poll URL for webhook verification
+        await db.intermediatePayment.update({
+          where: { id: intermediatePayment.id },
+          data: { reference: response.pollUrl },
+        });
+
+        return successResponse(c, {
+          checkoutUrl: response.redirectUrl,
+          intermediatePaymentId: intermediatePayment.id,
+          pollUrl: response.pollUrl,
+        });
+      } else {
+        return errors.internalError(c, { error: response.error });
+      }
+    } catch (paynowError) {
+      console.error("PayNow error:", paynowError);
+      return errors.internalError(c);
+    }
   } catch (error) {
     console.error("Create checkout error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /payments/callback - PayNow webhook callback
+payments.post("/callback", async (c) => {
+  try {
+    const data = await c.req.json();
+    const { intermediatePaymentId, paid } = data;
+
+    if (!intermediatePaymentId) {
+      return errors.validationError(c, { intermediatePaymentId: ["Missing intermediate payment ID"] });
+    }
+
+    // Update intermediate payment
+    if (paid) {
+      await db.intermediatePayment.update({
+        where: { id: intermediatePaymentId },
+        data: { paid: true },
+      });
+    }
+
+    return successResponse(c, { status: "processed" });
+  } catch (error) {
+    console.error("Callback error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// GET /payments/verify/:intermediatePaymentId - Verify intermediate payment
+payments.get("/verify/:intermediatePaymentId", async (c) => {
+  try {
+    const intermediatePaymentId = c.req.param("intermediatePaymentId");
+
+    const intermediatePayment = await db.intermediatePayment.findUnique({
+      where: { id: intermediatePaymentId },
+      include: { user: true, school: true },
+    });
+
+    if (!intermediatePayment) {
+      return errors.notFound(c, { error: "Payment not found" });
+    }
+
+    return successResponse(c, {
+      payment: intermediatePayment,
+      isPaid: intermediatePayment.paid,
+    });
+  } catch (error) {
+    console.error("Verify payment error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /payments/confirm-manual-payment - Handle manual once-off payment
+payments.post("/confirm-manual-payment", requireAuth, async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const userId = c.get("userId");
+    const data = await c.req.json();
+    const { plan, paymentType } = data;
+
+    if (!plan) {
+      return errors.validationError(c, { plan: ["Plan is required"] });
+    }
+
+    const planPricing = PRICING[plan as keyof typeof PRICING];
+    if (!planPricing) {
+      return errors.validationError(c, { plan: ["Invalid plan"] });
+    }
+
+    // Mark once-off payment as paid, only monthly remains
+    const planPayment = await db.planPayment.upsert({
+      where: { schoolId },
+      update: { onceOffPaymentPaid: true },
+      create: {
+        schoolId,
+        onceOffPaymentPaid: true,
+        monthlyPaymentPaid: false,
+        paid: false,
+      },
+    });
+
+    // Create intermediate payment for monthly only
+    const intermediatePayment = await db.intermediatePayment.create({
+      data: {
+        userId,
+        schoolId,
+        amount: new Prisma.Decimal(planPricing.monthlyEstimate),
+        plan,
+        paid: false,
+      },
+    });
+
+    return successResponse(c, {
+      planPayment,
+      intermediatePayment,
+      nextPaymentAmount: planPricing.monthlyEstimate,
+    });
+  } catch (error) {
+    console.error("Confirm manual payment error:", error);
     return errors.internalError(c);
   }
 });
