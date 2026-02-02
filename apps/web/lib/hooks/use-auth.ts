@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, setAccessToken, clearAccessToken, ApiError } from "../api";
 import { useRouter } from "next/navigation";
+import { getLoginRedirectPath } from "../auth-redirect";
 
 // Types
 interface User {
@@ -60,14 +61,9 @@ export function useLogin() {
       setAccessToken(data.accessToken);
       queryClient.setQueryData(["auth", "user"], data);
       
-      // Redirect based on school status
-      if (!data.school.signupFeePaid) {
-        router.push("/payment");
-      } else if (!data.school.onboardingComplete) {
-        router.push("/onboarding");
-      } else {
-        router.push("/dashboard");
-      }
+      // Get redirect path based on payment status, onboarding status, and role
+      const redirectPath = getLoginRedirectPath(data.user, data.school);
+      router.push(redirectPath);
     },
   });
 }
