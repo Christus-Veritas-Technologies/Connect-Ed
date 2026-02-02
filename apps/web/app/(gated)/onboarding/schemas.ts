@@ -63,7 +63,24 @@ export const step2ValidationSchema = yup.object().shape({
 });
 
 // Validation schema for Step 3 (placeholder)
-export const step3ValidationSchema = yup.object().shape({});
+export const step3ValidationSchema = yup.object().shape({
+  classes: yup
+    .array()
+    .of(
+      yup.object().shape({
+        name: yup
+          .string()
+          .required("Class name is required")
+          .min(1, "Class name must be at least 1 character"),
+        capacity: yup
+          .number()
+          .required("Capacity is required")
+          .min(1, "Capacity must be at least 1")
+          .max(200, "Capacity cannot exceed 200"),
+      })
+    )
+    .min(1, "Add at least one class"),
+});
 
 // Validation schema for Step 4 (placeholder)
 export const step4ValidationSchema = yup.object().shape({});
