@@ -6,7 +6,7 @@ export const PRICING = {
     description: "Perfect for small schools with less than 500 students",
     signupFee: 400,
     perTermCost: 50,
-    monthlyEstimate: 17,
+    monthlyEstimate: 40,
     features: [
       "Up to 500 students",
       "Admin & Receptionist access",
@@ -30,7 +30,7 @@ export const PRICING = {
     description: "Perfect for schools with 500-1200 students",
     signupFee: 750,
     perTermCost: 90,
-    monthlyEstimate: 30,
+    monthlyEstimate: 75,
     features: [
       "500-1200 students",
       "Admin, Receptionist & Teacher access",
@@ -54,7 +54,7 @@ export const PRICING = {
     description: "For large schools with 2000-3000 students",
     signupFee: 1200,
     perTermCost: 150,
-    monthlyEstimate: 50,
+    monthlyEstimate: 120,
     features: [
       "2000-3000 students",
       "Full access for all roles",
