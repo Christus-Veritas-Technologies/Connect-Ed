@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
 import { useRouter } from "next/navigation";
 
@@ -208,26 +210,23 @@ export default function PaymentPage() {
 
             {/* Manual Payment Option */}
             <div className="p-4 rounded-xl bg-muted border border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Already paid signup fee?</p>
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="manual-payment" className="font-medium cursor-pointer">
+                    Already paid signup fee?
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {isManualPayment
                       ? "Great! Pay only the monthly fee online"
                       : "Mark it as done and pay only the monthly fee"}
                   </p>
                 </div>
-                <button
-                  onClick={handleManualPaymentToggle}
+                <Switch
+                  id="manual-payment"
+                  checked={isManualPayment}
+                  onCheckedChange={() => handleManualPaymentToggle()}
                   disabled={isLoading}
-                  className={`ml-4 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    isManualPayment
-                      ? "bg-success text-white"
-                      : "bg-border text-foreground hover:bg-border/80"
-                  } disabled:opacity-50`}
-                >
-                  {isManualPayment ? "✓ Marked" : "Mark Done"}
-                </button>
+                />
               </div>
             </div>
 
