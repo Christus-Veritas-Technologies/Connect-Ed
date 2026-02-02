@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AlertTriangleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "@hugeicons/core-free-icons";
 
 export default function Error({
   error,
@@ -30,7 +30,7 @@ export default function Error({
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
             <HugeiconsIcon
-              icon={AlertTriangleIcon}
+              icon={AlertTriangle}
               size={32}
               className="text-destructive"
             />

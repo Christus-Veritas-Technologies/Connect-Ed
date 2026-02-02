@@ -1,6 +1,3 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { LoaderIcon } from "@hugeicons/core-free-icons";
-
 export default function Loading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand/5 to-mid/5 flex items-center justify-center p-4">

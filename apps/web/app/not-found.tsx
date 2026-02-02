@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { SearchNotFoundIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { FolderSearch } from "@hugeicons/core-free-icons";
 
 export default function NotFound() {
   return (
@@ -18,7 +18,7 @@ export default function NotFound() {
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center">
             <HugeiconsIcon
-              icon={SearchNotFoundIcon}
+              icon={FolderSearch}
               size={32}
               className="text-brand"
             />
