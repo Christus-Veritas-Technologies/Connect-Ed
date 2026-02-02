@@ -8,7 +8,7 @@ import { motion, type HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2.5 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-5 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "inline-flex items-center justify-center gap-2.5 whitespace-nowrap rounded-md text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-5 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
   {
     variants: {
       variant: {
@@ -31,12 +31,12 @@ const buttonVariants = cva(
         default: "h-11 px-6 py-2.5",
         xs: "h-7 gap-1.5 rounded-lg px-3 text-xs",
         sm: "h-9 rounded-lg gap-2 px-4 text-sm",
-        lg: "h-12 rounded-xl px-8 text-base",
+        lg: "h-12 rounded-md px-8 text-base",
         xl: "h-14 rounded-2xl px-10 text-lg",
-        icon: "size-11 rounded-xl",
+        icon: "size-11 rounded-md",
         "icon-xs": "size-7 rounded-lg [&_svg:not([class*='size-'])]:size-4",
         "icon-sm": "size-9 rounded-lg",
-        "icon-lg": "size-12 rounded-xl",
+        "icon-lg": "size-12 rounded-md",
       },
     },
     defaultVariants: {

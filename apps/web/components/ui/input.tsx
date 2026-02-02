@@ -29,7 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           onBlur={() => setIsFocused(false)}
           className={cn(
             // Base styles
-            "flex h-12 w-full rounded-xl border-2 bg-background px-4 py-3 text-base font-medium transition-all duration-200",
+            "flex h-12 w-full rounded-md border-2 bg-background px-4 py-3 text-base font-medium transition-all duration-200",
             // Placeholder
             "placeholder:text-muted-foreground placeholder:font-normal",
             // Border colors
@@ -54,7 +54,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         />
         {isFocused && (
           <motion.div
-            className="absolute inset-0 rounded-xl pointer-events-none"
+            className="absolute inset-0 rounded-md pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
