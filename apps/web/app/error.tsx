@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { HugeiconsIcon } from "hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AlertTriangleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 

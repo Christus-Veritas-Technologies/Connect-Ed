@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { LoaderIcon } from "@hugeicons/core-free-icons";
 
 export default function Loading() {

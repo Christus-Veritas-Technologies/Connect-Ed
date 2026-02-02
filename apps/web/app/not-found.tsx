@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { SearchNotFoundIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
