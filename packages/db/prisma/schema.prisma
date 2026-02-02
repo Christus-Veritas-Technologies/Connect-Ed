@@ -104,6 +104,8 @@ model School {
   feePayments    FeePayment[]
   expenses       Expense[]
   schoolPayments SchoolPayment[]
+  planPayments   PlanPayment[]
+  intermediatePayments IntermediatePayment[]
   messageLogs    MessageLog[]
 
   @@map("schools")
@@ -136,6 +138,9 @@ model User {
   // Recorded payments/expenses
   recordedPayments FeePayment[] @relation("ReceivedBy")
   recordedExpenses Expense[]    @relation("RecordedBy")
+  
+  // Payment records
+  intermediatePayments IntermediatePayment[]
 
   @@index([schoolId])
   @@index([email])
@@ -360,6 +365,48 @@ model SchoolPayment {
   @@index([schoolId])
   @@index([status])
   @@map("school_payments")
+}
+
+model PlanPayment {
+  id                    String   @id @default(cuid())
+  onceOffPaymentPaid    Boolean  @default(false)
+  monthlyPaymentPaid    Boolean  @default(false)
+  paid                  Boolean  @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@map("plan_payments")
+}
+
+model IntermediatePayment {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(10, 2)
+  paid      Boolean  @default(false)
+  plan      Plan
+  reference String?  // PayNow transaction reference
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([paid])
+  @@map("intermediate_payments")
 }
 
 model MessageLog {
