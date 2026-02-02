@@ -13,7 +13,7 @@ import { PRICING } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
@@ -125,7 +125,9 @@ export default function PaymentPage() {
                 hover
                 onClick={() => setSelectedPlan(plan)}
                 className={`relative cursor-pointer transition-all ${
-                  isSelected ? "border-brand ring-4 ring-brand/20" : ""
+                  isSelected 
+                    ? "bg-brand border-brand ring-4 ring-brand/20" 
+                    : "bg-muted/40"
                 }`}
               >
                 {isPopular && (
@@ -135,8 +137,10 @@ export default function PaymentPage() {
                 )}
 
                 <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-xl">{planPricing.name}</CardTitle>
-                  <CardDescription className="text-sm">
+                  <CardTitle className={`text-xl ${isSelected ? "text-white" : ""}`}>
+                    {planPricing.name}
+                  </CardTitle>
+                  <CardDescription className={isSelected ? "text-blue-100" : ""}>
                     {planPricing.description}
                   </CardDescription>
                 </CardHeader>
@@ -144,10 +148,18 @@ export default function PaymentPage() {
                 <CardContent className="space-y-6">
                   <div className="text-center">
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold">${planPricing.signupFee}</span>
-                      <span className="text-muted-foreground">signup</span>
+                      <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
+                        ${planPricing.signupFee}
+                      </span>
+                      <span className={isSelected ? "text-blue-100" : "text-muted-foreground"}>
+                        signup
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className={`text-sm mt-1 ${
+                      isSelected 
+                        ? "text-blue-100" 
+                        : "text-muted-foreground"
+                    }`}>
                       + ${planPricing.perTermCost}/term (~${planPricing.monthlyEstimate}/mo)
                     </p>
                   </div>
@@ -158,16 +170,24 @@ export default function PaymentPage() {
                         <HugeiconsIcon
                           icon={CheckmarkCircle02Icon}
                           size={18}
-                          className="text-success shrink-0 mt-0.5"
+                          className={`shrink-0 mt-0.5 ${
+                            isSelected ? "text-blue-200" : "text-success"
+                          }`}
                         />
-                        <span>{feature}</span>
+                        <span className={isSelected ? "text-white" : ""}>
+                          {feature}
+                        </span>
                       </li>
                     ))}
                   </ul>
 
                   <Button
-                    variant={isSelected ? "default" : "outline"}
-                    className="w-full"
+                    variant={isSelected ? "secondary" : "outline"}
+                    className={`w-full ${
+                      isSelected 
+                        ? "bg-white text-brand hover:bg-white/90" 
+                        : ""
+                    }`}
                     onClick={() => setSelectedPlan(plan)}
                   >
                     {isSelected ? "Selected" : "Select Plan"}

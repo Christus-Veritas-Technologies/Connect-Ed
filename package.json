@@ -20,5 +20,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "formik": "^2.4.9",
+    "yup": "^1.7.1"
+  }
 }
