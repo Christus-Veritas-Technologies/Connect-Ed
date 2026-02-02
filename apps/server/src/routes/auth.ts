@@ -17,7 +17,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "../lib/validation";
-import { successResponse, errors } from "../lib/response";
+import { successResponse, errors, errorResponse } from "../lib/response";
 import { randomBytes } from "crypto";
 
 const auth = new Hono();
@@ -121,18 +121,21 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     });
 
     if (!user) {
-      return errors.unauthorized(c);
+      console.log(`[Login] User not found: ${email}`);
+      return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
     }
 
     // Verify password
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
-      return errors.unauthorized(c);
+      console.log(`[Login] Invalid password for user: ${email}`);
+      return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
     }
 
     // Check if user is active
     if (!user.isActive) {
-      return errors.forbidden(c);
+      console.log(`[Login] User is inactive: ${email}`);
+      return errorResponse(c, "ACCOUNT_INACTIVE", "This account has been deactivated", 403);
     }
 
     // Generate tokens
@@ -150,6 +153,8 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
 
     // Set refresh token cookie
     setRefreshTokenCookie(c, refreshToken);
+
+    console.log(`[Login] Successful login for user: ${email}`);
 
     return successResponse(c, {
       user: {
