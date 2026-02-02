@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowRight, Lock, Mail } from "lucide-react";
+import { ArrowRight, Loader2, Lock, Mail } from "lucide-react";
 
 function LoginPageContent() {
   const loginMutation = useLogin();
@@ -71,6 +71,7 @@ function LoginPageContent() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             icon={<Mail size={20} />}
+            className="font-normal"
             required
           />
         </div>
@@ -94,6 +95,7 @@ function LoginPageContent() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             icon={<Lock size={20} />}
+            className="font-normal"
             required
           />
         </div>
@@ -106,11 +108,14 @@ function LoginPageContent() {
         >
           {loginMutation.isPending ? (
             <>
-              Signing In
+            <Loader2 className="animate-spin mr-2" />
+              Signing In...
             </>
           )
         : (
-          
+            <>
+              Sign In
+            </>
         )
         }
         </Button>
