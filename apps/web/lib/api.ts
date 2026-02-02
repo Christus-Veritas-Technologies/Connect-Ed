@@ -100,9 +100,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const requestUrl = originalRequest.url || "";
 
-    // If 401 and not a retry, attempt token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Public endpoints that shouldn't trigger token refresh
+    const publicEndpoints = ["/auth/login", "/auth/signup", "/auth/forgot-password", "/auth/reset-password"];
+    const isPublicEndpoint = publicEndpoints.some((endpoint) => requestUrl.includes(endpoint));
+
+    // If 401 and not a retry and not a public endpoint, attempt token refresh
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicEndpoint) {
       if (isRefreshing) {
         // Wait for token refresh
         return new Promise((resolve) => {
