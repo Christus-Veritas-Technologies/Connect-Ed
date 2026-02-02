@@ -53,14 +53,14 @@ export default function SignupPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="w-full max-w-md space-y-8"
+      className="w-full space-y-4"
     >
       {/* Logo */}
       <motion.div
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-        className="flex justify-center"
+        className="flex justify-center w-full"
       >
         <div className="size-16 rounded-2xl bg-gradient-to-br from-brand to-mid flex items-center justify-center">
           <span className="text-2xl font-bold text-white">CE</span>
@@ -81,110 +81,116 @@ export default function SignupPage() {
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold">
-                Full Name
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="John Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                icon={<User2 size={20} />}
-                required
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-2.5 w-full">
+        {/* Name and Email Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-semibold">
+              Full Name
+            </Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              icon={<User2 size={20} />}
+              required
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@yourschool.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                icon={<Mail size={20} />}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-semibold">
+              Email Address
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="admin@school.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              icon={<Mail size={20} />}
+              required
+            />
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a strong password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                icon={<Lock size={20} />}
-                required
-              />
-              {password && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="mt-3 space-y-2"
-                >
-                  {passwordRequirements.map((req, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <CheckCircle
-                        size={16}
-                        className={req.test(password) ? "text-success" : "text-muted-foreground"}
-                      />
-                      <span className={req.test(password) ? "text-success" : "text-muted-foreground"}>
-                        {req.label}
-                      </span>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
+        {/* Password and Confirm Password Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-semibold">
+              Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              icon={<Lock size={20} />}
+              required
+            />
+            {password && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="mt-3 space-y-2"
+              >
+                {passwordRequirements.map((req, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <CheckCircle
+                      size={16}
+                      className={req.test(password) ? "text-success" : "text-muted-foreground"}
+                    />
+                    <span className={req.test(password) ? "text-success" : "text-muted-foreground"}>
+                      {req.label}
+                    </span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold">
-                Confirm Password
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                icon={<Lock size={20} />}
-                error={confirmPassword.length > 0 && password !== confirmPassword}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-sm font-semibold">
+              Confirm Password
+            </Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              icon={<Lock size={20} />}
+              error={confirmPassword.length > 0 && password !== confirmPassword}
+              required
+            />
+          </div>
+        </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              loading={signupMutation.isPending}
-            >
-              {signupMutation.isPending ? (
-                <>
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  Create Account
-                </>
-              )}
-            </Button>
-          </form>
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          loading={signupMutation.isPending}
+        >
+          {signupMutation.isPending ? (
+            <>
+              Creating Account...
+            </>
+          ) : (
+            <>
+              Create Account
+            </>
+          )}
+        </Button>
+      </form>
 
           {/* Sign In Link */}
           <p className="text-center text-sm text-muted-foreground">
