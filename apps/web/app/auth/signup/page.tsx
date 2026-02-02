@@ -3,20 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { 
-  Mail01Icon, 
-  LockPasswordIcon, 
-  UserIcon, 
-  ArrowRight01Icon,
-  CheckmarkCircle02Icon 
-} from "@hugeicons/react";
 import { useSignup } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle, Lock, Mail, User2 } from "lucide-react";
 
 const passwordRequirements = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -60,31 +53,35 @@ export default function SignupPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      className="w-full max-w-md space-y-8"
     >
-      <Card className="border-0 shadow-2xl shadow-brand/10">
-        <CardHeader className="text-center pb-2">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="mx-auto mb-4 size-16 rounded-2xl bg-gradient-to-br from-brand to-mid flex items-center justify-center"
-          >
-            <span className="text-2xl font-bold text-white">CE</span>
-          </motion.div>
-          <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
-          <CardDescription className="text-base">
-            Start managing your school with Connect-Ed
-          </CardDescription>
-        </CardHeader>
+      {/* Logo */}
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+        className="flex justify-center"
+      >
+        <div className="size-16 rounded-2xl bg-gradient-to-br from-brand to-mid flex items-center justify-center">
+          <span className="text-2xl font-bold text-white">CE</span>
+        </div>
+      </motion.div>
 
-        <CardContent className="pt-4">
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+      {/* Heading */}
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold">Create your account</h1>
+        <p className="text-muted-foreground">Start managing your school with Connect-Ed</p>
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-semibold">
                 Full Name
@@ -95,7 +92,7 @@ export default function SignupPage() {
                 placeholder="John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                icon={<UserIcon size={20} />}
+                icon={<User2 size={20} />}
                 required
               />
             </div>
@@ -110,7 +107,7 @@ export default function SignupPage() {
                 placeholder="admin@yourschool.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                icon={<Mail01Icon size={20} />}
+                icon={<Mail size={20} />}
                 required
               />
             </div>
@@ -125,7 +122,7 @@ export default function SignupPage() {
                 placeholder="Create a strong password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                icon={<LockPasswordIcon size={20} />}
+                icon={<Lock size={20} />}
                 required
               />
               {password && (
@@ -142,7 +139,7 @@ export default function SignupPage() {
                       transition={{ delay: i * 0.1 }}
                       className="flex items-center gap-2 text-sm"
                     >
-                      <CheckmarkCircle02Icon
+                      <CheckCircle
                         size={16}
                         className={req.test(password) ? "text-success" : "text-muted-foreground"}
                       />
@@ -165,7 +162,7 @@ export default function SignupPage() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                icon={<LockPasswordIcon size={20} />}
+                icon={<Lock size={20} />}
                 error={confirmPassword.length > 0 && password !== confirmPassword}
                 required
               />
@@ -177,25 +174,26 @@ export default function SignupPage() {
               size="lg"
               loading={signupMutation.isPending}
             >
-              {!signupMutation.isPending && (
+              {signupMutation.isPending ? (
+                <>
+                  Creating Account...
+                </>
+              ) : (
                 <>
                   Create Account
-                  <ArrowRight01Icon size={20} />
                 </>
               )}
             </Button>
           </form>
-        </CardContent>
 
-        <CardFooter className="flex-col gap-4 pt-2 pb-6">
+          {/* Sign In Link */}
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-brand hover:text-brand-hover font-semibold transition-colors">
+            <Link href="/auth/login" className="font-semibold text-brand hover:text-brand-hover transition-colors">
               Sign in
             </Link>
           </p>
-        </CardFooter>
-      </Card>
-    </motion.div>
-  );
-}
+        </motion.div>
+      )
+    }
+
