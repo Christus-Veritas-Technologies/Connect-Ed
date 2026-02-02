@@ -8,20 +8,22 @@ import {
   BankIcon,
   ArrowRight01Icon,
   InformationCircleIcon,
-} from "@hugeicons/react";
-import { useAuth, useAuthFetch } from "@/lib/auth-context";
+  HugeiconsFreeIcons,
+} from "@hugeicons/core-free-icons";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 import { PRICING } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import type { Plan } from "@repo/db";
+import { HugeiconsIcon } from "@hugeicons/react";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 export default function PaymentPage() {
   const { school, user } = useAuth();
-  const authFetch = useAuthFetch();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online");
   const [isLoading, setIsLoading] = useState(false);
@@ -33,22 +35,12 @@ export default function PaymentPage() {
     setError("");
 
     try {
-      const response = await authFetch("/api/payments/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planType: selectedPlan,
-          paymentType: "SIGNUP",
-        }),
+      const response = await api.post<{ checkoutUrl: string }>("/payments/create-checkout", {
+        planType: selectedPlan,
+        paymentType: "SIGNUP",
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to create checkout");
-      }
-
-      window.location.href = data.data.checkoutUrl;
+      window.location.href = response.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
       setIsLoading(false);
@@ -185,7 +177,7 @@ export default function PaymentPage() {
                   <ul className="space-y-3">
                     {planPricing.features.slice(0, 6).map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
-                        <CheckmarkCircle02Icon
+                        <HugeiconsIcon icon={CheckmarkCircle02Icon}
                           size={18}
                           className="text-success shrink-0 mt-0.5"
                         />
@@ -245,7 +237,7 @@ export default function PaymentPage() {
                       : "border-border hover:border-brand/50"
                   }`}
                 >
-                  <CreditCardIcon size={24} className="text-brand" />
+                  <HugeiconsIcon icon={CreditCardIcon} size={24} className="text-brand" />
                   <span className="font-medium">Pay Online</span>
                 </button>
                 <button
@@ -256,7 +248,7 @@ export default function PaymentPage() {
                       : "border-border hover:border-brand/50"
                   }`}
                 >
-                  <BankIcon size={24} className="text-brand" />
+                  <HugeiconsIcon icon={BankIcon} size={24} className="text-brand" />
                   <span className="font-medium">Cash/Transfer</span>
                 </button>
               </div>
@@ -271,13 +263,13 @@ export default function PaymentPage() {
               {!isLoading && (
                 <>
                   {paymentMethod === "online" ? `Pay $${total} Now` : "View Payment Instructions"}
-                  <ArrowRight01Icon size={20} />
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
                 </>
               )}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
-              <InformationCircleIcon size={14} />
+              <HugeiconsIcon icon={InformationCircleIcon} size={14} />
               Secure payment powered by Dodo Payments
             </p>
           </CardContent>
