@@ -101,7 +101,7 @@ export default function PaymentSuccessPage() {
                 <ul className="mt-2 ml-4 space-y-1 text-sm list-disc">
                   <li>The payment link is invalid or expired</li>
                   <li>The payment hasn&apos;t been processed yet</li>
-                  <li>There was an issue with the transaction</li>
+                  <li>There was an issue with this transaction</li>
                 </ul>
               </Alert>
 
