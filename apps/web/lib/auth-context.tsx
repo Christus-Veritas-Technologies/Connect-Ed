@@ -32,6 +32,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<boolean>;
+  setAuthData: (user: User, school: School) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,6 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         checkAuth,
+        setAuthData: (newUser: User, newSchool: School) => {
+          setUser(newUser);
+          setSchool(newSchool);
+        },
       }}
     >
       {children}

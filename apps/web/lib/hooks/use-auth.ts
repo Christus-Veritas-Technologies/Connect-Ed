@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, setAccessToken, clearAccessToken, ApiError } from "../api";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../auth-context";
 import { getLoginRedirectPath } from "../auth-redirect";
 
 // Types
@@ -52,6 +53,7 @@ export function useRefreshToken() {
 export function useLogin() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { setAuthData } = useAuth();
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
@@ -59,6 +61,8 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
+      // Update auth context immediately
+      setAuthData(data.user, data.school);
       queryClient.setQueryData(["auth", "user"], data);
       
       // Get redirect path based on payment status, onboarding status, and role
@@ -71,6 +75,7 @@ export function useLogin() {
 export function useSignup() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { setAuthData } = useAuth();
 
   return useMutation({
     mutationFn: async (data: { email: string; password: string; name: string }) => {
@@ -78,6 +83,8 @@ export function useSignup() {
     },
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
+      // Update auth context immediately
+      setAuthData(data.user, data.school);
       queryClient.setQueryData(["auth", "user"], data);
       router.push("/payment");
     },
