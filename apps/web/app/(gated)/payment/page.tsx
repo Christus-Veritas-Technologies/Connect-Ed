@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
 
@@ -228,7 +228,14 @@ export default function PaymentPage() {
 
             {/* Manual Payment Option */}
             <div className="p-4 rounded-xl bg-muted border border-border">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <Checkbox
+                  id="manual-payment"
+                  checked={isManualPayment}
+                  onCheckedChange={handleManualPaymentToggle}
+                  disabled={isManualPaymentLoading}
+                  className="mt-1"
+                />
                 <div className="flex-1">
                   <Label htmlFor="manual-payment" className="font-medium cursor-pointer">
                     Already paid signup fee?
@@ -236,15 +243,9 @@ export default function PaymentPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {isManualPayment
                       ? "Great! Pay only the monthly fee online"
-                      : "Mark it as done and pay only the monthly fee"}
+                      : "Check this box and pay only the monthly fee"}
                   </p>
                 </div>
-                <Switch
-                  id="manual-payment"
-                  checked={isManualPayment}
-                  onCheckedChange={handleManualPaymentToggle}
-                  disabled={isManualPaymentLoading}
-                />
               </div>
             </div>
 
