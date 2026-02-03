@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
 
@@ -24,7 +24,6 @@ export default function PaymentPage() {
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
-  const [isManualPaymentLoading, setIsManualPaymentLoading] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,31 +34,21 @@ export default function PaymentPage() {
     ? pricing.monthlyEstimate 
     : pricing.signupFee + pricing.monthlyEstimate;
 
-  const handleManualPaymentToggle = async (checked: boolean) => {
-    if (!checked) {
-      // Switching back to online - no action needed
-      setIsManualPayment(false);
-      return;
-    }
-
-    // Enabling manual payment
-    setIsManualPaymentLoading(true);
+  const handleManualPaymentToggle = (checked: boolean) => {
+    setIsManualPayment(checked);
     setError("");
-
-    try {
-      await api.post<{
+    
+    // If enabling manual payment, call API in background
+    if (checked) {
+      api.post<{
         nextPaymentAmount: number;
       }>("/payments/confirm-manual-payment", {
         plan: selectedPlan,
         paymentType: "SIGNUP",
+      }).catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to process manual payment confirmation");
+        setIsManualPayment(false); // Revert on error
       });
-
-      // Update state after successful API call
-      setIsManualPayment(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process manual payment confirmation");
-    } finally {
-      setIsManualPaymentLoading(false);
     }
   };
 
@@ -228,14 +217,7 @@ export default function PaymentPage() {
 
             {/* Manual Payment Option */}
             <div className="p-4 rounded-xl bg-muted border border-border">
-              <div className="flex items-start gap-4">
-                <Checkbox
-                  id="manual-payment"
-                  checked={isManualPayment}
-                  onCheckedChange={handleManualPaymentToggle}
-                  disabled={isManualPaymentLoading}
-                  className="mt-1"
-                />
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <Label htmlFor="manual-payment" className="font-medium cursor-pointer">
                     Already paid signup fee?
@@ -243,9 +225,14 @@ export default function PaymentPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {isManualPayment
                       ? "Great! Pay only the monthly fee online"
-                      : "Check this box and pay only the monthly fee"}
+                      : "Toggle this and pay only the monthly fee"}
                   </p>
                 </div>
+                <Switch
+                  id="manual-payment"
+                  checked={isManualPayment}
+                  onCheckedChange={handleManualPaymentToggle}
+                />
               </div>
             </div>
 
