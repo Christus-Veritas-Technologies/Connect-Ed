@@ -24,7 +24,8 @@ export default function PaymentPage() {
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isManualPaymentLoading, setIsManualPaymentLoading] = useState(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
 
   const pricing = PRICING[selectedPlan];
@@ -34,16 +35,15 @@ export default function PaymentPage() {
     ? pricing.monthlyEstimate 
     : pricing.signupFee + pricing.monthlyEstimate;
 
-  const handleManualPaymentToggle = async () => {
-    if (isManualPayment) {
+  const handleManualPaymentToggle = async (checked: boolean) => {
+    if (!checked) {
       // Switching back to online - no action needed
       setIsManualPayment(false);
       return;
     }
 
-    // Optimistically update UI
-    setIsManualPayment(true);
-    setIsLoading(true);
+    // Enabling manual payment
+    setIsManualPaymentLoading(true);
     setError("");
 
     try {
@@ -54,18 +54,17 @@ export default function PaymentPage() {
         paymentType: "SIGNUP",
       });
 
-      // Keep manual payment enabled on success
-      setIsLoading(false);
+      // Update state after successful API call
+      setIsManualPayment(true);
     } catch (err) {
-      // Revert on error
-      setIsManualPayment(false);
       setError(err instanceof Error ? err.message : "Failed to process manual payment confirmation");
-      setIsLoading(false);
+    } finally {
+      setIsManualPaymentLoading(false);
     }
   };
 
   const handlePayOnline = async () => {
-    setIsLoading(true);
+    setIsPaymentLoading(true);
     setError("");
 
     try {
@@ -82,7 +81,7 @@ export default function PaymentPage() {
       window.location.href = response.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
-      setIsLoading(false);
+      setIsPaymentLoading(false);
     }
   };
 
@@ -244,7 +243,7 @@ export default function PaymentPage() {
                   id="manual-payment"
                   checked={isManualPayment}
                   onCheckedChange={handleManualPaymentToggle}
-                  disabled={isLoading}
+                  disabled={isManualPaymentLoading}
                 />
               </div>
             </div>
@@ -252,10 +251,10 @@ export default function PaymentPage() {
             <Button
               className="w-full"
               size="lg"
-              loading={isLoading}
+              loading={isPaymentLoading}
               onClick={handlePayOnline}
             >
-              {!isLoading && (
+              {!isPaymentLoading && (
                 <>
                   Pay ${paymentAmount} Now
                   <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
