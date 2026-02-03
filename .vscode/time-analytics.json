@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "project": {
+    "totalFocusTime": 1846398,
+    "totalActiveTime": 587967
+  },
+  "files": {
+    ".env.example": {
+      "pending": 37998,
+      "focus": 247473
+    },
+    "packages/db/prisma/schema.prisma": {
+      "pending": 0,
+      "focus": 11795
+    },
+    "packages/db/prisma/migrations/20260202084948_add_plan_payment_and_intermediate_payment_models/migration.sql": {
+      "pending": 0,
+      "focus": 14831
+    },
+    "apps/web/lib/messaging.ts": {
+      "pending": 1158,
+      "focus": 502114
+    },
+    "apps/server/src/lib/email.ts": {
+      "pending": 1944,
+      "focus": 23058
+    },
+    "apps/web/lib/api.ts": {
+      "pending": 0,
+      "focus": 83872
+    },
+    "apps/server/src/routes/auth.ts": {
+      "pending": 1149,
+      "focus": 68442
+    },
+    "apps/web/components/auth-guard.tsx": {
+      "pending": 38654,
+      "focus": 39167
+    },
+    "apps/web/app/(gated)/onboarding/storage.ts": {
+      "pending": 39135,
+      "focus": 389062
+    },
+    "apps/web/app/(gated)/onboarding/step-1.tsx": {
+      "pending": 38157,
+      "focus": 379251
+    },
+    "apps/web/app/(gated)/onboarding/step-2.tsx": {
+      "pending": 38141,
+      "focus": 369621
+    },
+    "apps/web/app/(gated)/onboarding/step-3.tsx": {
+      "pending": 38108,
+      "focus": 361526
+    },
+    "apps/web/app/(gated)/onboarding/schemas.ts": {
+      "pending": 38091,
+      "focus": 352546
+    },
+    "apps/web/app/(gated)/onboarding/step-4.tsx": {
+      "pending": 40172,
+      "focus": 304654
+    },
+    "apps/web/app/auth/forgot-password/page.tsx": {
+      "pending": 38070,
+      "focus": 294820
+    },
+    "apps/web/app/auth/reset-password/page.tsx": {
+      "pending": 40874,
+      "focus": 269943
+    },
+    "apps/server/src/routes/payments.ts": {
+      "pending": 38601,
+      "focus": 230925
+    },
+    "apps/web/app/(dashboard)/payments/page.tsx": {
+      "pending": 39392,
+      "focus": 194876
+    },
+    "apps/server/src/middleware/rate-limit.ts": {
+      "pending": 39630,
+      "focus": 114038
+    },
+    "apps/server/src/lib/response.ts": {
+      "pending": 39055,
+      "focus": 104962
+    },
+    "apps/server/src/index.ts": {
+      "pending": 38384,
+      "focus": 92070
+    },
+    "apps/web/lib/validation.ts": {
+      "pending": 1254,
+      "focus": 72641
+    }
+  }
+}

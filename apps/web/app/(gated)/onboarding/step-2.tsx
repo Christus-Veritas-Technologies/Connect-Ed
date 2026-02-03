@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { step2ValidationSchema } from "./schemas";
 import { FormSection, FormActions } from "./components";
+import { saveOnboardingDraft } from "./storage";
 
 interface OnboardingStep2Props {
   onBack: () => void;
@@ -37,9 +38,13 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
       subjects: [{ name: "", level: "" }],
     },
     validationSchema: step2ValidationSchema,
-    onSubmit: async () => {
+    onSubmit: async (values) => {
       try {
-        // API call would go here
+        saveOnboardingDraft({
+          curriculum: values.curriculum,
+          educationLevels: values.educationLevels,
+          subjects: values.subjects,
+        });
         onNext();
       } catch {
         // Handle error

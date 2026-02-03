@@ -64,6 +64,9 @@ export const errors = {
   quotaExceeded: (c: Context, type: string) =>
     errorResponse(c, "QUOTA_EXCEEDED", `${type} quota exceeded for this billing period`, 429),
 
+  rateLimited: (c: Context) =>
+    errorResponse(c, "RATE_LIMITED", "Too many requests", 429),
+
   conflict: (c: Context, message: string) =>
     errorResponse(c, "CONFLICT", message, 409),
 };

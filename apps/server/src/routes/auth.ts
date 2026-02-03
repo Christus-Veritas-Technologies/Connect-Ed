@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan, Role } from "@repo/db";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { sendEmail } from "../lib/email";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -306,10 +307,19 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
       },
     });
 
-    // TODO: Send email with reset link
-    console.log(
-      `Password reset token for ${email}: ${resetToken}`
-    );
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const resetUrl = `${appUrl}/auth/reset-password?token=${resetToken}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Reset your Connect-Ed password",
+      html: `
+        <p>You requested a password reset for your Connect-Ed account.</p>
+        <p>Click the link below to reset your password (valid for 1 hour):</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If you did not request this, you can ignore this email.</p>
+      `,
+    });
 
     return successResponse(c, {
       message: "If an account exists, a password reset link will be sent",

@@ -3,12 +3,18 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import type { Plan, Role } from "@repo/db";
 
 interface AuthGuardProps {
   children: ReactNode;
   requireAuth?: boolean;
   requirePayment?: boolean;
   requireOnboarding?: boolean;
+  requireRoles?: Role[];
+  requirePlans?: Plan[];
+  requirePermissions?: string[];
+  requireActiveSchool?: boolean;
+  requireDevice?: "mobile" | "desktop";
   fallbackPath?: string;
 }
 
@@ -17,6 +23,12 @@ export function AuthGuard({
   requireAuth = true,
   requirePayment = false,
   requireOnboarding = false,
+  requireRoles,
+  requirePlans,
+  requirePermissions,
+  requireActiveSchool = false,
+  requireDevice,
+  requireFreshSession?: boolean;
   fallbackPath = "/auth/login",
 }: AuthGuardProps) {
   const { isAuthenticated, isLoading, user, school } = useAuth();
@@ -42,6 +54,47 @@ export function AuthGuard({
       router.push("/onboarding");
       return;
     }
+
+    if (requireActiveSchool && school && !school.isActive) {
+      router.push(fallbackPath);
+    if (requireFreshSession) {
+      checkAuth().then((valid) => {
+        if (!valid) {
+          router.push(fallbackPath);
+        }
+      });
+    }
+      return;
+    }
+
+    if (requireRoles?.length && user && !requireRoles.includes(user.role as Role)) {
+      router.push(fallbackPath);
+      return;
+    }
+
+    if (requirePlans?.length && school && !requirePlans.includes(school.plan as Plan)) {
+      router.push(fallbackPath);
+      return;
+    }
+
+    if (requirePermissions?.length) {
+      const permissions = (user as unknown as { permissions?: string[] })?.permissions || [];
+      const hasAll = requirePermissions.every((permission) => permissions.includes(permission));
+      if (!hasAll) {
+        router.push(fallbackPath);
+        return;
+      }
+    }
+
+    if (requireDevice) {
+      const isMobile = typeof window !== "undefined"
+        ? window.matchMedia("(max-width: 768px)").matches
+        : false;
+      const shouldAllow = requireDevice === "mobile" ? isMobile : !isMobile;
+      if (!shouldAllow) {
+        router.push(fallbackPath);
+      }
+    }
   }, [
     isLoading,
     isAuthenticated,
@@ -49,6 +102,11 @@ export function AuthGuard({
     requireAuth,
     requirePayment,
     requireOnboarding,
+    requireRoles,
+    requirePlans,
+    requirePermissions,
+    requireActiveSchool,
+    requireDevice,
     fallbackPath,
     router,
   ]);
@@ -75,6 +133,36 @@ export function AuthGuard({
     return null;
   }
 
+  if (requireActiveSchool && school && !school.isActive) {
+    return null;
+  }
+
+  if (requireRoles?.length && user && !requireRoles.includes(user.role as Role)) {
+    return null;
+  }
+
+  if (requirePlans?.length && school && !requirePlans.includes(school.plan as Plan)) {
+    return null;
+  }
+
+  if (requirePermissions?.length) {
+    const permissions = (user as unknown as { permissions?: string[] })?.permissions || [];
+    const hasAll = requirePermissions.every((permission) => permissions.includes(permission));
+    if (!hasAll) {
+      return null;
+    }
+  }
+
+  if (requireDevice) {
+    const isMobile = typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 768px)").matches
+      : false;
+    const shouldAllow = requireDevice === "mobile" ? isMobile : !isMobile;
+    if (!shouldAllow) {
+      return null;
+    }
+  }
+
   return <>{children}</>;
 }
 
@@ -99,6 +187,83 @@ export function GatedGuard({ children }: { children: ReactNode }) {
       requirePayment={false}
       requireOnboarding={false}
       fallbackPath="/auth/login"
+    >
+      {children}
+    </AuthGuard>
+  );
+}
+
+// Role-based guard
+export function RoleGuard({ children, roles }: { children: ReactNode; roles: Role[] }) {
+  return (
+    <AuthGuard
+      requireAuth
+      requireRoles={roles}
+      fallbackPath="/dashboard"
+    >
+      {children}
+    </AuthGuard>
+  );
+}
+
+// Plan-based guard
+export function PlanGuard({ children, plans }: { children: ReactNode; plans: Plan[] }) {
+  return (
+    <AuthGuard
+      requireAuth
+      requirePlans={plans}
+      fallbackPath="/dashboard"
+    >
+      {children}
+    </AuthGuard>
+  );
+}
+
+// Permission-based guard
+export function PermissionGuard({
+  children,
+  permissions,
+}: {
+  children: ReactNode;
+  permissions: string[];
+}) {
+  return (
+    <AuthGuard
+      requireAuth
+      requirePermissions={permissions}
+      fallbackPath="/dashboard"
+    >
+      {children}
+    </AuthGuard>
+  );
+}
+
+// Active school guard
+export function ActiveSchoolGuard({ children }: { children: ReactNode }) {
+  return (
+    <AuthGuard
+      requireAuth
+      requireActiveSchool
+      fallbackPath="/dashboard"
+    >
+      {children}
+    </AuthGuard>
+  );
+}
+
+// Device-based guard
+export function DeviceGuard({
+  children,
+  device,
+}: {
+  children: ReactNode;
+  device: "mobile" | "desktop";
+}) {
+  return (
+    <AuthGuard
+      requireAuth
+      requireDevice={device}
+      fallbackPath="/dashboard"
     >
       {children}
     </AuthGuard>

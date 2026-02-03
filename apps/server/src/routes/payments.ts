@@ -6,6 +6,7 @@ import { createCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { PLAN_FEATURES } from "../lib/auth";
 import { Paynow } from "paynow";
+import { sendEmail } from "../lib/email";
 
 const payments = new Hono();
 
@@ -41,6 +42,137 @@ const PRICING = {
   },
 } as const;
 
+const isSignupPayment = (plan: keyof typeof PRICING, amount: number) => {
+  const total = PRICING[plan].signupFee + PRICING[plan].monthlyEstimate;
+  return Math.abs(amount - total) < 0.01;
+};
+
+async function finalizePayment(intermediatePaymentId: string) {
+  const intermediatePayment = await db.intermediatePayment.findUnique({
+    where: { id: intermediatePaymentId },
+    include: { user: true, school: true },
+  });
+
+  if (!intermediatePayment || !intermediatePayment.paid) {
+    return null;
+  }
+
+  const existingPayment = await db.schoolPayment.findFirst({
+    where: {
+      schoolId: intermediatePayment.schoolId,
+      reference: intermediatePayment.id,
+    },
+  });
+
+  if (existingPayment) {
+    return existingPayment;
+  }
+
+  const planKey = intermediatePayment.plan as keyof typeof PRICING;
+  const planPricing = PRICING[planKey];
+  const amount = new Prisma.Decimal(intermediatePayment.amount).toNumber();
+  const signupPayment = isSignupPayment(planKey, amount);
+  const paymentType = signupPayment ? PaymentType.SIGNUP_FEE : PaymentType.TERM_PAYMENT;
+
+  const result = await db.$transaction(async (tx) => {
+    const payment = await tx.schoolPayment.create({
+      data: {
+        schoolId: intermediatePayment.schoolId,
+        amount: new Prisma.Decimal(amount),
+        type: paymentType,
+        status: PaymentStatus.COMPLETED,
+        paymentMethod: PaymentMethod.ONLINE,
+        reference: intermediatePayment.id,
+      },
+    });
+
+    await tx.planPayment.upsert({
+      where: { schoolId: intermediatePayment.schoolId },
+      update: signupPayment
+        ? { onceOffPaymentPaid: true, monthlyPaymentPaid: true, paid: true }
+        : { monthlyPaymentPaid: true },
+      create: {
+        schoolId: intermediatePayment.schoolId,
+        onceOffPaymentPaid: signupPayment,
+        monthlyPaymentPaid: true,
+        paid: signupPayment,
+      },
+    });
+
+    const updateData: Prisma.SchoolUpdateInput = signupPayment
+      ? {
+          signupFeePaid: true,
+          plan: planKey,
+          emailQuota: PLAN_FEATURES[planKey].emailQuota,
+          whatsappQuota: PLAN_FEATURES[planKey].whatsappQuota,
+          smsQuota: PLAN_FEATURES[planKey].smsQuota,
+        }
+      : {
+          isActive: true,
+          emailUsed: 0,
+          whatsappUsed: 0,
+          smsUsed: 0,
+          quotaResetDate: new Date(),
+        };
+
+    await tx.school.update({
+      where: { id: intermediatePayment.schoolId },
+      data: updateData,
+    });
+
+    return payment;
+  });
+
+  try {
+    await sendEmail({
+      to: intermediatePayment.user.email,
+      subject: "Payment received - Connect-Ed",
+      html: `
+        <p>Hi ${intermediatePayment.user.name},</p>
+        <p>Your payment of <strong>$${amount.toFixed(2)}</strong> was received successfully.</p>
+        <p>Reference: ${intermediatePayment.id}</p>
+        <p>Thank you for choosing Connect-Ed.</p>
+      `,
+    });
+  } catch (error) {
+    console.warn("Payment confirmation email failed:", error);
+  }
+
+  return result;
+}
+
+async function tryPollPaynow(intermediatePaymentId: string) {
+  const intermediatePayment = await db.intermediatePayment.findUnique({
+    where: { id: intermediatePaymentId },
+  });
+
+  if (!intermediatePayment?.reference) {
+    return intermediatePayment;
+  }
+
+  const paynow = initializePaynow();
+  if (!paynow) return intermediatePayment;
+
+  try {
+    const response: any = await (paynow as any).poll(intermediatePayment.reference);
+    const status = response?.status?.toString().toLowerCase();
+    const paid = response?.paid === true || status === "paid" || status === "awaiting delivery";
+
+    if (paid) {
+      const updated = await db.intermediatePayment.update({
+        where: { id: intermediatePaymentId },
+        data: { paid: true },
+      });
+      await finalizePayment(intermediatePaymentId);
+      return updated;
+    }
+  } catch (error) {
+    console.warn("PayNow poll failed:", error);
+  }
+
+  return intermediatePayment;
+}
+
 // POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
   try {
@@ -58,7 +190,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       data: {
         userId,
         schoolId,
-        amount: BigInt(Math.round(amount * 100)) / BigInt(100), // Convert to Decimal
+        amount: new Prisma.Decimal(amount),
         plan: data.planType,
         paid: false,
       },
@@ -83,7 +215,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
 
     // Create PayNow payment
     const payment = paynow.createPayment(`Invoice-${intermediatePayment.id}`, data.email);
-    payment.add(planPricing.name, amount);
+    payment.add(`${data.planType} plan`, amount);
 
     try {
       const response = await paynow.send(payment);
@@ -129,6 +261,7 @@ payments.post("/callback", async (c) => {
         where: { id: intermediatePaymentId },
         data: { paid: true },
       });
+      await finalizePayment(intermediatePaymentId);
     }
 
     return successResponse(c, { status: "processed" });
@@ -143,7 +276,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
   try {
     const intermediatePaymentId = c.req.param("intermediatePaymentId");
 
-    const intermediatePayment = await db.intermediatePayment.findUnique({
+    let intermediatePayment = await db.intermediatePayment.findUnique({
       where: { id: intermediatePaymentId },
       include: { user: true, school: true },
     });
@@ -152,9 +285,23 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       return errors.notFound(c, { error: "Payment not found" });
     }
 
+    if (intermediatePayment && !intermediatePayment.paid) {
+      const polled = await tryPollPaynow(intermediatePaymentId);
+      if (polled) {
+        intermediatePayment = await db.intermediatePayment.findUnique({
+          where: { id: intermediatePaymentId },
+          include: { user: true, school: true },
+        });
+      }
+    }
+
+    if (intermediatePayment?.paid) {
+      await finalizePayment(intermediatePaymentId);
+    }
+
     return successResponse(c, {
       payment: intermediatePayment,
-      isPaid: intermediatePayment.paid,
+      isPaid: !!intermediatePayment?.paid,
     });
   } catch (error) {
     console.error("Verify payment error:", error);

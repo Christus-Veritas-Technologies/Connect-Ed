@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { rateLimit } from "./middleware/rate-limit";
 
 // Import routes
 import auth from "./routes/auth";
@@ -31,6 +32,8 @@ app.use(
     maxAge: 600,
   })
 );
+
+app.use("*", rateLimit());
 
 // Health check
 app.get("/", (c) => {

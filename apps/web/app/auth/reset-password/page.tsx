@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Mail01Icon, ArrowLeft01Icon, CheckmarkCircle02Icon } from "@hugeicons/react";
-import { useForgotPassword } from "@/lib/hooks";
+import { LockPasswordIcon, ArrowLeft01Icon, CheckmarkCircle02Icon } from "@hugeicons/react";
+import { resetPasswordSchema } from "@/lib/validation";
+import { useResetPassword } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +14,45 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const forgotPasswordMutation = useForgotPassword();
-  const success = forgotPasswordMutation.isSuccess;
+export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const resetPasswordMutation = useResetPassword();
+
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const error = useMemo(() => {
+    if (formError) return formError;
+    return resetPasswordMutation.error instanceof ApiError
+      ? resetPasswordMutation.error.message
+      : resetPasswordMutation.error?.message;
+  }, [formError, resetPasswordMutation.error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    forgotPasswordMutation.mutate(email);
+    setFormError(null);
+
+    if (!token) {
+      setFormError("Reset token is missing or invalid.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFormError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      resetPasswordSchema.parse({ token, password });
+      resetPasswordMutation.mutate({ token, password });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Invalid password");
+    }
   };
 
-  const error = forgotPasswordMutation.error instanceof ApiError 
-    ? forgotPasswordMutation.error.message 
-    : forgotPasswordMutation.error?.message;
-
-  if (success) {
+  if (resetPasswordMutation.isSuccess) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -43,9 +69,9 @@ export default function ForgotPasswordPage() {
             >
               <CheckmarkCircle02Icon size={40} className="text-success" />
             </motion.div>
-            <h2 className="text-2xl font-bold mb-2">Check your email</h2>
+            <h2 className="text-2xl font-bold mb-2">Password updated</h2>
             <p className="text-muted-foreground mb-6">
-              We&apos;ve sent a password reset link to <strong>{email}</strong>
+              Your password has been reset successfully.
             </p>
             <Link href="/auth/login">
               <Button variant="outline" className="w-full">
@@ -75,9 +101,9 @@ export default function ForgotPasswordPage() {
           >
             <span className="text-2xl font-bold text-white">CE</span>
           </motion.div>
-          <CardTitle className="text-2xl font-bold">Forgot password?</CardTitle>
+          <CardTitle className="text-2xl font-bold">Reset your password</CardTitle>
           <CardDescription className="text-base">
-            No worries, we&apos;ll send you reset instructions
+            Enter a new password for your account
           </CardDescription>
         </CardHeader>
 
@@ -90,16 +116,30 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">
-                Email Address
+              <Label htmlFor="password" className="text-sm font-semibold">
+                New Password
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="you@school.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                icon={<Mail01Icon size={20} />}
+                id="password"
+                type="password"
+                placeholder="Enter a strong password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                icon={<LockPasswordIcon size={20} />}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold">
+                Confirm Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                icon={<LockPasswordIcon size={20} />}
                 required
               />
             </div>
@@ -108,9 +148,9 @@ export default function ForgotPasswordPage() {
               type="submit"
               className="w-full"
               size="lg"
-              loading={forgotPasswordMutation.isPending}
+              loading={resetPasswordMutation.isPending}
             >
-              {!forgotPasswordMutation.isPending && "Send Reset Link"}
+              {!resetPasswordMutation.isPending && "Reset Password"}
             </Button>
           </form>
 

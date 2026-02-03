@@ -82,5 +82,17 @@ export const step3ValidationSchema = yup.object().shape({
     .min(1, "Add at least one class"),
 });
 
-// Validation schema for Step 4 (placeholder)
-export const step4ValidationSchema = yup.object().shape({});
+// Validation schema for Step 4 (review & confirmation)
+export const step4ValidationSchema = yup.object().shape({
+  teacherCount: yup
+    .number()
+    .required("Teacher count is required")
+    .min(1, "Must have at least 1 teacher"),
+  studentCount: yup
+    .number()
+    .required("Student count is required")
+    .min(1, "Must have at least 1 student"),
+  confirm: yup
+    .boolean()
+    .oneOf([true], "Please confirm the details are correct"),
+});

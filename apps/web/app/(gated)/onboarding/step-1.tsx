@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { step1ValidationSchema } from "./schemas";
 import { FormField, FormActions } from "./components";
+import { saveOnboardingDraft } from "./storage";
 
 interface OnboardingStep1Props {
   onNext: () => void;
@@ -24,9 +25,14 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
       email: "",
     },
     validationSchema: step1ValidationSchema,
-    onSubmit: async () => {
+    onSubmit: async (values) => {
       try {
-        // API call would go here
+        saveOnboardingDraft({
+          schoolName: values.schoolName,
+          address: values.address,
+          phoneNumber: values.phoneNumber,
+          email: values.email,
+        });
         onNext();
       } catch {
         // Handle error

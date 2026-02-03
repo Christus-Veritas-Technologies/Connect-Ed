@@ -84,42 +84,150 @@ async function incrementQuota(schoolId: string, type: MessageType) {
   }
 }
 
-// Send email (mock implementation - integrate with real provider)
+const isDev = process.env.NODE_ENV !== "production";
+
+function normalizePhoneNumber(recipient: string): string {
+  if (!recipient) return recipient;
+  if (recipient.startsWith("+")) return recipient;
+  return `+${recipient}`;
+}
+
+// Send email via Resend
 async function sendEmail(
   recipient: string,
   subject: string,
   content: string
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Integrate with email provider (SendGrid, Resend, etc.)
-  console.log(`[EMAIL] To: ${recipient}, Subject: ${subject}`);
-  console.log(`[EMAIL] Content: ${content}`);
-  
-  // Simulate success for development
-  return { success: true };
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL || "no-reply@connect-ed.com";
+
+  if (!apiKey) {
+    if (isDev) {
+      console.log(`[EMAIL] To: ${recipient}, Subject: ${subject}`);
+      console.log(`[EMAIL] Content: ${content}`);
+      return { success: true };
+    }
+    return { success: false, error: "Email provider not configured" };
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [recipient],
+        subject,
+        html: content,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      return {
+        success: false,
+        error: errorData?.message || "Failed to send email",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
 }
 
-// Send WhatsApp message (mock implementation)
+async function sendTwilioMessage(options: {
+  to: string;
+  from: string;
+  body: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+  if (!accountSid || !authToken) {
+    if (isDev) {
+      console.log(`[TWILIO] To: ${options.to}`);
+      console.log(`[TWILIO] Content: ${options.body}`);
+      return { success: true };
+    }
+    return { success: false, error: "Twilio not configured" };
+  }
+
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const body = new URLSearchParams({
+    To: options.to,
+    From: options.from,
+    Body: options.body,
+  });
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      return {
+        success: false,
+        error: errorData?.message || "Failed to send message",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+// Send WhatsApp message via Twilio
 async function sendWhatsApp(
   recipient: string,
   content: string
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Integrate with WhatsApp Business API
-  console.log(`[WHATSAPP] To: ${recipient}`);
-  console.log(`[WHATSAPP] Content: ${content}`);
-  
-  return { success: true };
+  const from = process.env.TWILIO_WHATSAPP_FROM;
+  if (!from) {
+    if (isDev) {
+      console.log(`[WHATSAPP] To: ${recipient}`);
+      console.log(`[WHATSAPP] Content: ${content}`);
+      return { success: true };
+    }
+    return { success: false, error: "WhatsApp sender not configured" };
+  }
+
+  const to = `whatsapp:${normalizePhoneNumber(recipient)}`;
+  const fromValue = from.startsWith("whatsapp:") ? from : `whatsapp:${from}`;
+
+  return sendTwilioMessage({ to, from: fromValue, body: content });
 }
 
-// Send SMS (mock implementation)
+// Send SMS via Twilio
 async function sendSMS(
   recipient: string,
   content: string
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Integrate with SMS provider (Twilio, etc.)
-  console.log(`[SMS] To: ${recipient}`);
-  console.log(`[SMS] Content: ${content}`);
-  
-  return { success: true };
+  const from = process.env.TWILIO_SMS_FROM;
+  if (!from) {
+    if (isDev) {
+      console.log(`[SMS] To: ${recipient}`);
+      console.log(`[SMS] Content: ${content}`);
+      return { success: true };
+    }
+    return { success: false, error: "SMS sender not configured" };
+  }
+
+  const to = normalizePhoneNumber(recipient);
+  return sendTwilioMessage({ to, from, body: content });
 }
 
 // Main send message function
