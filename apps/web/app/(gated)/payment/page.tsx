@@ -17,13 +17,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
-import { useRouter } from "next/navigation";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 export default function PaymentPage() {
-  const { school, user } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,24 +41,25 @@ export default function PaymentPage() {
       return;
     }
 
-    // Confirming manual payment for once-off
+    // Optimistically update UI
+    setIsManualPayment(true);
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await api.post<{
-        planPayment: any;
-        intermediatePayment: any;
+      await api.post<{
         nextPaymentAmount: number;
       }>("/payments/confirm-manual-payment", {
         plan: selectedPlan,
         paymentType: "SIGNUP",
       });
 
-      setIsManualPayment(true);
+      // Keep manual payment enabled on success
+      setIsLoading(false);
     } catch (err) {
+      // Revert on error
+      setIsManualPayment(false);
       setError(err instanceof Error ? err.message : "Failed to process manual payment confirmation");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -244,7 +243,7 @@ export default function PaymentPage() {
                 <Switch
                   id="manual-payment"
                   checked={isManualPayment}
-                  onCheckedChange={() => handleManualPaymentToggle()}
+                  onCheckedChange={handleManualPaymentToggle}
                   disabled={isLoading}
                 />
               </div>
