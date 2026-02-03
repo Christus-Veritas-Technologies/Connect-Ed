@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "project": {
-    "totalFocusTime": 1989277,
+    "totalFocusTime": 1992626,
     "totalActiveTime": 587967
   },
   "files": {
@@ -19,7 +19,7 @@
     },
     "apps/web/lib/messaging.ts": {
       "pending": 1158,
-      "focus": 548873
+      "focus": 552222
     },
     "apps/server/src/lib/email.ts": {
       "pending": 1944,
