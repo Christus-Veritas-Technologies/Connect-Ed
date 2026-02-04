@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth, useAuthFetch } from "../../lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 
 interface Class {
   id: string;
@@ -14,7 +15,6 @@ interface Class {
 
 export default function ClassesPage() {
   const { school } = useAuth();
-  const authFetch = useAuthFetch();
   
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,12 +31,8 @@ export default function ClassesPage() {
   const fetchClasses = async () => {
     setIsLoading(true);
     try {
-      const response = await authFetch("/api/classes");
-      const data = await response.json();
-      
-      if (data.success) {
-        setClasses(data.data.classes);
-      }
+      const data = await api.get<{ classes: Class[] }>("/classes");
+      setClasses(data.classes);
     } catch (error) {
       console.error("Failed to fetch classes:", error);
     } finally {
@@ -46,11 +42,8 @@ export default function ClassesPage() {
 
   const fetchTeachers = async () => {
     try {
-      const response = await authFetch("/api/teachers");
-      const data = await response.json();
-      if (data.success) {
-        setTeachers(data.data.teachers);
-      }
+      const data = await api.get<{ teachers: Array<{ id: string; name: string }> }>("/teachers");
+      setTeachers(data.teachers);
     } catch (error) {
       console.error("Failed to fetch teachers:", error);
     }
@@ -67,18 +60,7 @@ export default function ClassesPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await authFetch("/api/classes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to create class");
-      }
-
+      await api.post("/classes", formData);
       setFormData({ name: "", classTeacherId: "" });
       setShowAddModal(false);
       fetchClasses();

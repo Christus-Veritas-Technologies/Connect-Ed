@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth, useAuthFetch } from "../../lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 
 interface Teacher {
   id: string;
@@ -14,7 +15,6 @@ interface Teacher {
 
 export default function TeachersPage() {
   const { school } = useAuth();
-  const authFetch = useAuthFetch();
   
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,12 +31,8 @@ export default function TeachersPage() {
   const fetchTeachers = async () => {
     setIsLoading(true);
     try {
-      const response = await authFetch("/api/teachers");
-      const data = await response.json();
-      
-      if (data.success) {
-        setTeachers(data.data.teachers);
-      }
+      const data = await api.get<{ teachers: Teacher[] }>("/teachers");
+      setTeachers(data.teachers);
     } catch (error) {
       console.error("Failed to fetch teachers:", error);
     } finally {
@@ -54,20 +50,10 @@ export default function TeachersPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await authFetch("/api/teachers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          role: "TEACHER",
-        }),
+      await api.post("/teachers", {
+        ...formData,
+        role: "TEACHER",
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Failed to add teacher");
-      }
 
       setFormData({ name: "", email: "", password: "" });
       setShowAddModal(false);

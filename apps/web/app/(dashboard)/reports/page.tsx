@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuthFetch } from "../../lib/auth-context";
+import { api } from "@/lib/api";
 
 interface FinancialReport {
   totalFeesExpected: number;
@@ -21,7 +21,6 @@ interface FinancialReport {
 }
 
 export default function ReportsPage() {
-  const authFetch = useAuthFetch();
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("monthly");
@@ -30,12 +29,8 @@ export default function ReportsPage() {
     const fetchReport = async () => {
       setIsLoading(true);
       try {
-        const response = await authFetch(`/api/reports/financial?period=${period}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          setReport(data.data);
-        }
+        const data = await api.get<FinancialReport>(`/reports/financial?period=${period}`);
+        setReport(data);
       } catch (error) {
         console.error("Failed to fetch report:", error);
       } finally {
@@ -44,7 +39,7 @@ export default function ReportsPage() {
     };
 
     fetchReport();
-  }, [authFetch, period]);
+  }, [period]);
 
   if (isLoading) {
     return (

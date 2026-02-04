@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth, useAuthFetch } from "../../lib/auth-context";
-import { PRICING } from "../../lib/pricing";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
+import { PRICING } from "@/lib/pricing";
 
 export default function SettingsPage() {
-  const { school, user, refreshToken } = useAuth();
-  const authFetch = useAuthFetch();
+  const { school, user, checkAuth } = useAuth();
   
   const [activeTab, setActiveTab] = useState("general");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,17 +22,8 @@ export default function SettingsPage() {
     setMessage({ type: "", text: "" });
 
     try {
-      const response = await authFetch("/api/settings/school", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(schoolForm),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update settings");
-      }
-
-      await refreshToken();
+      await api.patch("/settings/school", schoolForm);
+      await checkAuth();
       setMessage({ type: "success", text: "Settings updated successfully" });
     } catch (error) {
       setMessage({ type: "error", text: "Failed to update settings" });

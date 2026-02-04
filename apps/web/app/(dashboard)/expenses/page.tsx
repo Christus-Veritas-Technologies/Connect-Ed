@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Receipt01Icon,
+  Invoice03Icon,
   Add01Icon,
   Cancel01Icon,
-} from "@hugeicons/react";
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useExpenses, useCreateExpense } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -53,11 +54,16 @@ export default function ExpensesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    amount: string;
+    category: string;
+    description: string;
+    date: string;
+  }>({
     amount: "",
     category: "",
     description: "",
-    date: new Date().toISOString().split("T")[0],
+    date: new Date().toISOString().split("T")[0] as string,
   });
 
   // Query hooks
@@ -84,7 +90,7 @@ export default function ExpensesPage() {
             amount: "",
             category: "",
             description: "",
-            date: new Date().toISOString().split("T")[0],
+            date: new Date().toISOString().split("T")[0] as string,
           });
           setShowAddModal(false);
         },
@@ -102,7 +108,7 @@ export default function ExpensesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Receipt01Icon size={28} className="text-brand" />
+            <HugeiconsIcon icon={Invoice03Icon} size={28} className="text-brand" />
             Expenses
           </h1>
           <p className="text-muted-foreground">
@@ -110,7 +116,7 @@ export default function ExpensesPage() {
           </p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
-          <Add01Icon size={20} />
+          <HugeiconsIcon icon={Add01Icon} size={20} />
           Add Expense
         </Button>
       </div>
@@ -149,10 +155,10 @@ export default function ExpensesPage() {
             </div>
           ) : expenses.length === 0 ? (
             <div className="text-center py-12">
-              <Receipt01Icon size={48} className="mx-auto text-muted-foreground mb-4" />
+              <HugeiconsIcon icon={Invoice03Icon} size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">No expenses recorded</p>
               <Button onClick={() => setShowAddModal(true)}>
-                <Add01Icon size={20} />
+                <HugeiconsIcon icon={Add01Icon} size={20} />
                 Record Your First Expense
               </Button>
             </div>
@@ -268,13 +274,13 @@ export default function ExpensesPage() {
                 className="flex-1"
                 onClick={() => setShowAddModal(false)}
               >
-                <Cancel01Icon size={18} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
                 Cancel
               </Button>
               <Button type="submit" className="flex-1" loading={createMutation.isPending}>
                 {!createMutation.isPending && (
                   <>
-                    <Add01Icon size={18} />
+                    <HugeiconsIcon icon={Add01Icon} size={18} />
                     Add Expense
                   </>
                 )}

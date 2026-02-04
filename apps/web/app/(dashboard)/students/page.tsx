@@ -10,7 +10,8 @@ import {
   ViewIcon,
   PencilEdit01Icon,
   Cancel01Icon,
-} from "@hugeicons/react";
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useStudents, useCreateStudent } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -109,7 +110,7 @@ export default function StudentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
-            <UserGroupIcon size={28} className="text-brand" />
+            <HugeiconsIcon icon={UserGroupIcon} size={28} className="text-brand" />
             Students
           </h1>
           <p className="text-muted-foreground">
@@ -117,7 +118,7 @@ export default function StudentsPage() {
           </p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
-          <Add01Icon size={20} />
+          <HugeiconsIcon icon={Add01Icon} size={20} />
           Add Student
         </Button>
       </div>
@@ -130,7 +131,7 @@ export default function StudentsPage() {
               placeholder="Search by name or admission number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              icon={<Search01Icon size={20} />}
+              icon={<HugeiconsIcon icon={Search01Icon} size={20} />}
               className="max-w-md"
             />
           </div>
@@ -146,10 +147,10 @@ export default function StudentsPage() {
             </div>
           ) : students.length === 0 ? (
             <div className="text-center py-12">
-              <UserGroupIcon size={48} className="mx-auto text-muted-foreground mb-4" />
+              <HugeiconsIcon icon={UserGroupIcon} size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">No students found</p>
               <Button onClick={() => setShowAddModal(true)}>
-                <Add01Icon size={20} />
+                <HugeiconsIcon icon={Add01Icon} size={20} />
                 Add Your First Student
               </Button>
             </div>
@@ -204,10 +205,10 @@ export default function StudentsPage() {
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="ghost" size="icon-sm">
-                              <ViewIcon size={18} />
+                              <HugeiconsIcon icon={ViewIcon} size={18} />
                             </Button>
                             <Button variant="ghost" size="icon-sm">
-                              <PencilEdit01Icon size={18} />
+                              <HugeiconsIcon icon={PencilEdit01Icon} size={18} />
                             </Button>
                           </div>
                         </TableCell>
@@ -333,13 +334,13 @@ export default function StudentsPage() {
                 className="flex-1"
                 onClick={() => setShowAddModal(false)}
               >
-                <Cancel01Icon size={18} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
                 Cancel
               </Button>
               <Button type="submit" className="flex-1" loading={createMutation.isPending}>
                 {!createMutation.isPending && (
                   <>
-                    <Add01Icon size={18} />
+                    <HugeiconsIcon icon={Add01Icon} size={18} />
                     Add Student
                   </>
                 )}

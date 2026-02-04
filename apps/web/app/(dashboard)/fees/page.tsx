@@ -7,7 +7,8 @@ import {
   Money01Icon,
   Add01Icon,
   Cancel01Icon,
-} from "@hugeicons/react";
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useFees, useCreateFee, useRecordPayment, useStudents } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -148,7 +149,7 @@ export default function FeesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Money01Icon size={28} className="text-brand" />
+            <HugeiconsIcon icon={Money01Icon} size={28} className="text-brand" />
             Fees
           </h1>
           <p className="text-muted-foreground">
@@ -156,7 +157,7 @@ export default function FeesPage() {
           </p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
-          <Add01Icon size={20} />
+          <HugeiconsIcon icon={Add01Icon} size={20} />
           Create Fee
         </Button>
       </div>
@@ -189,10 +190,10 @@ export default function FeesPage() {
             </div>
           ) : fees.length === 0 ? (
             <div className="text-center py-12">
-              <Money01Icon size={48} className="mx-auto text-muted-foreground mb-4" />
+              <HugeiconsIcon icon={Money01Icon} size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">No fees found</p>
               <Button onClick={() => setShowAddModal(true)}>
-                <Add01Icon size={20} />
+                <HugeiconsIcon icon={Add01Icon} size={20} />
                 Create First Fee
               </Button>
             </div>
@@ -344,13 +345,13 @@ export default function FeesPage() {
                 className="flex-1"
                 onClick={() => setShowAddModal(false)}
               >
-                <Cancel01Icon size={18} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
                 Cancel
               </Button>
               <Button type="submit" className="flex-1" loading={createFeeMutation.isPending}>
                 {!createFeeMutation.isPending && (
                   <>
-                    <Add01Icon size={18} />
+                    <HugeiconsIcon icon={Add01Icon} size={18} />
                     Create Fee
                   </>
                 )}
