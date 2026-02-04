@@ -22,6 +22,7 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
       address: "",
       phoneNumber: "",
       email: "",
+      isLandline: false,
     },
     validationSchema: step1ValidationSchema,
     onSubmit: async () => {
@@ -88,15 +89,15 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
         <div className="flex gap-2">
           <Input
             type="text"
-            value="263"
+            value={formik.values.isLandline ? "(020)" : "263"}
             disabled
             className="w-20"
           />
           <Input
             id="phoneNumber"
             type="text"
-            placeholder="712345678"
-            maxLength={9}
+            placeholder={formik.values.isLandline ? "212345" : "712345678"}
+            maxLength={formik.values.isLandline ? 6 : 9}
             {...formik.getFieldProps("phoneNumber")}
             className={`flex-1 ${
               formik.touched.phoneNumber && formik.errors.phoneNumber
@@ -105,8 +106,22 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
             }`}
           />
         </div>
-        <p className="text-xs text-slate-600">
-          Enter your 9-digit phone number (must start with 7)
+        <div className="flex items-center gap-2 mt-2">
+          <input
+            id="isLandline"
+            type="checkbox"
+            checked={formik.values.isLandline}
+            onChange={(e) => formik.setFieldValue("isLandline", e.target.checked)}
+            className="w-4 h-4 rounded border-2 border-slate-300 cursor-pointer"
+          />
+          <Label htmlFor="isLandline" className="text-sm font-normal cursor-pointer">
+            This is a landline number
+          </Label>
+        </div>
+        <p className="text-xs text-slate-600 mt-2">
+          {formik.values.isLandline
+            ? "Enter your 6-digit landline number"
+            : "Enter your 9-digit phone number (must start with 7)"}
         </p>
       </FormField>
 
