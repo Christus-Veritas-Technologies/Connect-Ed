@@ -170,32 +170,6 @@ export default function PaymentSuccessPage() {
           return;
         }
         
-        // Poll for payment confirmation (wait for callback to process)
-        if (!response.isPaid) {
-          const maxAttempts = 30; // 30 seconds max
-          let attempts = 0;
-          let paymentConfirmed = false;
-          
-          while (attempts < maxAttempts && !paymentConfirmed) {
-            await delay(1000); // Wait 1 second between polls
-            
-            const pollResponse = await api.get<PaymentResponse>(
-              `/payments/verify/${intermediatePaymentId}`
-            );
-            
-            if (pollResponse.isPaid) {
-              paymentConfirmed = true;
-              break;
-            }
-            
-            attempts++;
-          }
-          
-          if (!paymentConfirmed) {
-            throw new Error("Payment confirmation timed out. Please check your payment status or contact support.");
-          }
-        }
-        
         updateStep(0, { loading: false, success: true });
         await delay(800);
 
@@ -320,27 +294,6 @@ export default function PaymentSuccessPage() {
             />
           </div>
         </div>
-        
-        {/* Development Helper Button */}
-        {process.env.NODE_ENV === "development" && currentStepIndex === 0 && !alreadyProcessed && (
-          <div className="mt-4 w-full">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-xs"
-              onClick={async () => {
-                try {
-                  await api.post(`/payments/test-complete/${intermediatePaymentId}`);
-                  console.log("Payment marked as complete");
-                } catch (err) {
-                  console.error("Failed to mark payment complete:", err);
-                }
-              }}
-            >
-              [DEV] Mark Payment Complete
-            </Button>
-          </div>
-        )}
         
         {/* All Steps Summary (small) */}
         <div className="space-y-1 mt-6 w-full">

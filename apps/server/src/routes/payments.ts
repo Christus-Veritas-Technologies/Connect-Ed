@@ -233,13 +233,42 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
   try {
     const intermediatePaymentId = c.req.param("intermediatePaymentId");
 
-    const intermediatePayment = await db.intermediatePayment.findUnique({
+    let intermediatePayment = await db.intermediatePayment.findUnique({
       where: { id: intermediatePaymentId },
       include: { user: true, school: true },
     });
 
     if (!intermediatePayment) {
       return errors.notFound(c, { error: "Payment not found" });
+    }
+
+    // If payment isn't marked as paid yet, update it now along with school
+    if (!intermediatePayment.paid) {
+      await db.$transaction(async (tx) => {
+        // Mark payment as paid
+        await tx.intermediatePayment.update({
+          where: { id: intermediatePaymentId },
+          data: { paid: true },
+        });
+
+        // Update school's payment status and plan details
+        await tx.school.update({
+          where: { id: intermediatePayment.schoolId },
+          data: {
+            signupFeePaid: true,
+            plan: intermediatePayment.plan,
+            emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
+            whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
+            smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
+          },
+        });
+      });
+
+      // Fetch updated payment
+      intermediatePayment = await db.intermediatePayment.findUnique({
+        where: { id: intermediatePaymentId },
+        include: { user: true, school: true },
+      }) as any;
     }
 
     return successResponse(c, {
