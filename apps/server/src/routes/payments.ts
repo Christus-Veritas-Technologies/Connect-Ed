@@ -15,8 +15,7 @@ const initializePaynow = () => {
   const integrationKey = process.env.PAYNOW_INTEGRATION_KEY;
   
   if (!integrationId || !integrationKey) {
-    console.warn("PayNow credentials not configured - using mock mode");
-    return null;
+    throw new Error("PayNow credentials not configured - set PAYNOW_INTEGRATION_ID and PAYNOW_INTEGRATION_KEY");
   }
   
   return new Paynow(integrationId, integrationKey);
@@ -58,7 +57,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       data: {
         userId,
         schoolId,
-        amount: BigInt(Math.round(amount * 100)) / BigInt(100), // Convert to Decimal
+        amount: new Prisma.Decimal(amount),
         plan: data.planType,
         paid: false,
       },
@@ -66,27 +65,27 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
 
     // Get PayNow instance
     const paynow = initializePaynow();
-    
-    if (!paynow) {
-      // Mock mode for development
-      return successResponse(c, {
-        checkoutUrl: `/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
-        intermediatePaymentId: intermediatePayment.id,
-        isDevelopment: true,
-      });
-    }
 
     // Set PayNow URLs
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
     paynow.resultUrl = `${baseUrl}/api/payments/callback`;
-    paynow.returnUrl = `/payment/success?intermediatePaymentId=${intermediatePayment.id}`;
+    paynow.returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`;
 
     // Create PayNow payment
     const payment = paynow.createPayment(`Invoice-${intermediatePayment.id}`, data.email);
-    payment.add(planPricing.name, amount);
+    payment.add(data.planType, amount);
+
+    console.log("PayNow payment created:", {
+      reference: `Invoice-${intermediatePayment.id}`,
+      email: data.email,
+      amount,
+      plan: planPricing.name,
+    });
 
     try {
       const response = await paynow.send(payment);
+      
+      console.log("PayNow response:", response);
       
       if (response.success) {
         // Save the poll URL for webhook verification
@@ -105,10 +104,19 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       }
     } catch (paynowError) {
       console.error("PayNow error:", paynowError);
+      console.error("PayNow error details:", {
+        message: paynowError instanceof Error ? paynowError.message : String(paynowError),
+        stack: paynowError instanceof Error ? paynowError.stack : undefined,
+      });
       return errors.internalError(c);
     }
   } catch (error) {
     console.error("Create checkout error:", error);
+    console.error("Full error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error,
+    });
     return errors.internalError(c);
   }
 });
@@ -301,6 +309,27 @@ payments.get("/", requireAuth, async (c) => {
     return successResponse(c, { payments: paymentList });
   } catch (error) {
     console.error("List payments error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /payments/test-complete/:intermediatePaymentId - Mark payment as paid (development only)
+payments.post("/test-complete/:intermediatePaymentId", async (c) => {
+  if (process.env.NODE_ENV === "production") {
+    return errors.notFound(c, { error: "Not found" });
+  }
+
+  try {
+    const intermediatePaymentId = c.req.param("intermediatePaymentId");
+
+    const intermediatePayment = await db.intermediatePayment.update({
+      where: { id: intermediatePaymentId },
+      data: { paid: true },
+    });
+
+    return successResponse(c, { payment: intermediatePayment });
+  } catch (error) {
+    console.error("Test complete payment error:", error);
     return errors.internalError(c);
   }
 });
