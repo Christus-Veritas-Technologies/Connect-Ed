@@ -7,14 +7,15 @@ import {
   Home03Icon,
   UserGroupIcon,
   Money01Icon,
-  Receipt01Icon,
+  Invoice03Icon,
   School01Icon,
   TeacherIcon,
   ChartHistogramIcon,
   Settings02Icon,
   Logout01Icon,
   Menu01Icon,
-} from "@hugeicons/react";
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
 import { useLogout } from "@/lib/hooks";
 import { DashboardGuard } from "@/components/auth-guard";
@@ -28,10 +29,10 @@ import {
 } from "@/components/ui/sheet";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
+  { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
   { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
   { href: "/dashboard/fees", label: "Fees", icon: Money01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
-  { href: "/dashboard/expenses", label: "Expenses", icon: Receipt01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
+  { href: "/dashboard/expenses", label: "Expenses", icon: Invoice03Icon, roles: ["ADMIN", "RECEPTIONIST"] },
   { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN", "TEACHER"], plans: ["GROWTH", "ENTERPRISE"] },
   { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
   { href: "/dashboard/reports", label: "Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "RECEPTIONIST"] },
@@ -72,7 +73,6 @@ function SidebarContent({ pathname, user, school, logout }: {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
         {filteredNavItems.map((item, index) => {
-          const Icon = item.icon;
           const isActive = pathname === item.href;
 
           return (
@@ -92,7 +92,7 @@ function SidebarContent({ pathname, user, school, logout }: {
                   }
                 `}
               >
-                <Icon size={20} strokeWidth={2} />
+                <HugeiconsIcon icon={item.icon} size={20} strokeWidth={2} />
                 <span>{item.label}</span>
               </Link>
             </motion.div>
@@ -133,7 +133,7 @@ function SidebarContent({ pathname, user, school, logout }: {
               onClick={logout}
               className="text-muted-foreground hover:text-destructive"
             >
-              <Logout01Icon size={18} />
+              <HugeiconsIcon icon={Logout01Icon} size={18} />
             </Button>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function DashboardLayout({
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
-                  <Menu01Icon size={24} />
+                  <HugeiconsIcon icon={Menu01Icon} size={24} />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-[280px]">
