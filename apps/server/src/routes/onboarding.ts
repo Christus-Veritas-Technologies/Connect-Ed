@@ -94,11 +94,12 @@ onboarding.post("/", async (c) => {
       console.log(`[POST /onboarding] Creating ${data.classes.length} classes...`);
       const createdClasses = await Promise.all(
         data.classes.map((cls, idx) => {
-          console.log(`[POST /onboarding] Creating class ${idx + 1}: ${cls.name} (capacity: ${cls.capacity})`);
+          console.log(`[POST /onboarding] Creating class ${idx + 1}: ${cls.name} (capacity: ${cls.capacity}, level: ${cls.level || "N/A"})`);
           return tx.class.create({
             data: {
               name: cls.name,
               capacity: parseInt(cls.capacity),
+              level: cls.level || null,
               schoolId,
             },
           });

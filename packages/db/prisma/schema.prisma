@@ -231,6 +231,8 @@ model Parent {
 model Class {
   id       String  @id @default(cuid())
   name     String
+  capacity Int?    // student capacity
+  level    String? // primary, secondary
   isActive Boolean @default(true)
 
   // Timestamps
