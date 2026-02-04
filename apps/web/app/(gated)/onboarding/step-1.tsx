@@ -150,7 +150,6 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
 
       {/* Action Buttons */}
       <FormActions
-        onContinue={() => formik.handleSubmit()}
         canContinue={formik.isValid}
         isLoading={formik.isSubmitting}
         showBack={false}

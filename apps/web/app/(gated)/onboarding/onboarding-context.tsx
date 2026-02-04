@@ -39,14 +39,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<OnboardingData>({});
 
   const updateStep1 = (step1Data: OnboardingData["step1"]) => {
+    console.log("[Onboarding Context] Saving step1:", step1Data);
     setData((prev) => ({ ...prev, step1: step1Data }));
   };
 
   const updateStep2 = (step2Data: OnboardingData["step2"]) => {
+    console.log("[Onboarding Context] Saving step2:", step2Data);
     setData((prev) => ({ ...prev, step2: step2Data }));
   };
 
   const updateStep3 = (step3Data: OnboardingData["step3"]) => {
+    console.log("[Onboarding Context] Saving step3:", step3Data);
     setData((prev) => ({ ...prev, step3: step3Data }));
   };
 

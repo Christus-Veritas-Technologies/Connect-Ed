@@ -67,7 +67,6 @@ export function FormField({ children, error, delay = 0 }: FormFieldProps) {
 
 interface FormActionsProps {
   onBack?: () => void;
-  onContinue: () => void;
   canContinue?: boolean;
   isLoading?: boolean;
   showBack?: boolean;
@@ -76,7 +75,6 @@ interface FormActionsProps {
 
 export function FormActions({
   onBack,
-  onContinue,
   canContinue = true,
   isLoading = false,
   showBack = true,
@@ -101,10 +99,9 @@ export function FormActions({
         </Button>
       )}
       <Button
-        type="button"
+        type="submit"
         className={showBack ? "flex-1" : "w-full"}
         disabled={!canContinue || isLoading}
-        onClick={onContinue}
       >
         {!isLoading && (
           <>

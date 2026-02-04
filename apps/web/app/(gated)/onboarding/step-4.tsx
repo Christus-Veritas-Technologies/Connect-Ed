@@ -52,6 +52,9 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
         studentCount: totalStudents,
       };
 
+      console.log("[Step 4] Onboarding context data:", data);
+      console.log("[Step 4] Payload being sent to backend:", payload);
+
       await api.post("/onboarding", payload);
       
       // Refresh auth to get updated school data

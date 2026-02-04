@@ -173,7 +173,6 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
       {/* Action Buttons */}
       <FormActions
         onBack={onBack}
-        onContinue={() => formik.handleSubmit()}
         canContinue={formik.isValid}
         isLoading={formik.isSubmitting}
         showBack={true}
