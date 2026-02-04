@@ -109,77 +109,214 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
   }
 });
 
-// POST /auth/login
+// POST /auth/login - Unified login for all user types
 auth.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
     const { email, password } = c.req.valid("json");
+    const emailLower = email.toLowerCase();
 
-    // Find user with school
-    const user = await db.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Try to find user in User model (Admin, Receptionist, Teacher)
+    const staffUser = await db.user.findUnique({
+      where: { email: emailLower },
       include: { school: true },
     });
 
-    if (!user) {
-      console.log(`[Login] User not found: ${email}`);
-      return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
+    if (staffUser) {
+      // Verify password
+      const isValid = await verifyPassword(password, staffUser.password);
+      if (!isValid) {
+        console.log(`[Login] Invalid password for staff: ${emailLower}`);
+        return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
+      }
+
+      // Check if user is active
+      if (!staffUser.isActive) {
+        console.log(`[Login] Staff user is inactive: ${emailLower}`);
+        return errorResponse(c, "ACCOUNT_INACTIVE", "This account has been deactivated", 403);
+      }
+
+      // Generate tokens
+      const accessToken = await generateAccessToken({
+        userId: staffUser.id,
+        schoolId: staffUser.schoolId,
+        role: staffUser.role,
+        plan: staffUser.school.plan,
+      });
+
+      const refreshToken = await generateRefreshToken({
+        userId: staffUser.id,
+        tokenVersion: staffUser.tokenVersion,
+      });
+
+      setRefreshTokenCookie(c, refreshToken);
+      console.log(`[Login] Successful staff login: ${emailLower}, role: ${staffUser.role}`);
+
+      return successResponse(c, {
+        user: {
+          id: staffUser.id,
+          email: staffUser.email,
+          name: staffUser.name,
+          role: staffUser.role,
+        },
+        school: {
+          id: staffUser.school.id,
+          name: staffUser.school.name,
+          plan: staffUser.school.plan,
+          isActive: staffUser.school.isActive,
+          signupFeePaid: staffUser.school.signupFeePaid,
+          onboardingComplete: staffUser.school.onboardingComplete,
+        },
+        userType: "STAFF",
+        accessToken,
+      });
     }
 
-    // Verify password
-    const isValid = await verifyPassword(password, user.password);
-    if (!isValid) {
-      console.log(`[Login] Invalid password for user: ${email}`);
-      return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      console.log(`[Login] User is inactive: ${email}`);
-      return errorResponse(c, "ACCOUNT_INACTIVE", "This account has been deactivated", 403);
-    }
-
-    // Generate tokens
-    const accessToken = await generateAccessToken({
-      userId: user.id,
-      schoolId: user.schoolId,
-      role: user.role,
-      plan: user.school.plan,
-    });
-
-    const refreshToken = await generateRefreshToken({
-      userId: user.id,
-      tokenVersion: user.tokenVersion,
-    });
-
-    // Set refresh token cookie
-    setRefreshTokenCookie(c, refreshToken);
-
-    console.log(`[Login] Successful login for user: ${email}`);
-
-    return successResponse(c, {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+    // Try to find parent
+    const parent = await db.parent.findUnique({
+      where: { email: emailLower },
+      include: { 
+        school: true,
+        students: {
+          include: {
+            class: true,
+          }
+        }
       },
-      school: {
-        id: user.school.id,
-        name: user.school.name,
-        plan: user.school.plan,
-        isActive: user.school.isActive,
-        signupFeePaid: user.school.signupFeePaid,
-        onboardingComplete: user.school.onboardingComplete,
-      },
-      accessToken,
     });
+
+    if (parent) {
+      // Verify password
+      const isValid = await verifyPassword(password, parent.password);
+      if (!isValid) {
+        console.log(`[Login] Invalid password for parent: ${emailLower}`);
+        return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
+      }
+
+      // Check if parent is active
+      if (!parent.isActive) {
+        console.log(`[Login] Parent is inactive: ${emailLower}`);
+        return errorResponse(c, "ACCOUNT_INACTIVE", "This account has been deactivated", 403);
+      }
+
+      // Generate tokens with PARENT role
+      const accessToken = await generateAccessToken({
+        userId: parent.id,
+        schoolId: parent.schoolId,
+        role: "PARENT" as any,
+        plan: parent.school.plan,
+      });
+
+      const refreshToken = await generateRefreshToken({
+        userId: parent.id,
+        tokenVersion: parent.tokenVersion,
+      });
+
+      setRefreshTokenCookie(c, refreshToken);
+      console.log(`[Login] Successful parent login: ${emailLower}`);
+
+      return successResponse(c, {
+        user: {
+          id: parent.id,
+          email: parent.email,
+          name: parent.name,
+          role: "PARENT",
+          children: parent.students.map(s => ({
+            id: s.id,
+            name: `${s.firstName} ${s.lastName}`,
+            class: s.class?.name,
+          })),
+        },
+        school: {
+          id: parent.school.id,
+          name: parent.school.name,
+          plan: parent.school.plan,
+          isActive: parent.school.isActive,
+          signupFeePaid: parent.school.signupFeePaid,
+          onboardingComplete: parent.school.onboardingComplete,
+        },
+        userType: "PARENT",
+        accessToken,
+      });
+    }
+
+    // Try to find student
+    const student = await db.student.findUnique({
+      where: { email: emailLower },
+      include: { 
+        school: true,
+        class: true,
+        parent: true,
+      },
+    });
+
+    if (student) {
+      // Check if student has password (some students might not have accounts)
+      if (!student.password) {
+        console.log(`[Login] Student has no password set: ${emailLower}`);
+        return errorResponse(c, "ACCOUNT_SETUP_REQUIRED", "Please contact your school administrator to set up your account", 403);
+      }
+
+      // Verify password
+      const isValid = await verifyPassword(password, student.password);
+      if (!isValid) {
+        console.log(`[Login] Invalid password for student: ${emailLower}`);
+        return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
+      }
+
+      // Check if student is active
+      if (!student.isActive) {
+        console.log(`[Login] Student is inactive: ${emailLower}`);
+        return errorResponse(c, "ACCOUNT_INACTIVE", "This account has been deactivated", 403);
+      }
+
+      // Generate tokens with STUDENT role
+      const accessToken = await generateAccessToken({
+        userId: student.id,
+        schoolId: student.schoolId,
+        role: "STUDENT" as any,
+        plan: student.school.plan,
+      });
+
+      const refreshToken = await generateRefreshToken({
+        userId: student.id,
+        tokenVersion: student.tokenVersion || 0,
+      });
+
+      setRefreshTokenCookie(c, refreshToken);
+      console.log(`[Login] Successful student login: ${emailLower}`);
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          email: student.email,
+          name: `${student.firstName} ${student.lastName}`,
+          role: "STUDENT",
+          admissionNumber: student.admissionNumber,
+          class: student.class?.name,
+        },
+        school: {
+          id: student.school.id,
+          name: student.school.name,
+          plan: student.school.plan,
+          isActive: student.school.isActive,
+          signupFeePaid: student.school.signupFeePaid,
+          onboardingComplete: student.school.onboardingComplete,
+        },
+        userType: "STUDENT",
+        accessToken,
+      });
+    }
+
+    // No user found in any model
+    console.log(`[Login] No account found: ${emailLower}`);
+    return errorResponse(c, "INVALID_CREDENTIALS", "Invalid email or password", 401);
   } catch (error) {
     console.error("Login error:", error);
     return errors.internalError(c);
   }
 });
 
-// POST /auth/refresh
+// POST /auth/refresh - Unified refresh for all user types
 auth.post("/refresh", async (c) => {
   try {
     // Get refresh token from cookie
@@ -195,56 +332,164 @@ auth.post("/refresh", async (c) => {
       return errors.unauthorized(c);
     }
 
-    // Get user and verify token version
-    const user = await db.user.findUnique({
+    // Try to find staff user first
+    const staffUser = await db.user.findUnique({
       where: { id: payload.sub },
       include: { school: true },
     });
 
-    if (!user || user.tokenVersion !== payload.version) {
-      return errors.unauthorized(c);
+    if (staffUser && staffUser.tokenVersion === payload.version) {
+      // Check if user is active
+      if (!staffUser.isActive) {
+        return errors.forbidden(c);
+      }
+
+      // Generate new tokens
+      const newAccessToken = await generateAccessToken({
+        userId: staffUser.id,
+        schoolId: staffUser.schoolId,
+        role: staffUser.role,
+        plan: staffUser.school.plan,
+      });
+
+      const newRefreshToken = await generateRefreshToken({
+        userId: staffUser.id,
+        tokenVersion: staffUser.tokenVersion,
+      });
+
+      setRefreshTokenCookie(c, newRefreshToken);
+
+      return successResponse(c, {
+        user: {
+          id: staffUser.id,
+          email: staffUser.email,
+          name: staffUser.name,
+          role: staffUser.role,
+        },
+        school: {
+          id: staffUser.school.id,
+          name: staffUser.school.name,
+          plan: staffUser.school.plan,
+          isActive: staffUser.school.isActive,
+          signupFeePaid: staffUser.school.signupFeePaid,
+          onboardingComplete: staffUser.school.onboardingComplete,
+        },
+        userType: "STAFF",
+        accessToken: newAccessToken,
+      });
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return errors.forbidden(c);
+    // Try to find parent
+    const parent = await db.parent.findUnique({
+      where: { id: payload.sub },
+      include: { 
+        school: true,
+        students: {
+          include: {
+            class: true,
+          }
+        }
+      },
+    });
+
+    if (parent && parent.tokenVersion === payload.version) {
+      if (!parent.isActive) {
+        return errors.forbidden(c);
+      }
+
+      const newAccessToken = await generateAccessToken({
+        userId: parent.id,
+        schoolId: parent.schoolId,
+        role: "PARENT" as any,
+        plan: parent.school.plan,
+      });
+
+      const newRefreshToken = await generateRefreshToken({
+        userId: parent.id,
+        tokenVersion: parent.tokenVersion,
+      });
+
+      setRefreshTokenCookie(c, newRefreshToken);
+
+      return successResponse(c, {
+        user: {
+          id: parent.id,
+          email: parent.email,
+          name: parent.name,
+          role: "PARENT",
+          children: parent.students.map(s => ({
+            id: s.id,
+            name: `${s.firstName} ${s.lastName}`,
+            class: s.class?.name,
+          })),
+        },
+        school: {
+          id: parent.school.id,
+          name: parent.school.name,
+          plan: parent.school.plan,
+          isActive: parent.school.isActive,
+          signupFeePaid: parent.school.signupFeePaid,
+          onboardingComplete: parent.school.onboardingComplete,
+        },
+        userType: "PARENT",
+        accessToken: newAccessToken,
+      });
     }
 
-    // Generate new tokens
-    const newAccessToken = await generateAccessToken({
-      userId: user.id,
-      schoolId: user.schoolId,
-      role: user.role,
-      plan: user.school.plan,
-    });
-
-    const newRefreshToken = await generateRefreshToken({
-      userId: user.id,
-      tokenVersion: user.tokenVersion,
-    });
-
-    // Set new refresh token cookie
-    setRefreshTokenCookie(c, newRefreshToken);
-
-    return successResponse(c, {
-      accessToken: newAccessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      school: {
-        id: user.school.id,
-        name: user.school.name,
-        plan: user.school.plan,
-        isActive: user.school.isActive,
-        signupFeePaid: user.school.signupFeePaid,
-        onboardingComplete: user.school.onboardingComplete,
+    // Try to find student
+    const student = await db.student.findUnique({
+      where: { id: payload.sub },
+      include: { 
+        school: true,
+        class: true,
       },
     });
+
+    if (student && (student.tokenVersion || 0) === payload.version) {
+      if (!student.isActive) {
+        return errors.forbidden(c);
+      }
+
+      const newAccessToken = await generateAccessToken({
+        userId: student.id,
+        schoolId: student.schoolId,
+        role: "STUDENT" as any,
+        plan: student.school.plan,
+      });
+
+      const newRefreshToken = await generateRefreshToken({
+        userId: student.id,
+        tokenVersion: student.tokenVersion || 0,
+      });
+
+      setRefreshTokenCookie(c, newRefreshToken);
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          email: student.email,
+          name: `${student.firstName} ${student.lastName}`,
+          role: "STUDENT",
+          admissionNumber: student.admissionNumber,
+          class: student.class?.name,
+        },
+        school: {
+          id: student.school.id,
+          name: student.school.name,
+          plan: student.school.plan,
+          isActive: student.school.isActive,
+          signupFeePaid: student.school.signupFeePaid,
+          onboardingComplete: student.school.onboardingComplete,
+        },
+        userType: "STUDENT",
+        accessToken: newAccessToken,
+      });
+    }
+
+    // No valid user found or token version mismatch
+    return errors.unauthorized(c);
   } catch (error) {
-    console.error("Token refresh error:", error);
+    console.error("Refresh token error:", error);
     return errors.internalError(c);
   }
 });

@@ -29,6 +29,32 @@ export interface RefreshTokenPayload extends JWTPayload {
   type: "refresh";
 }
 
+export interface ParentAccessTokenPayload extends JWTPayload {
+  sub: string; // Parent ID
+  schoolId: string;
+  plan: Plan;
+  type: "parent_access";
+}
+
+export interface ParentRefreshTokenPayload extends JWTPayload {
+  sub: string; // Parent ID
+  version: number;
+  type: "parent_refresh";
+}
+
+export interface StudentAccessTokenPayload extends JWTPayload {
+  sub: string; // Student ID
+  schoolId: string;
+  plan: Plan;
+  type: "student_access";
+}
+
+export interface StudentRefreshTokenPayload extends JWTPayload {
+  sub: string; // Student ID
+  version: number;
+  type: "student_refresh";
+}
+
 // Generate access token
 export async function generateAccessToken(payload: {
   userId: string;
@@ -86,6 +112,134 @@ export async function verifyRefreshToken(
     const { payload } = await jwtVerify(token, REFRESH_SECRET);
     if (payload.type !== "refresh") return null;
     return payload as RefreshTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// PARENT AUTH FUNCTIONS
+// ============================================
+
+// Generate parent access token
+export async function generateParentAccessToken(payload: {
+  parentId: string;
+  schoolId: string;
+  plan: Plan;
+}): Promise<string> {
+  return new SignJWT({
+    sub: payload.parentId,
+    schoolId: payload.schoolId,
+    plan: payload.plan,
+    type: "parent_access",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(ACCESS_TOKEN_EXPIRY)
+    .sign(ACCESS_SECRET);
+}
+
+// Generate parent refresh token
+export async function generateParentRefreshToken(payload: {
+  parentId: string;
+  tokenVersion: number;
+}): Promise<string> {
+  return new SignJWT({
+    sub: payload.parentId,
+    version: payload.tokenVersion,
+    type: "parent_refresh",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
+    .sign(REFRESH_SECRET);
+}
+
+// Verify parent access token
+export async function verifyParentAccessToken(
+  token: string
+): Promise<ParentAccessTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, ACCESS_SECRET);
+    if (payload.type !== "parent_access") return null;
+    return payload as ParentAccessTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// Verify parent refresh token
+export async function verifyParentRefreshToken(
+  token: string
+): Promise<ParentRefreshTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, REFRESH_SECRET);
+    if (payload.type !== "parent_refresh") return null;
+    return payload as ParentRefreshTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// STUDENT AUTH FUNCTIONS
+// ============================================
+
+// Generate student access token
+export async function generateStudentAccessToken(payload: {
+  studentId: string;
+  schoolId: string;
+  plan: Plan;
+}): Promise<string> {
+  return new SignJWT({
+    sub: payload.studentId,
+    schoolId: payload.schoolId,
+    plan: payload.plan,
+    type: "student_access",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(ACCESS_TOKEN_EXPIRY)
+    .sign(ACCESS_SECRET);
+}
+
+// Generate student refresh token
+export async function generateStudentRefreshToken(payload: {
+  studentId: string;
+  tokenVersion: number;
+}): Promise<string> {
+  return new SignJWT({
+    sub: payload.studentId,
+    version: payload.tokenVersion,
+    type: "student_refresh",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
+    .sign(REFRESH_SECRET);
+}
+
+// Verify student access token
+export async function verifyStudentAccessToken(
+  token: string
+): Promise<StudentAccessTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, ACCESS_SECRET);
+    if (payload.type !== "student_access") return null;
+    return payload as StudentAccessTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// Verify student refresh token
+export async function verifyStudentRefreshToken(
+  token: string
+): Promise<StudentRefreshTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, REFRESH_SECRET);
+    if (payload.type !== "student_refresh") return null;
+    return payload as StudentRefreshTokenPayload;
   } catch {
     return null;
   }
