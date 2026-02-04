@@ -54,9 +54,7 @@ export const step2ValidationSchema = yup.object().shape({
           .string()
           .required("Subject name is required")
           .min(2, "Subject name must be at least 2 characters"),
-        level: yup
-          .string()
-          .required("Subject level is required"),
+        level: yup.string(),
       })
     )
     .min(1, "Add at least one subject"),

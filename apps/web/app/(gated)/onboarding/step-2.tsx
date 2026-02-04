@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormik } from "formik";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Delete01Icon, Add01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -49,6 +50,26 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
 
   const hasBothLevels =
     formik.values.educationLevels.primary && formik.values.educationLevels.secondary;
+
+  // Auto-set level for subjects when only one education level is selected
+  const getAutoLevel = (): string => {
+    if (formik.values.educationLevels.primary) return "primary";
+    if (formik.values.educationLevels.secondary) return "secondary";
+    return "";
+  };
+
+  // Auto-fill level for all subjects when education levels change
+  useEffect(() => {
+    if (!hasBothLevels) {
+      const autoLevel = getAutoLevel();
+      const updatedSubjects = formik.values.subjects.map((subject: Record<string, string>) => ({
+        ...subject,
+        level: autoLevel,
+      }));
+      formik.setFieldValue("subjects", updatedSubjects);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.educationLevels.primary, formik.values.educationLevels.secondary]);
 
   const addSubject = (): void => {
     formik.setFieldValue("subjects", [
@@ -202,19 +223,34 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
                       }}
                     >
                       <SelectTrigger id={`level-${index}`}>
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="primary">Primary</SelectItem>
-                        <SelectItem value="secondary">Secondary</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {subjectTouched?.level && subjectError?.level && (
-                      <p className="text-xs text-destructive">
-                        {subjectError.level}
-                      </p>
-                    )}
-                  </div>
+                  hasBothLevels && !subject.level && (
+                  <input
+                    type="hidden"
+                    readOnly
+                    value={getAutoLevel()}
+                    onChange={() => {
+                      const newSubjects = [...formik.values.subjects];
+                      if (newSubjects[index]) {
+                        newSubjects[index].level = getAutoLevel();
+                        formik.setFieldValue("subjects", newSubjects);
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Auto-fill level when only one is selected */}
+                {!hasBothLevels && subject.level === "" && (
+                  <input
+                    type="hidden"
+                    value={formik.values.educationLevels.primary ? "primary" : "secondary"}
+                    onChange={(e) => {
+                      const newSubjects = [...formik.values.subjects];
+                      if (newSubjects[index]) {
+                        newSubjects[index].level = e.target.value;
+                        formik.setFieldValue("subjects", newSubjects);
+                      }
+                    }}
+                  />
                 )}
 
                 {/* Delete Button */}
