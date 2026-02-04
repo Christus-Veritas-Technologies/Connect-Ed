@@ -16,7 +16,7 @@ import { OnboardingStep4 } from "./step-4";
 
 const STEPS = [
   { number: 1, title: "School Details", description: "Let's get to know your school" },
-  { number: 2, title: "Curriculum & Subjects", description: "Tell us about your programs" },
+  { number: 2, title: "Learning", description: "Tell us about your programs" },
   { number: 3, title: "Students", description: "Student body information" },
   { number: 4, title: "Review", description: "Confirm your information" },
 ];
@@ -149,7 +149,8 @@ export default function OnboardingPage() {
           )}
           {currentStep === 3 && <OnboardingStep4 onBack={handleBack} />}
         </motion.div>
-      OnboardingProvideriv>
-    </div>
-  );
+      </div>
+      </div>
+    </OnboardingProvider>
+  )
 }

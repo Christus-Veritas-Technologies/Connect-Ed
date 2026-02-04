@@ -35,9 +35,15 @@ classes.get("/", async (c) => {
 
 // POST /classes - Create class
 classes.post("/", zValidator("json", createClassSchema), async (c) => {
+  const schoolId = c.get("schoolId");
+  console.log(`[POST /classes] Creating class for school: ${schoolId}`);
+  
   try {
-    const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
+    console.log(`[POST /classes] Class data:`, {
+      name: data.name,
+      classTeacherId: data.classTeacherId,
+    });
 
     // Check for duplicate class name
     const existing = await db.class.findFirst({
@@ -45,11 +51,13 @@ classes.post("/", zValidator("json", createClassSchema), async (c) => {
     });
 
     if (existing) {
+      console.log(`[POST /classes] ❌ Duplicate class name: ${data.name}`);
       return errors.conflict(c, "A class with this name already exists");
     }
 
     // Verify teacher belongs to school if provided
     if (data.classTeacherId) {
+      console.log(`[POST /classes] Verifying teacher: ${data.classTeacherId}`);
       const teacher = await db.user.findFirst({
         where: {
           id: data.classTeacherId,
@@ -59,10 +67,12 @@ classes.post("/", zValidator("json", createClassSchema), async (c) => {
       });
 
       if (!teacher) {
+        console.log(`[POST /classes] ❌ Teacher not found: ${data.classTeacherId}`);
         return errors.notFound(c, "Teacher");
       }
     }
 
+    console.log(`[POST /classes] Creating class: ${data.name}`);
     const newClass = await db.class.create({
       data: {
         name: data.name,
@@ -74,9 +84,10 @@ classes.post("/", zValidator("json", createClassSchema), async (c) => {
       },
     });
 
+    console.log(`[POST /classes] ✅ Class created successfully: ${newClass.name} (${newClass.id})`);
     return successResponse(c, { class: newClass }, 201);
   } catch (error) {
-    console.error("Create class error:", error);
+    console.error(`[POST /classes] ❌ Create class error:`, error);
     return errors.internalError(c);
   }
 });

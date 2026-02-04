@@ -2,7 +2,7 @@
 
 import { useFormik } from "formik";
 import { motion } from "framer-motion";
-import { Delete01Icon, Add01Icon } from "@hugeicons/core-free-icons";
+import { Delete01Icon, Add01Icon, User02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,10 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
         error={formik.errors.classes as string}
         delay={0.1}
       >
+        <div className="flex items-center gap-2 mb-4">
+          <HugeiconsIcon icon={User02Icon} size={20} className="text-green-600" />
+          <span className="text-sm text-slate-600 font-medium">Create your school classes</span>
+        </div>
         <div className="space-y-4">
           {formik.values.classes.map((schoolClass: Record<string, string>, index: number) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

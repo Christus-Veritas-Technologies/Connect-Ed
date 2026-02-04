@@ -65,7 +65,15 @@ app.route("/notifications", notifications);
 
 // Error handling
 app.onError((err, c) => {
-  console.error("Unhandled error:", err);
+  // Log all errors with timestamp
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] ❌ Unhandled error:`, err);
+  
+  // Enhanced logging for validation errors
+  if (err instanceof Error && err.message.includes("Validation")) {
+    console.error(`[${timestamp}] Validation error details:`, err.message);
+  }
+  
   return c.json(
     {
       success: false,

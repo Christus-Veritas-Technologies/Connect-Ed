@@ -99,9 +99,17 @@ students.get("/:id", async (c) => {
 
 // POST /students - Create student
 students.post("/", zValidator("json", createStudentSchema), async (c) => {
+  const schoolId = c.get("schoolId");
+  console.log(`[POST /students] Creating new student for school: ${schoolId}`);
+  
   try {
-    const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
+    console.log(`[POST /students] Student data:`, {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      admissionNumber: data.admissionNumber,
+      classId: data.classId,
+    });
 
     // Check for duplicate admission number
     const existing = await db.student.findFirst({
@@ -112,10 +120,12 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     });
 
     if (existing) {
+      console.log(`[POST /students] ❌ Duplicate admission number: ${data.admissionNumber}`);
       return errors.conflict(c, "A student with this admission number already exists");
     }
 
     // Create student
+    console.log(`[POST /students] Inserting student: ${data.firstName} ${data.lastName}`);
     const student = await db.student.create({
       data: {
         firstName: data.firstName,
@@ -135,9 +145,10 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
       },
     });
 
+    console.log(`[POST /students] ✅ Student created successfully: ${student.firstName} ${student.lastName} (${student.id})`);
     return successResponse(c, { student }, 201);
   } catch (error) {
-    console.error("Create student error:", error);
+    console.error(`[POST /students] ❌ Create student error:`, error);
     return errors.internalError(c);
   }
 });

@@ -67,9 +67,17 @@ fees.get("/", async (c) => {
 
 // POST /fees - Create fee
 fees.post("/", zValidator("json", createFeeSchema), async (c) => {
+  const schoolId = c.get("schoolId");
+  console.log(`[POST /fees] Creating fee for school: ${schoolId}`);
+  
   try {
-    const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
+    console.log(`[POST /fees] Fee data:`, {
+      studentId: data.studentId,
+      amount: data.amount,
+      description: data.description,
+      dueDate: data.dueDate,
+    });
 
     // Verify student belongs to school
     const student = await db.student.findFirst({
@@ -77,10 +85,14 @@ fees.post("/", zValidator("json", createFeeSchema), async (c) => {
     });
 
     if (!student) {
+      console.log(`[POST /fees] ❌ Student not found: ${data.studentId}`);
       return errors.notFound(c, "Student");
     }
 
+    console.log(`[POST /fees] Found student: ${student.firstName} ${student.lastName}`);
+
     // Create fee
+    console.log(`[POST /fees] Creating fee: ${data.description} (${data.amount})`);
     const fee = await db.fee.create({
       data: {
         studentId: data.studentId,
@@ -96,9 +108,10 @@ fees.post("/", zValidator("json", createFeeSchema), async (c) => {
       },
     });
 
+    console.log(`[POST /fees] ✅ Fee created successfully: ${fee.id}`);
     return successResponse(c, { fee }, 201);
   } catch (error) {
-    console.error("Create fee error:", error);
+    console.error(`[POST /fees] ❌ Create fee error:`, error);
     return errors.internalError(c);
   }
 });

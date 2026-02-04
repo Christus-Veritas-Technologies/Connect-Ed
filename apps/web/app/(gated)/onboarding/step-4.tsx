@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { Building01Icon, BookOpen01Icon, User02Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "./onboarding-context";
 import { useAuth } from "@/lib/auth-context";
@@ -57,9 +59,10 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
       
       // Redirect to dashboard
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Onboarding error:", err);
-      setError(err?.message || "Failed to complete onboarding. Please try again.");
+      const error = err instanceof Error ? err.message : "Failed to complete onboarding. Please try again.";
+      setError(error);
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,10 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
       >
         {/* School Details */}
         <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <h3 className="font-semibold text-lg mb-4">School Information</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <HugeiconsIcon icon={Building01Icon} size={24} className="text-blue-600" />
+            <h3 className="font-semibold text-lg">School Information</h3>
+          </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">School Name:</span>
@@ -99,7 +105,10 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
 
         {/* Curriculum & Subjects */}
         <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <h3 className="font-semibold text-lg mb-4">Curriculum & Subjects</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <HugeiconsIcon icon={BookOpen01Icon} size={24} className="text-purple-600" />
+            <h3 className="font-semibold text-lg">Curriculum & Subjects</h3>
+          </div>
           <div className="space-y-3 text-sm">
             <div>
               <span className="text-slate-600">Curriculum:</span>
@@ -135,7 +144,10 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
 
         {/* Classes */}
         <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <h3 className="font-semibold text-lg mb-4">Classes</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <HugeiconsIcon icon={User02Icon} size={24} className="text-green-600" />
+            <h3 className="font-semibold text-lg">Classes</h3>
+          </div>
           <div className="space-y-2 text-sm">
             {data.step3?.classes.map((cls, index) => (
               <div key={index} className="flex justify-between">
@@ -163,12 +175,29 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
             {error}
           </motion.div>
         )}
+
+        {!error && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="p-6 bg-green-50 rounded-lg border border-green-200"
+          >
+            <div className="flex items-start gap-3">
+              <HugeiconsIcon icon={CheckmarkCircle02Icon} size={24} className="text-green-600 flex-shrink-0 mt-1" />
+              <div>
+                <p className="font-semibold text-green-900">Ready to go!</p>
+                <p className="text-sm text-green-700 mt-1">Review your information above and click Complete Onboarding to finish setup.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.25 }}
         className="flex gap-4"
       >
         <Button

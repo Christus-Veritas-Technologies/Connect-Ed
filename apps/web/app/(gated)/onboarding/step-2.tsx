@@ -3,7 +3,7 @@
 import { useFormik } from "formik";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Delete01Icon, Add01Icon } from "@hugeicons/core-free-icons";
+import { Delete01Icon, Add01Icon, BookOpen01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,6 +97,10 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
         error={formik.errors.curriculum as string}
         delay={0.1}
       >
+        <div className="flex items-center gap-2 mb-4">
+          <HugeiconsIcon icon={BookOpen01Icon} size={20} className="text-blue-600" />
+          <span className="text-sm text-slate-600 font-medium">Select curriculum programs</span>
+        </div>
         <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
           <div className="flex items-center justify-between">
             <Label htmlFor="cambridge" className="font-normal cursor-pointer">

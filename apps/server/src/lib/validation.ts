@@ -44,13 +44,13 @@ export const onboardingSchema = z.object({
     secondary: z.boolean(),
   }),
   subjects: z.array(z.object({
-    name: z.string(),
+    name: z.string().min(1, "Subject name is required"),
     level: z.string().optional(),
-  })),
+  })).min(1, "At least one subject is required"),
   classes: z.array(z.object({
-    name: z.string(),
-    capacity: z.string(),
-  })),
+    name: z.string().min(1, "Class name is required"),
+    capacity: z.string().min(1, "Capacity is required"),
+  })).min(1, "At least one class is required"),
   teacherCount: z.number().int().min(1, "Must have at least 1 teacher"),
   studentCount: z.number().int().min(1, "Must have at least 1 student"),
 });
