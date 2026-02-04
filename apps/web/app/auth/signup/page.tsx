@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, Lock, Mail, User2 } from "lucide-react";
+import { CheckCircle, Lock, Mail, User2, AlertCircle } from "lucide-react";
 
 const passwordRequirements = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -36,7 +36,7 @@ export default function SignupPage() {
     }
 
     const failedRequirements = passwordRequirements.filter(r => !r.test(password));
-    if (failedRequirements.length > 0) {
+    if (failedRequirements.length > 0 && failedRequirements[0]) {
       setValidationError(failedRequirements[0].label);
       return;
     }
@@ -72,6 +72,15 @@ export default function SignupPage() {
         <h1 className="text-3xl font-bold">Create your account</h1>
         <p className="text-muted-foreground">Start managing your school with Connect-Ed</p>
       </div>
+
+      {/* Important Notice */}
+      <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+        <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
+          <strong>School Owners Only:</strong> This signup is exclusively for school administrators.
+          If you're a teacher, parent, or student, please contact your school administrator to receive an invitation to join.
+        </AlertDescription>
+      </Alert>
 
       {/* Error Alert */}
       {error && (

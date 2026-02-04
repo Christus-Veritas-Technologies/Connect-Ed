@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Mail01Icon, ArrowLeft01Icon, CheckmarkCircle02Icon } from "@hugeicons/react";
+import { Mail01Icon, ArrowLeft01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useForgotPassword } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
     ? forgotPasswordMutation.error.message 
     : forgotPasswordMutation.error?.message;
 
-  if (success) {
+  if (forgotPasswordMutation.isSuccess) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -40,7 +41,7 @@ export default function ForgotPasswordPage() {
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
               className="mx-auto mb-6 size-20 rounded-full bg-success/10 flex items-center justify-center"
             >
-              <CheckmarkCircle02Icon size={40} className="text-success" />
+              <HugeiconsIcon icon={CheckmarkCircle02Icon} size={40} className="text-success" />
             </motion.div>
             <h2 className="text-2xl font-bold mb-2">Check your email</h2>
             <p className="text-muted-foreground mb-6">
@@ -48,7 +49,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link href="/auth/login">
               <Button variant="outline" className="w-full">
-                <ArrowLeft01Icon size={20} />
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
                 Back to login
               </Button>
             </Link>
@@ -98,7 +99,7 @@ export default function ForgotPasswordPage() {
                 placeholder="you@school.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                icon={<Mail01Icon size={20} />}
+                icon={<HugeiconsIcon icon={Mail01Icon} size={20} />}
                 required
               />
             </div>
@@ -118,7 +119,7 @@ export default function ForgotPasswordPage() {
               href="/auth/login"
               className="text-sm text-muted-foreground hover:text-brand font-medium transition-colors inline-flex items-center gap-2"
             >
-              <ArrowLeft01Icon size={16} />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
               Back to login
             </Link>
           </div>
