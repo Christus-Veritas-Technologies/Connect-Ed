@@ -223,7 +223,23 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
                       }}
                     >
                       <SelectTrigger id={`level-${index}`}>
-                  hasBothLevels && !subject.level && (
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="primary">Primary</SelectItem>
+                        <SelectItem value="secondary">Secondary</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {subjectTouched?.level && subjectError?.level && (
+                      <p className="text-xs text-destructive">
+                        {subjectError.level}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Auto-set level when only one is selected */}
+                {!hasBothLevels && !subject.level && (
                   <input
                     type="hidden"
                     readOnly
@@ -232,21 +248,6 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
                       const newSubjects = [...formik.values.subjects];
                       if (newSubjects[index]) {
                         newSubjects[index].level = getAutoLevel();
-                        formik.setFieldValue("subjects", newSubjects);
-                      }
-                    }}
-                  />
-                )}
-
-                {/* Auto-fill level when only one is selected */}
-                {!hasBothLevels && subject.level === "" && (
-                  <input
-                    type="hidden"
-                    value={formik.values.educationLevels.primary ? "primary" : "secondary"}
-                    onChange={(e) => {
-                      const newSubjects = [...formik.values.subjects];
-                      if (newSubjects[index]) {
-                        newSubjects[index].level = e.target.value;
                         formik.setFieldValue("subjects", newSubjects);
                       }
                     }}
