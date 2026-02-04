@@ -11,10 +11,22 @@ interface DashboardStats {
   collectedFees: number;
   pendingFees: number;
   totalExpenses: number;
+  overdueFeesCount: number;
+  overdueFees: number;
   quotaUsage: {
     email: { used: number; limit: number };
     whatsapp: { used: number; limit: number };
     sms: { used: number; limit: number };
+  };
+  monthlyRevenue?: Array<{ month: string; collected: number }>;
+  recentActivity?: {
+    students?: Array<{ name: string; date: string }>;
+    payments?: Array<{ amount: number; student: string; date: string }>;
+    expenses?: Array<{ amount: number; category: string; date: string }>;
+  };
+  charts?: {
+    monthlyRevenue?: Array<{ name: string; value: number }>;
+    feeStatus?: Array<{ name: string; value: number }>;
   };
 }
 

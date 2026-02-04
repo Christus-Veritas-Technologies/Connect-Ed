@@ -14,7 +14,11 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "RECEPTIONIST" | "TEACHER";
+  role: "ADMIN" | "RECEPTIONIST" | "TEACHER" | "PARENT" | "STUDENT";
+  // Additional fields for specific roles
+  children?: Array<{ id: string; name: string; class?: string }>; // For parents
+  admissionNumber?: string; // For students
+  class?: string; // For students
 }
 
 interface School {
@@ -26,13 +30,16 @@ interface School {
   onboardingComplete: boolean;
 }
 
+type UserType = "STAFF" | "PARENT" | "STUDENT";
+
 interface AuthContextType {
   user: User | null;
   school: School | null;
+  userType: UserType | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<boolean>;
-  setAuthData: (user: User, school: School) => void;
+  setAuthData: (user: User, school: School, userType: UserType) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,44 +47,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [school, setSchool] = useState<School | null>(null);
+  const [userType, setUserType] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const checkAuth = async (): Promise<boolean> => {
     try {
-      // Check if we have a token
-      const token = getAccessToken();
-      if (!token) {
-        // Try to refresh
-        const data = await api.post<{
-          user: User;
-          school: School;
-          accessToken: string;
-        }>("auth/refresh");
-        
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        setSchool(data.school);
-        return true;
-      }
-
-      // If we have a token but no user data, fetch it
-      if (!user) {
-        const data = await api.post<{
-          user: User;
-          school: School;
-          accessToken: string;
-        }>("/auth/refresh");
-        
-        setUser(data.user);
-        setSchool(data.school);
-        return true;
-      }
-
+      // Always refresh to get latest data
+      const data = await api.post<{
+        user: User;
+        school: School;
+        userType: UserType;
+        accessToken: string;
+      }>("/auth/refresh");
+      
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      setSchool(data.school);
+      setUserType(data.userType);
       return true;
     } catch (error) {
       setUser(null);
       setSchool(null);
+      setUserType(null);
       clearAccessToken();
       return false;
     }
@@ -113,12 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         school,
+        userType,
         isLoading,
         isAuthenticated: !!user,
         checkAuth,
-        setAuthData: (newUser: User, newSchool: School) => {
+        setAuthData: (newUser: User, newSchool: School, newUserType: UserType) => {
           setUser(newUser);
           setSchool(newSchool);
+          setUserType(newUserType);
         },
       }}
     >

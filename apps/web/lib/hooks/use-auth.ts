@@ -26,12 +26,14 @@ interface School {
 interface AuthResponse {
   user: User;
   school: School;
+  userType: "STAFF" | "PARENT" | "STUDENT";
   accessToken: string;
 }
 
 interface RefreshResponse {
   user: User;
   school: School;
+  userType: "STAFF" | "PARENT" | "STUDENT";
   accessToken: string;
 }
 
@@ -61,8 +63,8 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
-      // Update auth context immediately
-      setAuthData(data.user, data.school);
+      // Update auth context immediately with userType
+      setAuthData(data.user, data.school, data.userType);
       queryClient.setQueryData(["auth", "user"], data);
       
       // Get redirect path based on payment status, onboarding status, and role
@@ -83,8 +85,8 @@ export function useSignup() {
     },
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
-      // Update auth context immediately
-      setAuthData(data.user, data.school);
+      // Update auth context immediately with userType (signup is always STAFF/ADMIN)
+      setAuthData(data.user, data.school, data.userType);
       queryClient.setQueryData(["auth", "user"], data);
       router.push("/payment");
     },
