@@ -404,12 +404,41 @@ payments.post("/test-complete/:intermediatePaymentId", async (c) => {
   try {
     const intermediatePaymentId = c.req.param("intermediatePaymentId");
 
-    const intermediatePayment = await db.intermediatePayment.update({
+    // Get intermediate payment with relations
+    const intermediatePayment = await db.intermediatePayment.findUnique({
       where: { id: intermediatePaymentId },
-      data: { paid: true },
+      include: { user: true, school: true },
     });
 
-    return successResponse(c, { payment: intermediatePayment });
+    if (!intermediatePayment) {
+      return errors.notFound(c, { error: "Payment not found" });
+    }
+
+    // Update payment and school in transaction (same as callback)
+    await db.$transaction(async (tx) => {
+      // Update intermediate payment
+      await tx.intermediatePayment.update({
+        where: { id: intermediatePaymentId },
+        data: { paid: true },
+      });
+
+      // Update school's payment status and plan details
+      await tx.school.update({
+        where: { id: intermediatePayment.schoolId },
+        data: {
+          signupFeePaid: true,
+          plan: intermediatePayment.plan,
+          emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
+          whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
+          smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
+        },
+      });
+    });
+
+    return successResponse(c, { 
+      payment: intermediatePayment,
+      message: "Payment marked as complete and school updated"
+    });
   } catch (error) {
     console.error("Test complete payment error:", error);
     return errors.internalError(c);
