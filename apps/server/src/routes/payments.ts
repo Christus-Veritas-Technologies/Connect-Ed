@@ -143,11 +143,26 @@ payments.post("/callback", async (c) => {
       return errors.notFound(c, { error: "Payment not found" });
     }
 
-    // Update intermediate payment
+    // Update intermediate payment and school in a transaction
     if (paid) {
-      await db.intermediatePayment.update({
-        where: { id: intermediatePaymentId },
-        data: { paid: true },
+      await db.$transaction(async (tx) => {
+        // Update intermediate payment
+        await tx.intermediatePayment.update({
+          where: { id: intermediatePaymentId },
+          data: { paid: true },
+        });
+
+        // Update school's payment status and plan details
+        await tx.school.update({
+          where: { id: intermediatePayment.schoolId },
+          data: {
+            signupFeePaid: true,
+            plan: intermediatePayment.plan,
+            emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
+            whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
+            smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
+          },
+        });
       });
 
       // Create success notification for admin

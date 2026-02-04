@@ -41,7 +41,7 @@ interface PaymentResponse {
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, checkAuth } = useAuth();
   const intermediatePaymentId = searchParams.get("intermediatePaymentId");
 
   const [status, setStatus] = useState<"loading" | "success" | "error" | "unauthorized">("loading");
@@ -179,6 +179,10 @@ export default function PaymentSuccessPage() {
         setCurrentStepIndex(1);
         updateStep(1, { started: true, loading: true });
         await delay(1500); // Simulate API call
+        
+        // Refresh auth to get updated school data
+        await checkAuth();
+        
         updateStep(1, { loading: false, success: true });
         await delay(800);
 
@@ -207,7 +211,7 @@ export default function PaymentSuccessPage() {
     };
 
     processPaymentSteps();
-  }, [intermediatePaymentId, user]);
+  }, [intermediatePaymentId, user, checkAuth]);
 
   // Get current step for display
   const currentStep = loadingSteps[currentStepIndex] ?? loadingSteps[0];
