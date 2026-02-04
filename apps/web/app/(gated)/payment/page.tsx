@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Plan } from "@repo/db";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
@@ -37,19 +38,6 @@ export default function PaymentPage() {
   const handleManualPaymentToggle = (checked: boolean) => {
     setIsManualPayment(checked);
     setError("");
-    
-    // If enabling manual payment, call API in background
-    if (checked) {
-      api.post<{
-        nextPaymentAmount: number;
-      }>("/payments/confirm-manual-payment", {
-        plan: selectedPlan,
-        paymentType: "SIGNUP",
-      }).catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to process manual payment confirmation");
-        setIsManualPayment(false); // Revert on error
-      });
-    }
   };
 
   const handlePayOnline = async () => {
