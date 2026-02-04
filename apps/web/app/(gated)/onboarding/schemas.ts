@@ -46,18 +46,24 @@ export const step2ValidationSchema = yup.object().shape({
     .test("at-least-one", "Select at least one education level", (value) => {
       return value?.primary || value?.secondary;
     }),
-  subjects: yup
-    .array()
-    .of(
-      yup.object().shape({
-        name: yup
-          .string()
-          .required("Subject name is required")
-          .min(2, "Subject name must be at least 2 characters"),
-        level: yup.string(),
-      })
-    )
-    .min(1, "Add at least one subject"),
+  subjects: yup.array().of(
+    yup.object().shape({
+      name: yup
+        .string()
+        .required("Subject name is required")
+        .min(2, "Subject name must be at least 2 characters"),
+      level: yup.string(),
+    })
+  ).min(1, "Add at least one subject")
+    .test("level-required-when-both", "Subject level is required when both education levels are selected", function(subjects) {
+      const educationLevels = this.parent.educationLevels;
+      const hasBothLevels = educationLevels?.primary && educationLevels?.secondary;
+      
+      if (!hasBothLevels) return true; // Level not required if only one education level
+      
+      // Check if all subjects have a level when both education levels are selected
+      return subjects?.every((subject: any) => subject.level && subject.level.trim() !== "") ?? true;
+    }),
 });
 
 // Validation schema for Step 3 (placeholder)

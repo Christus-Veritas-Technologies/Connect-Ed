@@ -95,6 +95,7 @@ export function FormActions({
           variant="outline"
           className="w-1/4"
           onClick={onBack}
+          disabled={!canContinue || isLoading}
         >
           Back
         </Button>

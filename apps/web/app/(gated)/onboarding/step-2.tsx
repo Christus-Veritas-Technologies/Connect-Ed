@@ -72,9 +72,10 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
   }, [formik.values.educationLevels.primary, formik.values.educationLevels.secondary]);
 
   const addSubject = (): void => {
+    const autoLevel = !hasBothLevels ? getAutoLevel() : "";
     formik.setFieldValue("subjects", [
       ...formik.values.subjects,
-      { name: "", level: "" },
+      { name: "", level: autoLevel },
     ]);
   };
 
