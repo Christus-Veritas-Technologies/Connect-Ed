@@ -34,7 +34,6 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
     },
     validationSchema: step3ValidationSchema,
     validateOnMount: true,
-    context: { hasBothLevels },
     onSubmit: async (values) => {
       try {
         updateStep3(values);
