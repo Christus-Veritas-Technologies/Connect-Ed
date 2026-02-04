@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { ZodError } from "zod";
 import { db } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { onboardingSchema } from "../lib/validation";
@@ -11,18 +11,29 @@ const onboarding = new Hono();
 onboarding.use("*", requireAuth);
 
 // POST /onboarding - Complete onboarding
-onboarding.post("/", zValidator("json", onboardingSchema), async (c) => {
+onboarding.post("/", async (c) => {
   const schoolId = c.get("schoolId");
-  console.log(`[POST /onboarding] Starting onboarding for school: ${schoolId}`);
-  
+  console.log(`[POST /onboarding] Incoming request for school: ${schoolId}`);
+
+  // Log raw incoming body (safely)
+  let rawBody: unknown = undefined;
   try {
-    const data = c.req.valid("json");
+    rawBody = await c.req.json();
+  } catch (e) {
+    // could be empty or invalid JSON
+    rawBody = undefined;
+  }
+  console.log(`[POST /onboarding] Raw body:`, rawBody);
+
+  try {
+    // Validate payload using zod schema (so we can log validation errors)
+    const data = onboardingSchema.parse(rawBody);
     console.log(`[POST /onboarding] Validated data:`, {
       schoolName: data.schoolName,
       address: data.address,
       email: data.email,
-      subjectsCount: data.subjects.length,
-      classesCount: data.classes.length,
+      subjectsCount: Array.isArray(data.subjects) ? data.subjects.length : 0,
+      classesCount: Array.isArray(data.classes) ? data.classes.length : 0,
       teacherCount: data.teacherCount,
       studentCount: data.studentCount,
     });
@@ -115,11 +126,20 @@ onboarding.post("/", zValidator("json", onboardingSchema), async (c) => {
       classes: result.classes,
     });
   } catch (error) {
-    console.error(`[POST /onboarding] ❌ Error during onboarding:`, error);
+    console.error(`[POST /onboarding] ❌ Error during onboarding:`);
+    console.error(error);
+
+    // Zod validation errors -> return detailed validation error
+    if (error instanceof ZodError) {
+      console.error(`[POST /onboarding] Validation errors:`, error.errors);
+      return errors.validationError(c, error.errors);
+    }
+
     if (error instanceof Error) {
       console.error(`[POST /onboarding] Error message:`, error.message);
       console.error(`[POST /onboarding] Error stack:`, error.stack);
     }
+
     return errors.internalError(c);
   }
 });
