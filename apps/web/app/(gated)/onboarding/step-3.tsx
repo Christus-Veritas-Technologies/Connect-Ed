@@ -45,9 +45,6 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
     },
   });
 
-  const hasBothLevels =
-    data.step2?.educationLevels.primary && data.step2?.educationLevels.secondary;
-
   const addClass = (): void => {
     formik.setFieldValue("classes", [
       ...formik.values.classes,
