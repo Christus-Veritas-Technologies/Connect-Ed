@@ -23,6 +23,7 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
       classes: [{ name: "", capacity: "" }],
     },
     validationSchema: step3ValidationSchema,
+    validateOnMount: true,
     onSubmit: async (values) => {
       try {
         updateStep3(values);

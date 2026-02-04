@@ -41,6 +41,7 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
       subjects: [{ name: "", level: "" }],
     },
     validationSchema: step2ValidationSchema,
+    validateOnMount: true,
     onSubmit: async (values) => {
       try {
         updateStep2(values);

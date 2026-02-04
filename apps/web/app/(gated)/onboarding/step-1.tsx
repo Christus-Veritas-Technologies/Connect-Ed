@@ -27,6 +27,7 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
       isLandline: false,
     },
     validationSchema: step1ValidationSchema,
+    validateOnMount: true,
     onSubmit: async (values) => {
       try {
         updateStep1(values);
