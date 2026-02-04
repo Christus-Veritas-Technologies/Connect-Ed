@@ -66,7 +66,7 @@ export const step2ValidationSchema = yup.object().shape({
     }),
 });
 
-// Validation schema for Step 3 (placeholder)
+// Validation schema for Step 3
 export const step3ValidationSchema = yup.object().shape({
   classes: yup
     .array()
@@ -81,6 +81,13 @@ export const step3ValidationSchema = yup.object().shape({
           .required("Capacity is required")
           .min(1, "Capacity must be at least 1")
           .max(200, "Capacity cannot exceed 200"),
+        level: yup
+          .string()
+          .test("level-required-when-both", "Level is required when both education levels are selected", function(value) {
+            const hasBothLevels = this.options.context?.hasBothLevels;
+            if (!hasBothLevels) return true; // Level not required if only one education level
+            return !!value && value.trim() !== ""; // Level required when both levels selected
+          }),
       })
     )
     .min(1, "Add at least one class"),

@@ -22,7 +22,7 @@ interface OnboardingData {
     subjects: Array<{ name: string; level: string }>;
   };
   step3?: {
-    classes: Array<{ name: string; capacity: string }>;
+    classes: Array<{ name: string; capacity: string; level?: string }>;
   };
 }
 

@@ -154,7 +154,10 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
           <div className="space-y-2 text-sm">
             {data.step3?.classes.map((cls, index) => (
               <div key={index} className="flex justify-between">
-                <span className="font-medium">{cls.name}</span>
+                <span className="font-medium">
+                  {cls.name}
+                  {cls.level && <span className="text-slate-500 ml-2">({cls.level})</span>}
+                </span>
                 <span className="text-slate-600">Capacity: {cls.capacity} students</span>
               </div>
             ))}

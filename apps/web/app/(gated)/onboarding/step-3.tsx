@@ -6,6 +6,13 @@ import { Delete01Icon, Add01Icon, User02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { step3ValidationSchema } from "./schemas";
 import { FormSection, FormActions } from "./components";
 import { useOnboarding } from "./onboarding-context";
@@ -16,14 +23,18 @@ interface OnboardingStep3Props {
 }
 
 export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
-  const { updateStep3 } = useOnboarding();
+  const { data, updateStep3 } = useOnboarding();
   
+  const hasBothLevels =
+    data.step2?.educationLevels.primary && data.step2?.educationLevels.secondary;
+
   const formik = useFormik({
     initialValues: {
-      classes: [{ name: "", capacity: "" }],
+      classes: [{ name: "", capacity: "", level: "" }],
     },
     validationSchema: step3ValidationSchema,
     validateOnMount: true,
+    context: { hasBothLevels },
     onSubmit: async (values) => {
       try {
         updateStep3(values);
@@ -34,10 +45,13 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
     },
   });
 
+  const hasBothLevels =
+    data.step2?.educationLevels.primary && data.step2?.educationLevels.secondary;
+
   const addClass = (): void => {
     formik.setFieldValue("classes", [
       ...formik.values.classes,
-      { name: "", capacity: "" },
+      { name: "", capacity: "", level: "" },
     ]);
   };
 
@@ -74,8 +88,8 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex gap-3 items-end p-4 bg-slate-50 rounded-lg border border-slate-200"
               >
-                {/* Class Name */}
-                <div className="flex-1 space-y-2">
+                {/* Class Name - 3/7 width */}
+                <div className="space-y-2" style={{ flex: "3 1 0%" }}>
                   <Label htmlFor={`class-${index}`} className="text-xs font-semibold">
                     Class Name
                   </Label>
@@ -105,15 +119,15 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
                   )}
                 </div>
 
-                {/* Class Capacity */}
-                <div className="flex-1 space-y-2">
+                {/* Class Capacity - 1/7 width */}
+                <div className="space-y-2" style={{ flex: "1 1 0%" }}>
                   <Label htmlFor={`capacity-${index}`} className="text-xs font-semibold">
                     Capacity
                   </Label>
                   <Input
                     id={`capacity-${index}`}
                     type="number"
-                    placeholder="e.g., 40"
+                    placeholder="40"
                     min="1"
                     max="200"
                     value={schoolClass.capacity}
@@ -137,6 +151,44 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
                     </p>
                   )}
                 </div>
+
+                {/* Level Selector - 3/7 width (only if both levels selected) */}
+                {hasBothLevels && (
+                  <div className="space-y-2" style={{ flex: "3 1 0%" }}>
+                    <Label htmlFor={`level-${index}`} className="text-xs font-semibold">
+                      Education Level
+                    </Label>
+                    <Select
+                      value={schoolClass.level || ""}
+                      onValueChange={(value) => {
+                        const newClasses = [...formik.values.classes];
+                        if (newClasses[index]) {
+                          newClasses[index].level = value;
+                          formik.setFieldValue("classes", newClasses);
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        className={
+                          classTouched?.level && classError?.level
+                            ? "border-destructive"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="primary">Primary</SelectItem>
+                        <SelectItem value="secondary">Secondary</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {classTouched?.level && classError?.level && (
+                      <p className="text-xs text-destructive">
+                        {classError.level}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Delete Button */}
                 {formik.values.classes.length > 1 && (
