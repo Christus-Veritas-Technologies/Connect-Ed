@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { ArrowDown01Icon, ArrowUp01Icon, CheckmarkCircle02Icon } from "@hugeicons/react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowDown02Icon, ArrowUp02Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "@/lib/utils"
 
@@ -50,7 +51,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ArrowDown01Icon className="size-5 text-muted-foreground" />
+        <HugeiconsIcon icon={ArrowDown02Icon} className="size-5 text-muted-foreground" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -127,7 +128,7 @@ function SelectItem({
     >
       <span className="absolute right-3 flex size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckmarkCircle02Icon className="size-4 text-brand" />
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-4 text-brand" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -161,7 +162,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ArrowUp01Icon className="size-4" />
+      <HugeiconsIcon icon={ArrowUp02Icon} className="size-4" />
     </SelectPrimitive.ScrollUpButton>
   )
 }
@@ -179,7 +180,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ArrowDown01Icon className="size-4" />
+      <HugeiconsIcon icon={ArrowDown02Icon} className="size-4" />
     </SelectPrimitive.ScrollDownButton>
   )
 }
