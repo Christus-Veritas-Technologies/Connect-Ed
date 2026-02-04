@@ -65,6 +65,23 @@ enum MessageStatus {
   FAILED
 }
 
+enum NotificationType {
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  STUDENT_ADDED
+  TEACHER_ADDED
+  FEE_OVERDUE
+  MESSAGE_SENT
+  SYSTEM_ALERT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -107,6 +124,7 @@ model School {
   planPayments   PlanPayment[]
   intermediatePayments IntermediatePayment[]
   messageLogs    MessageLog[]
+  notifications  Notification[]
 
   @@map("schools")
 }
@@ -141,6 +159,9 @@ model User {
   
   // Payment records
   intermediatePayments IntermediatePayment[]
+  
+  // Notifications
+  notifications Notification[]
 
   @@index([schoolId])
   @@index([email])
@@ -430,4 +451,34 @@ model MessageLog {
   @@index([type])
   @@index([createdAt])
   @@map("message_logs")
+}
+
+model Notification {
+  id          String               @id @default(cuid())
+  title       String
+  message     String               @db.Text
+  type        NotificationType
+  priority    NotificationPriority @default(MEDIUM)
+  isRead      Boolean              @default(false)
+  readAt      DateTime?
+  actionUrl   String?              // Optional URL to navigate to when clicked
+  metadata    Json?                // Additional data related to the notification
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
 }

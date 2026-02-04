@@ -16,4 +16,5 @@ export type {
   Expense,
   SchoolPayment,
   MessageLog,
+  Notification,
 } from "@prisma/client";

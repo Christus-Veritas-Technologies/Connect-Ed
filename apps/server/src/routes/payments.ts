@@ -6,6 +6,8 @@ import { createCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { PLAN_FEATURES } from "../lib/auth";
 import { Paynow } from "paynow";
+import { createNotification } from "./notifications";
+import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
 const payments = new Hono();
 
@@ -131,11 +133,76 @@ payments.post("/callback", async (c) => {
       return errors.validationError(c, { intermediatePaymentId: ["Missing intermediate payment ID"] });
     }
 
+    // Get intermediate payment with user and school info
+    const intermediatePayment = await db.intermediatePayment.findUnique({
+      where: { id: intermediatePaymentId },
+      include: { user: true, school: true },
+    });
+
+    if (!intermediatePayment) {
+      return errors.notFound(c, { error: "Payment not found" });
+    }
+
     // Update intermediate payment
     if (paid) {
       await db.intermediatePayment.update({
         where: { id: intermediatePaymentId },
         data: { paid: true },
+      });
+
+      // Create success notification for admin
+      await createNotification({
+        schoolId: intermediatePayment.schoolId,
+        title: "Payment Received",
+        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan has been successfully processed.`,
+        type: "PAYMENT_SUCCESS",
+        priority: "HIGH",
+        actionUrl: "/payments",
+        metadata: {
+          paymentId: intermediatePaymentId,
+          amount: intermediatePayment.amount.toString(),
+          plan: intermediatePayment.plan,
+        },
+      });
+
+      // Send success email
+      await sendEmail({
+        to: intermediatePayment.user.email,
+        subject: "Payment Successful - Connect-Ed",
+        html: generatePaymentSuccessEmail({
+          name: intermediatePayment.user.name,
+          amount: Number(intermediatePayment.amount),
+          plan: intermediatePayment.plan,
+          transactionId: intermediatePaymentId,
+        }),
+        schoolId: intermediatePayment.schoolId,
+      });
+    } else {
+      // Create failure notification for admin
+      await createNotification({
+        schoolId: intermediatePayment.schoolId,
+        title: "Payment Failed",
+        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan failed to process.`,
+        type: "PAYMENT_FAILED",
+        priority: "HIGH",
+        actionUrl: "/payments",
+        metadata: {
+          paymentId: intermediatePaymentId,
+          amount: intermediatePayment.amount.toString(),
+          plan: intermediatePayment.plan,
+        },
+      });
+
+      // Send failure email
+      await sendEmail({
+        to: intermediatePayment.user.email,
+        subject: "Payment Failed - Connect-Ed",
+        html: generatePaymentFailedEmail({
+          name: intermediatePayment.user.name,
+          amount: Number(intermediatePayment.amount),
+          plan: intermediatePayment.plan,
+        }),
+        schoolId: intermediatePayment.schoolId,
       });
     }
 

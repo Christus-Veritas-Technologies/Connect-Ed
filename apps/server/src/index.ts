@@ -16,6 +16,7 @@ import settings from "./routes/settings";
 import payments from "./routes/payments";
 import messages from "./routes/messages";
 import webhooks from "./routes/webhooks";
+import notifications from "./routes/notifications";
 
 const app = new Hono();
 
@@ -60,6 +61,7 @@ app.route("/settings", settings);
 app.route("/payments", payments);
 app.route("/messages", messages);
 app.route("/webhooks", webhooks);
+app.route("/notifications", notifications);
 
 // Error handling
 app.onError((err, c) => {
