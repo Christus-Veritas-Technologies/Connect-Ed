@@ -1,23 +1,168 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useOnboarding } from "./onboarding-context";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 
 interface OnboardingStep4Props {
   onBack: () => void;
 }
 
 export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
+  const { data } = useOnboarding();
+  const { checkAuth } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleComplete = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Calculate total students and teachers
+      const totalStudents = data.step3?.classes.reduce((sum, cls) => sum + (parseInt(cls.capacity) || 0), 0) || 0;
+      const totalTeachers = data.step2?.subjects.length || 1;
+
+      // Prepare payload
+      const payload = {
+        schoolName: data.step1?.schoolName || "",
+        address: data.step1?.address || "",
+        phone: data.step1?.isLandline 
+          ? `020${data.step1?.phoneNumber}` 
+          : `263${data.step1?.phoneNumber}`,
+        email: data.step1?.email || "",
+        curriculum: {
+          cambridge: data.step2?.curriculum.cambridge || false,
+          zimsec: data.step2?.curriculum.zimsec || false,
+        },
+        educationLevels: {
+          primary: data.step2?.educationLevels.primary || false,
+          secondary: data.step2?.educationLevels.secondary || false,
+        },
+        subjects: data.step2?.subjects || [],
+        classes: data.step3?.classes || [],
+        teacherCount: totalTeachers,
+        studentCount: totalStudents,
+      };
+
+      await api.post("/onboarding", payload);
+      
+      // Refresh auth to get updated school data
+      await checkAuth();
+      
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.error("Onboarding error:", err);
+      setError(err?.message || "Failed to complete onboarding. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-slate-50 rounded-lg border border-slate-200 text-center"
+        className="space-y-6"
       >
-        <p className="text-slate-600">
-          Step 4: Review & Confirmation - Coming soon
-        </p>
+        {/* School Details */}
+        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
+          <h3 className="font-semibold text-lg mb-4">School Information</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-600">School Name:</span>
+              <span className="font-medium">{data.step1?.schoolName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Address:</span>
+              <span className="font-medium">{data.step1?.address}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Phone:</span>
+              <span className="font-medium">
+                {data.step1?.isLandline ? "(020)" : "263"} {data.step1?.phoneNumber}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Email:</span>
+              <span className="font-medium">{data.step1?.email}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Curriculum & Subjects */}
+        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
+          <h3 className="font-semibold text-lg mb-4">Curriculum & Subjects</h3>
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-slate-600">Curriculum:</span>
+              <span className="ml-2 font-medium">
+                {[
+                  data.step2?.curriculum.cambridge && "Cambridge",
+                  data.step2?.curriculum.zimsec && "ZIMSEC",
+                ].filter(Boolean).join(", ")}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-600">Education Levels:</span>
+              <span className="ml-2 font-medium">
+                {[
+                  data.step2?.educationLevels.primary && "Primary",
+                  data.step2?.educationLevels.secondary && "Secondary",
+                ].filter(Boolean).join(", ")}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-600 block mb-2">Subjects ({data.step2?.subjects.length}):</span>
+              <div className="space-y-1 ml-4">
+                {data.step2?.subjects.map((subject, index) => (
+                  <div key={index} className="font-medium">
+                    • {subject.name}
+                    {subject.level && ` (${subject.level})`}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Classes */}
+        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
+          <h3 className="font-semibold text-lg mb-4">Classes</h3>
+          <div className="space-y-2 text-sm">
+            {data.step3?.classes.map((cls, index) => (
+              <div key={index} className="flex justify-between">
+                <span className="font-medium">{cls.name}</span>
+                <span className="text-slate-600">Capacity: {cls.capacity} students</span>
+              </div>
+            ))}
+            <div className="pt-3 border-t border-slate-300 mt-3">
+              <div className="flex justify-between font-semibold">
+                <span>Total Capacity:</span>
+                <span>
+                  {data.step3?.classes.reduce((sum, cls) => sum + (parseInt(cls.capacity) || 0), 0)} students
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"
+          >
+            {error}
+          </motion.div>
+        )}
       </motion.div>
 
       <motion.div
@@ -29,16 +174,19 @@ export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
         <Button
           type="button"
           variant="outline"
-          className="flex-1"
+          className="w-1/4"
           onClick={onBack}
+          disabled={isLoading}
         >
           Back
         </Button>
         <Button
           type="button"
           className="flex-1"
+          onClick={handleComplete}
+          disabled={isLoading}
         >
-          Complete Onboarding
+          {isLoading ? "Completing..." : "Complete Onboarding"}
         </Button>
       </motion.div>
     </div>

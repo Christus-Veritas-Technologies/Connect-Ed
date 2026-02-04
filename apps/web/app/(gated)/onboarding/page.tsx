@@ -8,6 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { OnboardingProvider } from "./onboarding-context";
 import { OnboardingStep1 } from "./step-1";
 import { OnboardingStep2 } from "./step-2";
 import { OnboardingStep3 } from "./step-3";
@@ -47,18 +48,19 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center pt-8 pb-12"
-      >
-        <h1 className="text-4xl font-bold text-slate-900">Welcome to Connect-Ed!</h1>
-        <p className="text-slate-600 mt-2 text-lg">
-          Let&apos;s set up your school account
-        </p>
-      </motion.div>
+    <OnboardingProvider>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center pt-8 pb-12"
+        >
+          <h1 className="text-4xl font-bold text-slate-900">Welcome to Connect-Ed!</h1>
+          <p className="text-slate-600 mt-2 text-lg">
+            Let&apos;s set up your school account
+          </p>
+        </motion.div>
 
       <div className="max-w-4xl mx-auto px-4 pb-12">
         {/* Horizontal Step Indicator */}
@@ -147,7 +149,7 @@ export default function OnboardingPage() {
           )}
           {currentStep === 3 && <OnboardingStep4 onBack={handleBack} />}
         </motion.div>
-      </div>
+      OnboardingProvideriv>
     </div>
   );
 }

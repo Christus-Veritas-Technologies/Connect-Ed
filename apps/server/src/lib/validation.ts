@@ -32,6 +32,25 @@ export const resetPasswordSchema = z.object({
 // Onboarding schema
 export const onboardingSchema = z.object({
   schoolName: z.string().min(2, "School name must be at least 2 characters"),
+  address: z.string().min(5, "Address is required"),
+  phone: z.string().min(9, "Phone number is required"),
+  email: z.string().email("Valid email is required"),
+  curriculum: z.object({
+    cambridge: z.boolean(),
+    zimsec: z.boolean(),
+  }),
+  educationLevels: z.object({
+    primary: z.boolean(),
+    secondary: z.boolean(),
+  }),
+  subjects: z.array(z.object({
+    name: z.string(),
+    level: z.string().optional(),
+  })),
+  classes: z.array(z.object({
+    name: z.string(),
+    capacity: z.string(),
+  })),
   teacherCount: z.number().int().min(1, "Must have at least 1 teacher"),
   studentCount: z.number().int().min(1, "Must have at least 1 student"),
 });

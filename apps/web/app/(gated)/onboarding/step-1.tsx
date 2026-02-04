@@ -4,6 +4,7 @@ import { useFormik } from "formik";
 import { School01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { useOnboarding } from "./onboarding-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { step1ValidationSchema } from "./schemas";
@@ -15,6 +16,7 @@ interface OnboardingStep1Props {
 
 export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
   const { school } = useAuth();
+  const { updateStep1 } = useOnboarding();
 
   const formik = useFormik({
     initialValues: {
@@ -25,9 +27,9 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
       isLandline: false,
     },
     validationSchema: step1ValidationSchema,
-    onSubmit: async () => {
+    onSubmit: async (values) => {
       try {
-        // API call would go here
+        updateStep1(values);
         onNext();
       } catch {
         // Handle error

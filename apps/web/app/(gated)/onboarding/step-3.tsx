@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { step3ValidationSchema } from "./schemas";
 import { FormSection, FormActions } from "./components";
+import { useOnboarding } from "./onboarding-context";
 
 interface OnboardingStep3Props {
   onBack: () => void;
@@ -15,14 +16,16 @@ interface OnboardingStep3Props {
 }
 
 export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
+  const { updateStep3 } = useOnboarding();
+  
   const formik = useFormik({
     initialValues: {
       classes: [{ name: "", capacity: "" }],
     },
     validationSchema: step3ValidationSchema,
-    onSubmit: async () => {
+    onSubmit: async (values) => {
       try {
-        // API call would go here
+        updateStep3(values);
         onNext();
       } catch {
         // Handle error
