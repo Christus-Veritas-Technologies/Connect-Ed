@@ -1,4 +1,5 @@
 import { db, MessageType, MessageStatus } from "@repo/db";
+import nodemailer from "nodemailer";
 
 interface EmailOptions {
   to: string;
@@ -7,18 +8,43 @@ interface EmailOptions {
   schoolId: string;
 }
 
+// Create reusable transporter object using SMTP transport
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+};
+
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const { to, subject, html, schoolId } = options;
 
   try {
-    // For now, we'll just log the email (can integrate with SendGrid, AWS SES, etc. later)
     console.log("📧 Sending email:", {
       to,
       subject,
       preview: html.substring(0, 100) + "...",
     });
 
-    // Log the email in the database
+    // Create transporter
+    const transporter = createTransporter();
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: process.env.FROM_EMAIL || "Connect-Ed <noreply@connect-ed.com>",
+      to,
+      subject,
+      html,
+    });
+
+    console.log("✅ Email sent successfully:", info.messageId);
+
+    // Log the successful email in the database
     await db.messageLog.create({
       data: {
         type: MessageType.EMAIL,
@@ -30,12 +56,6 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         schoolId,
       },
     });
-
-    // TODO: Integrate with actual email service
-    // Example with SendGrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // await sgMail.send({ to, subject, html, from: process.env.FROM_EMAIL });
 
     return true;
   } catch (error) {
