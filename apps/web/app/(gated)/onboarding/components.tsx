@@ -87,13 +87,13 @@ export function FormActions({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className={`flex gap-4 pt-4 ${showBack ? "" : "justify-end"}`}
+      className="flex gap-4 pt-4"
     >
       {showBack && (
         <Button
           type="button"
           variant="outline"
-          className="flex-1"
+          className="w-1/4"
           onClick={onBack}
         >
           Back
@@ -101,7 +101,7 @@ export function FormActions({
       )}
       <Button
         type="button"
-        className={showBack ? "flex-1" : ""}
+        className={showBack ? "flex-1" : "w-full"}
         disabled={!canContinue || isLoading}
         onClick={onContinue}
       >
