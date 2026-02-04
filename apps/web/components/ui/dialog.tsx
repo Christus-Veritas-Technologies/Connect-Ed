@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { Cancel01Icon } from "@hugeicons/react"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { cn } from "@/lib/utils"
@@ -84,7 +85,7 @@ function DialogContent({
               "transition-colors outline-none focus:ring-2 focus:ring-brand"
             )}
           >
-            <Cancel01Icon size={20} />
+            <HugeiconsIcon icon={Cancel01Icon} size={20} />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

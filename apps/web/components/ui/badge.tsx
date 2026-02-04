@@ -46,27 +46,34 @@ function Badge({
   icon,
   animated = false,
   children,
-  ...props
 }: BadgeProps) {
-  const Comp = animated ? motion.span : "span"
-  const animationProps = animated
-    ? {
-        initial: { scale: 0.9, opacity: 0 },
-        animate: { scale: 1, opacity: 1 },
-        transition: { type: "spring", stiffness: 500, damping: 30 },
-      }
-    : {}
+  const animationProps = {
+    initial: { scale: 0.9, opacity: 0 },
+    animate: { scale: 1, opacity: 1 },
+    transition: { type: "spring" as const, stiffness: 500, damping: 30 },
+  }
+
+  if (animated) {
+    return (
+      <motion.span
+        data-slot="badge"
+        className={cn(badgeVariants({ variant, size }), className)}
+        {...animationProps}
+      >
+        {icon && <span className="[&>svg]:size-3">{icon}</span>}
+        {children}
+      </motion.span>
+    )
+  }
 
   return (
-    <Comp
+    <span
       data-slot="badge"
       className={cn(badgeVariants({ variant, size }), className)}
-      {...animationProps}
-      {...props}
     >
       {icon && <span className="[&>svg]:size-3">{icon}</span>}
       {children}
-    </Comp>
+    </span>
   )
 }
 

@@ -49,7 +49,6 @@ function Alert({
   variant = "default",
   icon,
   children,
-  ...props
 }: AlertProps) {
   const IconComponent = iconMap[variant || "default"]
 
@@ -62,7 +61,6 @@ function Alert({
       data-slot="alert"
       role="alert"
       className={cn(alertVariants({ variant }), className)}
-      {...props}
     >
       <div className="shrink-0 mt-0.5">
         {icon || <IconComponent size={20} strokeWidth={2} />}

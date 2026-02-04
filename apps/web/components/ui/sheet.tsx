@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
-import { Cancel01Icon } from "@hugeicons/react"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { cn } from "@/lib/utils"
 
@@ -86,7 +87,7 @@ function SheetContent({
               "transition-colors outline-none focus:ring-2 focus:ring-brand"
             )}
           >
-            <Cancel01Icon size={20} />
+            <HugeiconsIcon icon={Cancel01Icon} size={20} />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}
