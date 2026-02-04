@@ -8,7 +8,6 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { OnboardingStep1 } from "./step-1";
 import { OnboardingStep2 } from "./step-2";
 import { OnboardingStep3 } from "./step-3";
@@ -48,7 +47,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -61,107 +60,93 @@ export default function OnboardingPage() {
         </p>
       </motion.div>
 
-      <div className="max-w-5xl mx-auto px-4 pb-12">
-        <div className="flex gap-8">
-          {/* Vertical Step Indicator */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col gap-4 min-w-fit relative"
-          >
-            {STEPS.map((step, index) => {
-              const isActive = index === currentStep;
-              const isCompleted = index < currentStep;
+      <div className="max-w-4xl mx-auto px-4 pb-12">
+        {/* Horizontal Step Indicator */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center gap-4 mb-12"
+        >
+          {STEPS.map((step, index) => {
+            const isActive = index === currentStep;
+            const isCompleted = index < currentStep;
 
-              return (
-                <motion.div
-                  key={step.number}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4 relative"
+            return (
+              <motion.div
+                key={step.number}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex flex-col items-center gap-2"
+              >
+                {/* Step Circle */}
+                <div
+                  className={`
+                    size-10 rounded-full flex items-center justify-center font-semibold transition-all text-sm
+                    ${
+                      isCompleted
+                        ? "bg-success text-white"
+                        : isActive
+                          ? "bg-brand text-white ring-4 ring-brand/20"
+                          : "bg-slate-200 text-slate-600"
+                    }
+                  `}
                 >
-                  {/* Step Circle */}
-                  <div
-                    className={`
-                      size-10 rounded-full flex items-center justify-center font-semibold transition-all flex-shrink-0 text-sm
-                      ${
-                        isCompleted
-                          ? "bg-success text-white"
-                          : isActive
-                            ? "bg-brand text-white ring-4 ring-brand/20"
-                            : "bg-slate-200 text-slate-600"
-                      }
-                    `}
-                  >
-                    {isCompleted ? (
-                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} />
-                    ) : (
-                      step.number
-                    )}
+                  {isCompleted ? (
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} />
+                  ) : (
+                    step.number
+                  )}
+                </div>
+
+                {/* Step Label */}
+                <div className="text-center">
+                  <div className={`text-xs font-semibold ${isActive ? "text-brand" : "text-slate-600"}`}>
+                    {step.title}
                   </div>
+                </div>
 
-                  {/* Step Label (visible on active/completed) */}
-                  {(isActive || isCompleted) && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="pt-1"
-                    >
-                      <div className={`text-sm font-semibold ${isActive ? "text-brand" : "text-slate-600"}`}>
-                        {step.title}
-                      </div>
-                      <div className="text-xs text-slate-500">{step.description}</div>
-                    </motion.div>
-                  )}
-
-                  {/* Vertical Line */}
-                  {index < STEPS.length - 1 && (
-                    <div
-                      className={`absolute left-5 top-10 w-0.5 h-12 -translate-x-1/2 ${
-                        isCompleted ? "bg-success" : isActive ? "bg-brand" : "bg-slate-200"
-                      }`}
-                    />
-                  )}
-                </motion.div>
-              );
-            })}
-          </motion.div>
-
-          {/* Form Card */}
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            className="flex-1"
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-2xl text-brand">
-                  {STEPS[currentStep]?.title}
-                </CardTitle>
-                <CardDescription className="text-base mt-2">
-                  {STEPS[currentStep]?.description}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="pt-8">
-                {/* Step Components */}
-                {currentStep === 0 && <OnboardingStep1 onNext={handleNext} />}
-                {currentStep === 1 && (
-                  <OnboardingStep2 onBack={handleBack} onNext={handleNext} />
+                {/* Connecting Line */}
+                {index < STEPS.length - 1 && (
+                  <div
+                    className={`absolute left-[calc(50%+20px)] w-12 h-0.5 top-5 ${
+                      isCompleted ? "bg-success" : isActive ? "bg-brand" : "bg-slate-200"
+                    }`}
+                  />
                 )}
-                {currentStep === 2 && (
-                  <OnboardingStep3 onBack={handleBack} onNext={handleNext} />
-                )}
-                {currentStep === 3 && <OnboardingStep4 onBack={handleBack} />}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* Content */}
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+          className="max-w-2xl mx-auto"
+        >
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-brand">
+              {STEPS[currentStep]?.title}
+            </h2>
+            <p className="text-slate-600 text-base mt-2">
+              {STEPS[currentStep]?.description}
+            </p>
+          </div>
+
+          {/* Step Components */}
+          {currentStep === 0 && <OnboardingStep1 onNext={handleNext} />}
+          {currentStep === 1 && (
+            <OnboardingStep2 onBack={handleBack} onNext={handleNext} />
+          )}
+          {currentStep === 2 && (
+            <OnboardingStep3 onBack={handleBack} onNext={handleNext} />
+          )}
+          {currentStep === 3 && <OnboardingStep4 onBack={handleBack} />}
+        </motion.div>
       </div>
     </div>
   );
