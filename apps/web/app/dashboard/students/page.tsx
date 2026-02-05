@@ -875,7 +875,7 @@ export default function StudentsPage() {
         onOpenChange={setShowParentModal}
         preselectedStudentId={newlyCreatedStudentId}
         onSuccess={(parent) => {
-          toast.success(\"Parent created successfully!\", {
+          toast.success("Parent created successfully!", {
             description: `${parent.name} has been linked to the student.`,
           });
         }}
