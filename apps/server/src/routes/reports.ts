@@ -137,7 +137,8 @@ reports.post("/export-docx", async (c) => {
     const tableRows = [
       // Header row
       new TableRow({
-        cells: headers.map(
+        height: { value: 400, rule: "atLeast" },
+        children: headers.map(
           (header) =>
             new TableCell({
               children: [new Paragraph({ text: header, bold: true })],
@@ -151,7 +152,7 @@ reports.post("/export-docx", async (c) => {
       ...rows.map(
         (row) =>
           new TableRow({
-            cells: row.map(
+            children: row.map(
               (cell) =>
                 new TableCell({
                   children: [new Paragraph({ text: String(cell) })],
