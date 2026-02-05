@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, BorderStyle, WidthType, VerticalAlign, AlignmentType } from "docx";
 import { db, FeeStatus } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
@@ -114,6 +115,107 @@ reports.get("/financial", async (c) => {
     });
   } catch (error) {
     console.error("Financial report error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /reports/export-docx - Generate Word document
+reports.post("/export-docx", async (c) => {
+  try {
+    const body = await c.req.json() as {
+      title: string;
+      headers: string[];
+      rows: (string | number)[][];
+    };
+    const { title, headers, rows } = body;
+
+    if (!title || !headers || !rows) {
+      return errors.badRequest(c, "Missing required fields: title, headers, rows");
+    }
+
+    // Create table rows
+    const tableRows = [
+      // Header row
+      new TableRow({
+        cells: headers.map(
+          (header) =>
+            new TableCell({
+              children: [new Paragraph({ text: header, bold: true })],
+              shading: { fill: "3B82F6" }, // Brand color
+              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              verticalAlign: VerticalAlign.CENTER,
+            })
+        ),
+      }),
+      // Data rows
+      ...rows.map(
+        (row) =>
+          new TableRow({
+            cells: row.map(
+              (cell) =>
+                new TableCell({
+                  children: [new Paragraph({ text: String(cell) })],
+                  margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                })
+            ),
+          })
+      ),
+    ];
+
+    // Create document
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            // Title
+            new Paragraph({
+              text: title,
+              fontSize: 28,
+              bold: true,
+              alignment: AlignmentType.LEFT,
+              spacing: { after: 200 },
+            }),
+
+            // Generated timestamp
+            new Paragraph({
+              text: `Generated: ${new Date().toLocaleString()}`,
+              fontSize: 10,
+              color: "666666",
+              alignment: AlignmentType.LEFT,
+              spacing: { after: 400 },
+            }),
+
+            // Table
+            new Table({
+              rows: tableRows,
+              width: {
+                size: 100,
+                type: WidthType.PERCENTAGE,
+              },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+              },
+            }),
+          ],
+        },
+      ],
+    });
+
+    // Generate document
+    const buffer = await Packer.toBuffer(doc);
+
+    // Set response headers
+    c.header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    c.header("Content-Disposition", `attachment; filename="${title.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.docx"`);
+
+    return c.body(buffer);
+  } catch (error) {
+    console.error("Report generation error:", error);
     return errors.internalError(c);
   }
 });

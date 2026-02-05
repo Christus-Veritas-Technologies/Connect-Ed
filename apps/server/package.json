@@ -12,6 +12,7 @@
     "@repo/db": "workspace:*",
     "bcryptjs": "^2.4.3",
     "crypto": "^1.0.1",
+    "docx": "^9.5.1",
     "hono": "^4.11.7",
     "jose": "^6.0.0",
     "nodemailer": "^7.0.13",

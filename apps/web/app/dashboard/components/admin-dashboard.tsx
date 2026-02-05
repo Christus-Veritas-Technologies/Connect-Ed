@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { api } from "@/lib/api";
 import {
   UserGroupIcon,
   Money01Icon,
@@ -38,7 +39,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
-import { exportChartAsPDF, exportDataAsCSV } from "@/lib/export-utils";
+import { exportDataAsCSV } from "@/lib/export-utils";
 
 const quotaIcons = {
   email: Mail01Icon,
@@ -52,7 +53,6 @@ export function AdminDashboard() {
   const { user, school } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  const revenueChartRef = useRef<HTMLDivElement>(null);
   const feeStatusChartRef = useRef<HTMLDivElement>(null);
 
   if (isLoading || !stats) {
@@ -97,9 +97,27 @@ export function AdminDashboard() {
     exportDataAsCSV(dataToExport, ["Month", "Collected"], "monthly-revenue");
   };
 
-  const handleExportRevenuePDF = () => {
-    if (revenueChartRef.current) {
-      exportChartAsPDF(revenueChartRef.current, "monthly-revenue-chart");
+  const handleExportRevenueWord = async () => {
+    try {
+      const rows = revenueData.map((d: any) => [d.name || d.month, d.value || d.collected]);
+      const response = await api.post("/reports/export-docx", {
+        title: "Monthly Revenue Report",
+        headers: ["Month", "Collected"],
+        rows,
+      });
+      
+      // Trigger download
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `monthly-revenue-${Date.now()}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate report:", error);
     }
   };
 
@@ -217,13 +235,13 @@ export function AdminDashboard() {
               <Button variant="outline" size="sm" onClick={handleExportRevenueCSV}>
                 CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportRevenuePDF}>
-                PDF
+              <Button variant="outline" size="sm" onClick={handleExportRevenueWord}>
+                Word
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div ref={revenueChartRef} className="h-[250px]">
+            <div className="h-[250px]">
               {revenueData.length > 0 ? (
                 <ChartContainer
                   config={{
