@@ -18,7 +18,6 @@ import {
   FileExportIcon,
   PauseIcon,
   Cancel01Icon,
-  Camera01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useStudents, useCreateStudent } from "@/lib/hooks";
@@ -554,10 +553,7 @@ export default function StudentsPage() {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="space-y-3">
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand to-purple-600">
-                <HugeiconsIcon icon={UserGroupIcon} size={22} className="text-white" />
-              </div>
+            <DialogTitle className="text-xl font-bold">
               Add New Student
             </DialogTitle>
           </DialogHeader>
@@ -579,25 +575,6 @@ export default function StudentsPage() {
             </div>
           ) : (
             <form onSubmit={handleAddStudent} className="space-y-6">
-              {/* Profile Picture */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex justify-center"
-              >
-                <div className="relative group">
-                  <div className="size-24 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center border-4 border-background shadow-lg">
-                    <HugeiconsIcon icon={UserGroupIcon} size={40} className="text-muted-foreground" />
-                  </div>
-                  <button
-                    type="button"
-                    className="absolute bottom-0 right-0 p-2 rounded-full bg-brand text-white shadow-lg hover:bg-brand/90 transition-all"
-                  >
-                    <HugeiconsIcon icon={Camera01Icon} size={16} />
-                  </button>
-                </div>
-              </motion.div>
-
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
