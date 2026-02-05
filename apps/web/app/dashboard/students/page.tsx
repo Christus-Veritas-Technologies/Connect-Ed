@@ -58,6 +58,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
+import { AddParentDialog } from "@/components/dialogs/add-parent-dialog";
+import { toast } from "sonner";
 
 export default function StudentsPage() {
   const searchParams = useSearchParams();
@@ -70,6 +72,8 @@ export default function StudentsPage() {
   const [showAddModal, setShowAddModal] = useState(
     searchParams.get("action") === "add"
   );
+  const [showParentModal, setShowParentModal] = useState(false);
+  const [newlyCreatedStudentId, setNewlyCreatedStudentId] = useState<string | undefined>();
   const [classSearch, setClassSearch] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
@@ -168,7 +172,7 @@ export default function StudentsPage() {
     };
 
     createMutation.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setFormData({
           firstName: "",
           lastName: "",
@@ -180,6 +184,20 @@ export default function StudentsPage() {
         });
         setClassSearch("");
         setShowAddModal(false);
+        
+        // Show success toast
+        toast.success("Student created successfully!", {
+          description: `${data.student.firstName} ${data.student.lastName} has been added.`,
+        });
+        
+        // Open parent dialog with newly created student pre-selected
+        setNewlyCreatedStudentId(data.student.id);
+        setShowParentModal(true);
+      },
+      onError: () => {
+        toast.error("Failed to create student", {
+          description: "Please try again or contact support.",
+        });
       },
     });
   };
@@ -850,6 +868,18 @@ export default function StudentsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add Parent Dialog */}
+      <AddParentDialog
+        open={showParentModal}
+        onOpenChange={setShowParentModal}
+        preselectedStudentId={newlyCreatedStudentId}
+        onSuccess={(parent) => {
+          toast.success(\"Parent created successfully!\", {
+            description: `${parent.name} has been linked to the student.`,
+          });
+        }}
+      />
     </div>
   );
 }
