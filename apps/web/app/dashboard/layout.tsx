@@ -87,13 +87,18 @@ function SidebarContent({ pathname, user, school, logout }: {
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200
                   ${isActive
-                    ? "bg-brand text-white shadow-lg shadow-brand/30"
+                    ? "border-r-2 border-r-brand text-brand"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }
                 `}
               >
-                <HugeiconsIcon icon={item.icon} size={20} strokeWidth={2} />
-                <span>{item.label}</span>
+                <HugeiconsIcon
+                  icon={item.icon}
+                  size={20}
+                  strokeWidth={2}
+                  className={`${isActive ? "text-brand" : "text-inherit"}`}
+                />
+                <span className={`${isActive ? "text-brand" : ""}`}>{item.label}</span>
               </Link>
             </motion.div>
           );
