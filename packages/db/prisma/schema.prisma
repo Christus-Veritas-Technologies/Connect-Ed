@@ -82,6 +82,12 @@ enum NotificationPriority {
   URGENT
 }
 
+enum StudentStatus {
+  ACTIVE
+  SUSPENDED
+  ABSENT
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -169,14 +175,15 @@ model User {
 }
 
 model Student {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   firstName       String
   lastName        String
   dateOfBirth     DateTime?
   gender          Gender?
   admissionNumber String
-  admissionDate   DateTime  @default(now())
-  isActive        Boolean   @default(true)
+  admissionDate   DateTime      @default(now())
+  status          StudentStatus @default(ACTIVE)
+  isActive        Boolean       @default(true) // Deprecated, use status instead
 
   // Contact (optional, for direct student communication in Enterprise)
   email String?
