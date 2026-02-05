@@ -60,8 +60,8 @@ function SidebarContent({ pathname, user, school, logout }: {
             <span className="text-lg font-bold text-white">CE</span>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">Connect-Ed</h1>
-            <p className="text-xs text-muted-foreground truncate max-w-[140px]">
+            <h1 className="text-lg font-bold text-gray-900">Connect-Ed</h1>
+            <p className="text-xs text-gray-600 truncate max-w-[140px]">
               {school.name || "School Management"}
             </p>
           </div>
@@ -85,10 +85,10 @@ function SidebarContent({ pathname, user, school, logout }: {
               <Link
                 href={item.href}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200
+                  flex items-center gap-3 px-4 py-3 font-medium transition-all duration-200
                   ${isActive
-                    ? "border-r-2 border-r-brand text-brand"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "border-l-2 border-l-brand text-brand rounded-none"
+                    : "text-gray-600 hover:text-gray-900 rounded-xl"
                   }
                 `}
               >
@@ -109,16 +109,16 @@ function SidebarContent({ pathname, user, school, logout }: {
 
       {/* User Info */}
       <div className="p-4">
-        <div className="p-4 rounded-xl bg-muted/50">
+        <div className="p-4 rounded-xl bg-white/40">
           <div className="flex items-center gap-3 mb-3">
-            <div className="size-10 rounded-full bg-brand/10 flex items-center justify-center">
+            <div className="size-10 rounded-full bg-brand/20 flex items-center justify-center">
               <span className="text-sm font-semibold text-brand">
                 {user.name.split(" ").map(n => n[0]).join("").toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              <p className="font-semibold text-sm truncate text-gray-900">{user.name}</p>
+              <p className="text-xs text-gray-600 truncate">{user.email}</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
@@ -164,7 +164,7 @@ export default function DashboardLayout({
     <DashboardGuard>
       <div className="flex min-h-screen bg-muted/30">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-[280px] bg-card border-r border-border">
+        <aside className="hidden lg:block w-[280px] bg-gray-200 rounded-xl mx-4 lg:mx-8 my-4 lg:my-8">
           {user && school && (
             <SidebarContent
               pathname={pathname}
