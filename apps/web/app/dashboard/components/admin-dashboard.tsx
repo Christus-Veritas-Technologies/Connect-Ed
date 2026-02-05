@@ -14,6 +14,8 @@ import {
   Add01Icon,
   AlertCircleIcon,
   ArrowRight01Icon,
+  ArrowUp01Icon,
+  ArrowDown01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -122,6 +124,8 @@ export function AdminDashboard() {
           subtext={`${stats.activeStudents} active`}
           icon={UserGroupIcon}
           color="from-brand to-mid"
+          trend={stats.studentsTrend}
+          trendLabel="from last month"
         />
         <StatCard
           label="Fees Collected"
@@ -129,6 +133,8 @@ export function AdminDashboard() {
           subtext={`${stats.totalFees > 0 ? Math.round((stats.collectedFees / stats.totalFees) * 100) : 0}% collection rate`}
           icon={Money01Icon}
           color="from-success to-emerald-600"
+          trend={stats.collectionsTrend}
+          trendLabel="from last month"
         />
         <StatCard
           label="Pending Fees"
@@ -143,6 +149,8 @@ export function AdminDashboard() {
           subtext="This month"
           icon={Invoice03Icon}
           color="from-destructive to-red-600"
+          trend={stats.expensesTrend}
+          trendLabel="from last month"
         />
       </div>
 
@@ -340,13 +348,20 @@ function StatCard({
   subtext,
   icon,
   color,
+  trend,
+  trendLabel,
 }: {
   label: string;
   value: string | number;
   subtext: string;
   icon: any;
   color: string;
+  trend?: number;
+  trendLabel?: string;
 }) {
+  const isPositive = trend !== undefined && trend >= 0;
+  const TrendIcon = isPositive ? ArrowUp01Icon : ArrowDown01Icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -360,6 +375,12 @@ function StatCard({
               <p className="text-sm text-muted-foreground">{label}</p>
               <p className="text-2xl font-bold">{value}</p>
               <p className="text-xs text-muted-foreground">{subtext}</p>
+              {trend !== undefined && (
+                <p className="text-sm text-green-600 flex items-center gap-1 mt-2">
+                  <HugeiconsIcon icon={TrendIcon} size={16} />
+                  {Math.abs(trend)}% {trendLabel}
+                </p>
+              )}
             </div>
             <div className={`p-3 rounded-xl bg-gradient-to-br ${color}`}>
               <HugeiconsIcon icon={icon} className="size-5 text-white" />

@@ -73,14 +73,14 @@ export default function StudentsPage() {
   // Query hooks
   const { data, isLoading } = useStudents({
     page,
-    limit: 20,
+    limit: 10,
     search: debouncedSearch || undefined,
   });
 
   const createMutation = useCreateStudent();
 
   const students = data?.students || [];
-  const pagination = data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 };
+  const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -25,7 +25,11 @@ dashboard.get("/stats", requireAuth, async (c) => {
     const [
       school,
       studentStats,
+      thisMonthStudents,
+      lastMonthStudents,
       feeStats,
+      thisMonthCollections,
+      lastMonthCollections,
       expenseStats,
       lastMonthExpenseStats,
       overdueFeesCount,
@@ -55,9 +59,39 @@ dashboard.get("/stats", requireAuth, async (c) => {
         _count: { _all: true },
       }),
 
+      db.student.count({
+        where: {
+          schoolId,
+          createdAt: { gte: startOfMonth },
+        },
+      }),
+
+      db.student.count({
+        where: {
+          schoolId,
+          createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+        },
+      }),
+
       db.fee.aggregate({
         where: { schoolId },
         _sum: { amount: true, paidAmount: true },
+      }),
+
+      db.feePayment.aggregate({
+        where: {
+          schoolId,
+          createdAt: { gte: startOfMonth },
+        },
+        _sum: { amount: true },
+      }),
+
+      db.feePayment.aggregate({
+        where: {
+          schoolId,
+          createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+        },
+        _sum: { amount: true },
       }),
 
       db.expense.aggregate({
@@ -165,24 +199,38 @@ dashboard.get("/stats", requireAuth, async (c) => {
     });
 
     // Calculate stats
+    const totalStudents = studentStats._count._all;
+    const studentsTrend = lastMonthStudents > 0 
+      ? ((thisMonthStudents - lastMonthStudents) / lastMonthStudents) * 100 
+      : thisMonthStudents > 0 ? 100 : 0;
+
     const totalFees = feeStats._sum.amount || 0;
     const collectedFees = feeStats._sum.paidAmount || 0;
     const pendingFees = totalFees - collectedFees;
+    
+    const thisMonthCollected = thisMonthCollections._sum.amount || 0;
+    const lastMonthCollected = lastMonthCollections._sum.amount || 0;
+    const collectionsTrend = lastMonthCollected > 0 
+      ? ((thisMonthCollected - lastMonthCollected) / lastMonthCollected) * 100 
+      : thisMonthCollected > 0 ? 100 : 0;
+
     const totalExpenses = expenseStats._sum.amount || 0;
     const lastMonthExpenses = lastMonthExpenseStats._sum.amount || 0;
     const expensesTrend = lastMonthExpenses > 0 
       ? ((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
-      : 0;
+      : totalExpenses > 0 ? 100 : 0;
 
     return successResponse(c, {
       school: {
         name: school?.name,
         plan: school?.plan,
       },
-      totalStudents: studentStats._count._all,
+      totalStudents,
+      studentsTrend: Math.round(studentsTrend),
       activeStudents,
       totalFees,
       collectedFees,
+      collectionsTrend: Math.round(collectionsTrend),
       pendingFees,
       totalExpenses,
       expensesTrend: Math.round(expensesTrend),
