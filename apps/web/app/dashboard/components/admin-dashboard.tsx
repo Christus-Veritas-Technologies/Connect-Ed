@@ -370,7 +370,10 @@ function StatCard({
     >
       <Card className="overflow-hidden">
         <CardContent className="p-6">
-          <div className="flex items-start justify-between">
+          <div className="space-y-3">
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${color} w-fit`}>
+              <HugeiconsIcon icon={icon} className="size-5 text-white" />
+            </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{label}</p>
               <p className="text-2xl font-bold">{value}</p>
@@ -381,9 +384,6 @@ function StatCard({
                   {Math.abs(trend)}% {trendLabel}
                 </p>
               )}
-            </div>
-            <div className={`p-3 rounded-xl bg-gradient-to-br ${color}`}>
-              <HugeiconsIcon icon={icon} className="size-5 text-white" />
             </div>
           </div>
         </CardContent>

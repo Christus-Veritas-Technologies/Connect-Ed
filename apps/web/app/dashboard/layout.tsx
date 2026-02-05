@@ -89,8 +89,8 @@ function AppSidebar({ pathname, user, school, logout }: {
   })).filter(section => section.items.length > 0);
 
   return (
-    <Sidebar className="bg-gray-200 rounded-xl mx-4 lg:mx-8 my-4 lg:my-8 border-none">
-      <SidebarHeader className="p-6 border-b border-gray-300">
+    <Sidebar className="border-none">
+      <SidebarHeader className="p-6 border-b">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="size-10 rounded-xl bg-gradient-to-br from-brand to-mid flex items-center justify-center">
             <span className="text-lg font-bold text-white">CE</span>
@@ -124,7 +124,7 @@ function AppSidebar({ pathname, user, school, logout }: {
                         tooltip={item.label}
                         className={`
                           ${isActive
-                            ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-none"
+                            ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-tr-xl rounded-br-xl"
                             : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
                           }
                         `}
@@ -153,7 +153,7 @@ function AppSidebar({ pathname, user, school, logout }: {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-gray-300">
+      <SidebarFooter className="p-4 border-t">
         <div className="p-4 rounded-xl bg-white/40">
           <div className="flex items-center gap-3 mb-3">
             <div className="size-10 rounded-full bg-brand/20 flex items-center justify-center">
