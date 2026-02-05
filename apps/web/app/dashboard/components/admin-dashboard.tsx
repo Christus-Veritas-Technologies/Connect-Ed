@@ -16,6 +16,7 @@ import {
   ArrowRight01Icon,
   ArrowUp01Icon,
   ArrowDown01Icon,
+  Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -23,6 +24,12 @@ import { useDashboardStats } from "@/lib/hooks";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import {
   ChartContainer,
@@ -106,14 +113,43 @@ export function AdminDashboard() {
             Here's what's happening at {school?.name || "your school"} today
           </p>
         </div>
-        {stats.overdueFeesCount > 0 && (
-          <Link href="/dashboard/fees?status=OVERDUE">
-            <Badge variant="destructive" className="flex items-center gap-2 px-3 py-1.5">
-              <HugeiconsIcon icon={AlertCircleIcon} className="size-4" />
-              {stats.overdueFeesCount} overdue fee{stats.overdueFeesCount > 1 ? "s" : ""}
-            </Badge>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <HugeiconsIcon icon={Menu01Icon} size={20} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/students/new" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <span>Add Student</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/fees/new" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <span>Create Fee</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <span>Record Expense</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {stats.overdueFeesCount > 0 && (
+            <Link href="/dashboard/fees?status=OVERDUE">
+              <Badge variant="destructive" className="flex items-center gap-2 px-3 py-1.5">
+                <HugeiconsIcon icon={AlertCircleIcon} className="size-4" />
+                {stats.overdueFeesCount} overdue fee{stats.overdueFeesCount > 1 ? "s" : ""}
+              </Badge>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -380,9 +416,9 @@ function StatCard({
               <HugeiconsIcon icon={icon} className={`size-5 ${isFeatured ? "text-white" : "text-white"}`} />
             </div>
             <div className="space-y-1">
-              <p className={`text-sm ${isFeatured ? "text-gray-400" : "text-muted-foreground"}`}>{label}</p>
+              <p className={`text-sm ${isFeatured ? "text-white" : "text-muted-foreground"}`}>{label}</p>
               <p className={`text-2xl font-bold ${isFeatured ? "text-white" : ""}`}>{value}</p>
-              <p className={`text-xs ${isFeatured ? "text-gray-400" : "text-muted-foreground"}`}>{subtext}</p>
+              <p className={`text-xs ${isFeatured ? "text-gray-200" : "text-muted-foreground"}`}>{subtext}</p>
               {trend !== undefined && (
                 <p className={`text-sm flex items-center gap-1 mt-2 ${
                   isFeatured ? "text-green-200" : "text-green-600"
