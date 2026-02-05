@@ -100,11 +100,27 @@ export function AdminDashboard() {
   const handleExportRevenueWord = async () => {
     try {
       const rows = revenueData.map((d: any) => [d.name || d.month, d.value || d.collected]);
-      const response = await api.post("/reports/export-docx", {
-        title: "Monthly Revenue Report",
-        headers: ["Month", "Collected"],
-        rows,
+      
+      // Get auth token
+      const token = localStorage.getItem("token");
+      
+      // Use fetch directly for binary response
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/reports/export-docx`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: "Monthly Revenue Report",
+          headers: ["Month", "Collected"],
+          rows,
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
       
       // Trigger download
       const blob = await response.blob();
