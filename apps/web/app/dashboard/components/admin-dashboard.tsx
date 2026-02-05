@@ -17,7 +17,7 @@ import {
   ArrowUp01Icon,
   ArrowDown01Icon,
   Menu01Icon,
-  ChevronDownIcon,
+  ChevronDown,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -121,7 +121,7 @@ export function AdminDashboard() {
               <Button variant="outline" className="gap-2">
                 <span>Quick actions</span>
                 <HugeiconsIcon 
-                  icon={ChevronDownIcon} 
+                  icon={ChevronDown} 
                   size={18}
                   className={`transition-transform duration-200 ${isQuickActionsOpen ? "rotate-180" : ""}`}
                 />
