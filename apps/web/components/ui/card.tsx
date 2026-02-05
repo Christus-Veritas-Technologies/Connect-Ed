@@ -21,7 +21,7 @@ function Card({ className, hover = false, ...props }: CardProps) {
         boxShadow: "0 20px 40px -12px rgba(59, 130, 246, 0.15)" 
       } : undefined}
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl p-6 shadow-sm transition-shadow duration-300 h-full",
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl p-6 shadow-sm transition-shadow duration-300 h-full w-full",
         hover && "cursor-pointer hover:border-brand/20",
         className
       )}
