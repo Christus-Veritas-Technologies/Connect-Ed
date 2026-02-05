@@ -126,6 +126,7 @@ export function AdminDashboard() {
           color="from-brand to-mid"
           trend={stats.studentsTrend}
           trendLabel="from last month"
+          isFeatured
         />
         <StatCard
           label="Fees Collected"
@@ -350,6 +351,7 @@ function StatCard({
   color,
   trend,
   trendLabel,
+  isFeatured = false,
 }: {
   label: string;
   value: string | number;
@@ -358,6 +360,7 @@ function StatCard({
   color: string;
   trend?: number;
   trendLabel?: string;
+  isFeatured?: boolean;
 }) {
   const isPositive = trend !== undefined && trend >= 0;
   const TrendIcon = isPositive ? ArrowUp01Icon : ArrowDown01Icon;
@@ -368,18 +371,22 @@ function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="overflow-hidden">
-        <CardContent className="p-6">
+      <Card className={`overflow-hidden ${
+        isFeatured ? "bg-brand" : ""
+      }`}>
+        <CardContent className={`${isFeatured ? "p-3" : "p-3"}`}>
           <div className="space-y-3">
-            <div className={`p-3 rounded-xl bg-gradient-to-br ${color} w-fit`}>
-              <HugeiconsIcon icon={icon} className="size-5 text-white" />
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${isFeatured ? "bg-white/20" : color} w-fit`}>
+              <HugeiconsIcon icon={icon} className={`size-5 ${isFeatured ? "text-white" : "text-white"}`} />
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="text-2xl font-bold">{value}</p>
-              <p className="text-xs text-muted-foreground">{subtext}</p>
+              <p className={`text-sm ${isFeatured ? "text-gray-400" : "text-muted-foreground"}`}>{label}</p>
+              <p className={`text-2xl font-bold ${isFeatured ? "text-white" : ""}`}>{value}</p>
+              <p className={`text-xs ${isFeatured ? "text-gray-400" : "text-muted-foreground"}`}>{subtext}</p>
               {trend !== undefined && (
-                <p className="text-sm text-green-600 flex items-center gap-1 mt-2">
+                <p className={`text-sm flex items-center gap-1 mt-2 ${
+                  isFeatured ? "text-green-200" : "text-green-600"
+                }`}>
                   <HugeiconsIcon icon={TrendIcon} size={16} />
                   {Math.abs(trend)}% {trendLabel}
                 </p>
