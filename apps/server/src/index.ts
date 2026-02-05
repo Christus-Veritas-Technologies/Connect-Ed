@@ -5,6 +5,7 @@ import { logger } from "hono/logger";
 // Import routes
 import auth from "./routes/auth";
 import students from "./routes/students";
+import parents from "./routes/parents";
 import fees from "./routes/fees";
 import expenses from "./routes/expenses";
 import classes from "./routes/classes";
@@ -50,6 +51,7 @@ app.get("/health", (c) => {
 // Mount routes
 app.route("/auth", auth);
 app.route("/students", students);
+app.route("/parents", parents);
 app.route("/fees", fees);
 app.route("/expenses", expenses);
 app.route("/classes", classes);

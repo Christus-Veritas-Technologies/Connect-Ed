@@ -2,9 +2,15 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan, Role } from "@repo/db";
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
-import { createUserSchema } from "../lib/validation";
-import { hashPassword } from "../lib/password";
+import { hashPassword, generateRandomPassword } from "../lib/password";
 import { successResponse, errors } from "../lib/response";
+import { z } from "zod";
+
+const createTeacherSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.literal("TEACHER"),
+});
 
 const teachers = new Hono();
 
@@ -43,15 +49,10 @@ teachers.get("/", async (c) => {
 });
 
 // POST /teachers - Create teacher
-teachers.post("/", zValidator("json", createUserSchema), async (c) => {
+teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
-
-    // Force role to be TEACHER
-    if (data.role !== "TEACHER") {
-      return errors.validationError(c, { role: ["Role must be TEACHER"] });
-    }
 
     // Check for existing email
     const existingUser = await db.user.findUnique({
@@ -62,8 +63,9 @@ teachers.post("/", zValidator("json", createUserSchema), async (c) => {
       return errors.conflict(c, "A user with this email already exists");
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(data.password);
+    // Generate random password
+    const generatedPassword = generateRandomPassword();
+    const hashedPassword = await hashPassword(generatedPassword);
 
     // Create teacher
     const teacher = await db.user.create({
@@ -84,7 +86,15 @@ teachers.post("/", zValidator("json", createUserSchema), async (c) => {
       },
     });
 
-    return successResponse(c, { teacher }, 201);
+    // Return teacher with generated password (for email notification)
+    return successResponse(
+      c,
+      {
+        teacher,
+        password: generatedPassword,
+      },
+      201
+    );
   } catch (error) {
     console.error("Create teacher error:", error);
     return errors.internalError(c);
