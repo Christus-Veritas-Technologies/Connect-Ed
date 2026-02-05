@@ -873,10 +873,26 @@ export default function StudentsPage() {
         open={showParentModal}
         onOpenChange={setShowParentModal}
         preselectedStudentId={newlyCreatedStudentId}
-        onSuccess={(parent) => {
-          toast.success("Parent created successfully!", {
-            description: `${parent.name} has been linked to the student.`,
-          });
+        onSuccess={(data) => {
+          const linkedCount = data.linkedStudents?.length || 0;
+          const requestedCount = data.requestedStudents?.length || 0;
+
+          if (linkedCount > 0 && requestedCount === 0) {
+            // All students linked directly
+            toast.success("Parent created successfully!", {
+              description: `${data.parent.name} has been linked to ${linkedCount} ${linkedCount === 1 ? "student" : "students"}.`,
+            });
+          } else if (linkedCount === 0 && requestedCount > 0) {
+            // All students sent as requests
+            toast.success("Parent created - Approval required", {
+              description: `Request sent to existing parents for ${requestedCount} ${requestedCount === 1 ? "student" : "students"}. ${data.parent.name} will be notified once accepted.`,
+            });
+          } else {
+            // Mixed: some linked, some requested
+            toast.success("Parent created successfully!", {
+              description: `${data.parent.name} linked to ${linkedCount} ${linkedCount === 1 ? "student" : "students"}. Approval pending for ${requestedCount} more.`,
+            });
+          }
         }}
       />
     </div>

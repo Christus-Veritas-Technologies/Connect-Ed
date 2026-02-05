@@ -84,7 +84,9 @@ export function AddParentDialog({
         });
         setChildSearch("");
         onOpenChange(false);
-        onSuccess?.(data.parent);
+        
+        // Pass the full response data to parent component
+        onSuccess?.(data);
       },
     });
   };
