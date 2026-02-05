@@ -680,4 +680,38 @@ dashboard.get("/student", requireStudentAuth, async (c) => {
   }
 });
 
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+// GET /dashboard/notifications/unread-counts - Get unread notification counts grouped by actionUrl
+dashboard.get("/notifications/unread-counts", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+
+    // Fetch all unread notifications for the user
+    const notifications = await db.notification.findMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      select: {
+        actionUrl: true,
+      },
+    });
+
+    // Group by actionUrl and count
+    const counts: Record<string, number> = {};
+    notifications.forEach((notification) => {
+      const url = notification.actionUrl || "general";
+      counts[url] = (counts[url] || 0) + 1;
+    });
+
+    return successResponse(c, { counts });
+  } catch (error) {
+    console.error("Notification counts error:", error);
+    return errors.internalError(c);
+  }
+});
+
 export default dashboard;

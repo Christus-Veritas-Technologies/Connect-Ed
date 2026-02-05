@@ -13,48 +13,84 @@ import {
   ChartHistogramIcon,
   Settings02Icon,
   Logout01Icon,
-  Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
 import { useLogout } from "@/lib/hooks";
+import { useNotificationCounts } from "@/lib/hooks/use-notifications";
 import { DashboardGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
-  { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
-  { href: "/dashboard/fees", label: "Fees", icon: Money01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
-  { href: "/dashboard/expenses", label: "Expenses", icon: Invoice03Icon, roles: ["ADMIN", "RECEPTIONIST"] },
-  { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN", "TEACHER"], plans: ["GROWTH", "ENTERPRISE"] },
-  { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
-  { href: "/dashboard/reports", label: "Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "RECEPTIONIST"] },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings02Icon, roles: ["ADMIN"] },
+// Navigation items organized by sections
+const navSections = [
+  {
+    label: "Main",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
+      { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
+      { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN", "TEACHER"], plans: ["GROWTH", "ENTERPRISE"] },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { href: "/dashboard/fees", label: "Fees", icon: Money01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
+      { href: "/dashboard/expenses", label: "Expenses", icon: Invoice03Icon, roles: ["ADMIN", "RECEPTIONIST"] },
+      { href: "/dashboard/reports", label: "Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "RECEPTIONIST"] },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/dashboard/settings", label: "Settings", icon: Settings02Icon, roles: ["ADMIN"] },
+    ],
+  },
 ];
 
-function SidebarContent({ pathname, user, school, logout }: {
+function AppSidebar({ pathname, user, school, logout }: {
   pathname: string;
   user: { name: string; email: string; role: string };
   school: { name: string | null; plan: string };
   logout: () => void;
 }) {
-  const filteredNavItems = navItems.filter((item) => {
-    if (!item.roles.includes(user.role)) return false;
-    if (item.plans && !item.plans.includes(school.plan)) return false;
-    return true;
-  });
+  const { data: notificationData } = useNotificationCounts();
+  const notificationCounts = notificationData?.counts || {};
+
+  // Filter sections based on user role and school plan
+  const filteredSections = navSections.map(section => ({
+    ...section,
+    items: section.items.filter((item) => {
+      if (!item.roles.includes(user.role)) return false;
+      if (item.plans && !item.plans.includes(school.plan)) return false;
+      return true;
+    }),
+  })).filter(section => section.items.length > 0);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-6">
+    <Sidebar className="bg-gray-200 rounded-xl mx-4 lg:mx-8 my-4 lg:my-8 border-none">
+      <SidebarHeader className="p-6 border-b border-gray-300">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="size-10 rounded-xl bg-gradient-to-br from-brand to-mid flex items-center justify-center">
             <span className="text-lg font-bold text-white">CE</span>
@@ -66,49 +102,58 @@ function SidebarContent({ pathname, user, school, logout }: {
             </p>
           </div>
         </Link>
-      </div>
+      </SidebarHeader>
 
-      <Separator />
+      <SidebarContent className="px-2 py-4">
+        {filteredSections.map((section, sectionIndex) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+              {section.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  const notificationCount = notificationCounts[item.href] || 0;
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {filteredNavItems.map((item, index) => {
-          const isActive = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.label}
+                        className={`
+                          ${isActive
+                            ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-none"
+                            : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
+                          }
+                        `}
+                      >
+                        <Link href={item.href}>
+                          <HugeiconsIcon
+                            icon={item.icon}
+                            size={20}
+                            strokeWidth={2}
+                            className={isActive ? "text-brand" : "text-inherit"}
+                          />
+                          <span>{item.label}</span>
+                          {notificationCount > 0 && (
+                            <SidebarMenuBadge className="ml-auto bg-brand text-white">
+                              {notificationCount}
+                            </SidebarMenuBadge>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
 
-          return (
-            <motion.div
-              key={item.href}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Link
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-4 py-3 font-medium transition-all duration-200
-                  ${isActive
-                    ? "border-l-2 border-l-brand text-brand rounded-none"
-                    : "text-gray-600 hover:text-gray-900 rounded-xl"
-                  }
-                `}
-              >
-                <HugeiconsIcon
-                  icon={item.icon}
-                  size={20}
-                  strokeWidth={2}
-                  className={`${isActive ? "text-brand" : "text-inherit"}`}
-                />
-                <span className={`${isActive ? "text-brand" : ""}`}>{item.label}</span>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </nav>
-
-      <Separator />
-
-      {/* User Info */}
-      <div className="p-4">
+      <SidebarFooter className="p-4 border-t border-gray-300">
         <div className="p-4 rounded-xl bg-white/40">
           <div className="flex items-center gap-3 mb-3">
             <div className="size-10 rounded-full bg-brand/20 flex items-center justify-center">
@@ -142,8 +187,10 @@ function SidebarContent({ pathname, user, school, logout }: {
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </SidebarFooter>
+      
+      <SidebarRail />
+    </Sidebar>
   );
 }
 
@@ -162,63 +209,33 @@ export default function DashboardLayout({
 
   return (
     <DashboardGuard>
-      <div className="flex min-h-screen bg-muted/30">
-        {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-[280px] bg-gray-200 rounded-xl mx-4 lg:mx-8 my-4 lg:my-8">
+      <SidebarProvider defaultOpen={true}>
+        <div className="flex min-h-screen w-full bg-muted/30">
           {user && school && (
-            <SidebarContent
+            <AppSidebar
               pathname={pathname}
               user={user}
               school={school}
               logout={handleLogout}
             />
           )}
-        </aside>
 
-        {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
-          <div className="flex items-center justify-between p-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
-                <span className="text-sm font-bold text-white">CE</span>
-              </div>
-              <span className="font-bold">Connect-Ed</span>
-            </Link>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <HugeiconsIcon icon={Menu01Icon} size={24} />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[280px]">
-                {user && school && (
-                  <SidebarContent
-                    pathname={pathname}
-                    user={user}
-                    school={school}
-                    logout={handleLogout}
-                  />
-                )}
-              </SheetContent>
-            </Sheet>
-          </div>
+          {/* Main Content */}
+          <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
-
-        {/* Main Content */}
-        <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </div>
+      </SidebarProvider>
     </DashboardGuard>
   );
 }
