@@ -3,6 +3,7 @@ export * from "./use-auth";
 
 // Data hooks
 export * from "./use-students";
+export * from "./use-parents";
 export * from "./use-fees";
 export * from "./use-expenses";
 export * from "./use-classes";
