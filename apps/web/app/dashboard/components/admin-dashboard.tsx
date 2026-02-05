@@ -19,6 +19,9 @@ import {
   ArrowDown01Icon,
   Menu01Icon,
   ChevronDown,
+  UserPlus01Icon,
+  FileAdd01Icon,
+  ShoppingCart01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -97,7 +100,7 @@ export function AdminDashboard() {
     exportDataAsCSV(dataToExport, ["Month", "Collected"], "monthly-revenue");
   };
 
-  const handleExportRevenueWord = async () => {
+  const handleExportRevenuePDF = async () => {
     try {
       const rows = revenueData.map((d: any) => [d.name || d.month, `$${(d.value || d.collected).toLocaleString()}`]);
       
@@ -105,7 +108,7 @@ export function AdminDashboard() {
       const token = localStorage.getItem("accessToken");
       
       // Use fetch directly for binary response
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/reports/export-docx`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/reports/export-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +132,7 @@ export function AdminDashboard() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${school?.name?.replace(/\s+/g, "-") || "monthly-revenue"}-${Date.now()}.docx`;
+      link.download = `${school?.name?.replace(/\s+/g, "-") || "monthly-revenue"}-${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -166,19 +169,19 @@ export function AdminDashboard() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/students/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <HugeiconsIcon icon={UserPlus01Icon} size={16} />
                   <span>Add Student</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/fees/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <HugeiconsIcon icon={FileAdd01Icon} size={16} />
                   <span>Create Fee</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <HugeiconsIcon icon={ShoppingCart01Icon} size={16} />
                   <span>Record Expense</span>
                 </Link>
               </DropdownMenuItem>
@@ -253,8 +256,8 @@ export function AdminDashboard() {
               <Button variant="outline" size="sm" onClick={handleExportRevenueCSV}>
                 CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportRevenueWord}>
-                Word
+              <Button variant="outline" size="sm" onClick={handleExportRevenuePDF}>
+                PDF
               </Button>
             </div>
           </CardHeader>

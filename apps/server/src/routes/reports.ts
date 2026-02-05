@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { Document, Packer, Paragraph, Table, TableCell, TableRow, BorderStyle, WidthType, VerticalAlign, AlignmentType } from "docx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { db, FeeStatus } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
@@ -119,8 +120,8 @@ reports.get("/financial", async (c) => {
   }
 });
 
-// POST /reports/export-docx - Generate Word document
-reports.post("/export-docx", async (c) => {
+// POST /reports/export-pdf - Generate professionally formatted PDF
+reports.post("/export-pdf", async (c) => {
   try {
     const body = await c.req.json() as {
       title: string;
@@ -141,157 +142,156 @@ reports.post("/export-docx", async (c) => {
       select: { name: true, plan: true },
     });
 
-    // Create table rows
-    const tableRows = [
-      // Header row
-      new TableRow({
-        height: { value: 500, rule: "atLeast" },
-        children: headers.map(
-          (header) =>
-            new TableCell({
-              children: [new Paragraph({ 
-                text: header, 
-                bold: true,
-                color: "FFFFFF",
-              })],
-              shading: { fill: "3B82F6" }, // Brand color
-              margins: { top: 150, bottom: 150, left: 150, right: 150 },
-              verticalAlign: VerticalAlign.CENTER,
-            })
-        ),
-      }),
-      // Data rows
-      ...rows.map(
-        (row, index) =>
-          new TableRow({
-            children: row.map(
-              (cell) =>
-                new TableCell({
-                  children: [new Paragraph({ 
-                    text: String(cell),
-                    alignment: typeof cell === 'number' ? AlignmentType.RIGHT : AlignmentType.LEFT,
-                  })],
-                  shading: { fill: index % 2 === 0 ? "FFFFFF" : "F8FAFC" }, // Alternating rows
-                  margins: { top: 120, bottom: 120, left: 150, right: 150 },
-                })
-            ),
-          })
-      ),
-    ];
-
-    // Create document sections
-    const documentSections = [
-      // School Header
-      new Paragraph({
-        text: school?.name || "Connect-Ed School Management",
-        fontSize: 32,
-        bold: true,
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 100 },
-        color: "3B82F6",
-      }),
-
-      new Paragraph({
-        text: subtitle || "",
-        fontSize: 14,
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-        color: "6B7280",
-      }),
-
-      // Report Title
-      new Paragraph({
-        text: title,
-        fontSize: 24,
-        bold: true,
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 200 },
-      }),
-
-      // Generated timestamp
-      new Paragraph({
-        text: `Generated: ${new Date().toLocaleString('en-US', { 
-          dateStyle: 'full', 
-          timeStyle: 'short' 
-        })}`,
-        fontSize: 10,
-        color: "6B7280",
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 400 },
-      }),
-
-      // Table
-      new Table({
-        rows: tableRows,
-        width: {
-          size: 100,
-          type: WidthType.PERCENTAGE,
-        },
-        borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-          left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-          right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-        },
-      }),
-    ];
-
-    // Add footer if provided
-    if (footer) {
-      documentSections.push(
-        new Paragraph({
-          text: footer,
-          fontSize: 14,
-          bold: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 400 },
-          color: "1F2937",
-        })
-      );
-    }
-
-    // Add school plan info
-    documentSections.push(
-      new Paragraph({
-        text: `Plan: ${school?.plan || 'LITE'}`,
-        fontSize: 9,
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 600 },
-        color: "9CA3AF",
-      })
-    );
-
-    // Create document
-    const doc = new Document({
-      sections: [
-        {
-          properties: {
-            page: {
-              margin: {
-                top: 1440,    // 1 inch
-                bottom: 1440,
-                left: 1440,
-                right: 1440,
-              },
-            },
-          },
-          children: documentSections,
-        },
-      ],
+    // Create PDF document (A4 size)
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
-    // Generate document
-    const buffer = await Packer.toBuffer(doc);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPosition = margin;
+
+    // Helper function to add page header
+    const addPageHeader = () => {
+      // Brand accent line at top
+      doc.setFillColor(59, 130, 246); // Brand blue
+      doc.rect(0, 0, pageWidth, 4, "F");
+      
+      yPosition = 15;
+    };
+
+    // Helper function to add page footer
+    const addPageFooter = (pageNumber: number, totalPages: number) => {
+      const footerY = pageHeight - 15;
+      
+      // Separator line
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.5);
+      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+      
+      // School name (left)
+      doc.setFontSize(8);
+      doc.setTextColor(156, 163, 175);
+      doc.text(school?.name || "Connect-Ed", margin, footerY);
+      
+      // Page number (center)
+      doc.text(`Page ${pageNumber} of ${totalPages}`, pageWidth / 2, footerY, { align: "center" });
+      
+      // Plan (right)
+      doc.text(`${school?.plan || "LITE"} Plan`, pageWidth - margin, footerY, { align: "right" });
+    };
+
+    // Start first page
+    addPageHeader();
+    yPosition = 25;
+
+    // School Name Header (centered, brand color)
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(59, 130, 246);
+    doc.text(school?.name || "Connect-Ed School Management", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 10;
+
+    // Subtitle
+    if (subtitle) {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(107, 114, 128);
+      doc.text(subtitle, pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 10;
+    }
+
+    // Separator line
+    yPosition += 5;
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
+
+    // Report Title
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(31, 41, 55);
+    doc.text(title, margin, yPosition);
+    yPosition += 8;
+
+    // Generated timestamp
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    const timestamp = new Date().toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    doc.text(`Generated: ${timestamp}`, margin, yPosition);
+    yPosition += 15;
+
+    // Data Table with autoTable
+    autoTable(doc, {
+      startY: yPosition,
+      head: [headers],
+      body: rows.map(row => row.map(cell => String(cell))),
+      margin: { left: margin, right: margin },
+      styles: {
+        fontSize: 10,
+        cellPadding: 4,
+        lineColor: [229, 231, 235],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [59, 130, 246], // Brand blue
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        halign: "left",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252], // Light gray
+      },
+      bodyStyles: {
+        textColor: [31, 41, 55],
+      },
+      columnStyles: {
+        // Right-align numeric columns (assuming last column is numeric)
+        [headers.length - 1]: { halign: "right" },
+      },
+    });
+
+    // Get final Y position after table
+    const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+    yPosition = finalY + 10;
+
+    // Footer text (summary)
+    if (footer) {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(31, 41, 55);
+      doc.text(footer, pageWidth - margin, yPosition, { align: "right" });
+    }
+
+    // Add page footers to all pages
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      addPageFooter(i, totalPages);
+    }
+
+    // Generate PDF buffer
+    const pdfBuffer = doc.output("arraybuffer");
 
     // Set response headers
-    c.header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    c.header("Content-Disposition", `attachment; filename="${title.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.docx"`);
+    c.header("Content-Type", "application/pdf");
+    c.header("Content-Disposition", `attachment; filename="${title.replace(/\\s+/g, "-").toLowerCase()}-${Date.now()}.pdf"`);
 
-    return c.body(buffer);
+    return c.body(pdfBuffer);
   } catch (error) {
-    console.error("Report generation error:", error);
+    console.error("PDF generation error:", error);
     return errors.internalError(c);
   }
 });
