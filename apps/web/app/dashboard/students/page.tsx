@@ -15,6 +15,9 @@ import {
   FilterIcon,
   ArrowUp01Icon,
   ArrowDown01Icon,
+  FileDownloadIcon,
+  FileExportIcon,
+  PauseIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useStudents, useCreateStudent } from "@/lib/hooks";
@@ -39,12 +42,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Table,
   TableBody,
   TableCell,
@@ -52,6 +49,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 
 export default function StudentsPage() {
   const searchParams = useSearchParams();
@@ -94,16 +98,66 @@ export default function StudentsPage() {
   const students = data?.students || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
 
-  // Calculate stats
+  // Calculate stats - using isActive for now until backend is updated
   const activeStudents = students.filter((s) => s.isActive).length;
-  const inactiveStudents = students.length - activeStudents;
+  const suspendedStudents = 0; // TODO: Update when backend supports status field
+  const absentStudents = 0; // TODO: Update when backend supports status field
 
   // Filter students by status
   const filteredStudents = statusFilter === "all" 
     ? students 
-    : students.filter((s) => 
-        statusFilter === "active" ? s.isActive : !s.isActive
-      );
+    : statusFilter === "active"
+    ? students.filter((s) => s.isActive)
+    : statusFilter === "suspended"
+    ? [] // TODO: Update when backend supports status field
+    : statusFilter === "absent"
+    ? [] // TODO: Update when backend supports status field
+    : students.filter((s) => !s.isActive);
+
+  // Export handlers
+  const handleExportCSV = () => {
+    if (filteredStudents.length === 0) return;
+
+    const exportData = filteredStudents.map((student) => ({
+      Name: `${student.firstName} ${student.lastName}`,
+      "Admission No": student.admissionNumber,
+      Class: student.class?.name || "—",
+      Status: student.isActive ? "Active" : "Inactive",
+      Gender: student.gender || "—",
+      DOB: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "—",
+    }));
+
+    exportDataAsCSV(
+      exportData,
+      ["Name", "Admission No", "Class", "Status", "Gender", "DOB"],
+      `students-${new Date().toISOString().split("T")[0]}`
+    );
+  };
+
+  const handleExportPDF = () => {
+    if (filteredStudents.length === 0) return;
+
+    const exportData = filteredStudents.map((student) => ({
+      name: `${student.firstName} ${student.lastName}`,
+      admissionNumber: student.admissionNumber,
+      class: student.class?.name || "—",
+      status: student.isActive ? "Active" : "Inactive",
+      gender: student.gender || "—",
+    }));
+
+    exportToPDF(
+      exportData,
+      [
+        { key: "name", label: "Name" },
+        { key: "admissionNumber", label: "Admission No" },
+        { key: "class", label: "Class" },
+        { key: "status", label: "Status" },
+        { key: "gender", label: "Gender" },
+      ],
+      `students-${new Date().toISOString().split("T")[0]}`,
+      "Students Report"
+    );
+  };
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +207,7 @@ export default function StudentsPage() {
       </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -199,15 +253,35 @@ export default function StudentsPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
+          <Card className="overflow-hidden border-l-4 border-l-red-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Suspended</p>
+                  <p className="text-2xl font-bold mt-1 text-red-600">{suspendedStudents}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-red-100">
+                  <HugeiconsIcon icon={UserRemove01Icon} size={24} className="text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+        >
           <Card className="overflow-hidden border-l-4 border-l-orange-500">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Inactive</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-600">{inactiveStudents}</p>
+                  <p className="text-sm text-muted-foreground">Absent</p>
+                  <p className="text-2xl font-bold mt-1 text-orange-600">{absentStudents}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-orange-100">
-                  <HugeiconsIcon icon={UserRemove01Icon} size={24} className="text-orange-600" />
+                  <HugeiconsIcon icon={PauseIcon} size={24} className="text-orange-600" />
                 </div>
               </div>
             </CardContent>
@@ -219,7 +293,7 @@ export default function StudentsPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.5 }}
         className="flex flex-col sm:flex-row gap-3"
       >
         <div className="relative flex-1">
@@ -245,9 +319,52 @@ export default function StudentsPage() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="absent">Absent</SelectItem>
             </SelectContent>
           </Select>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleExportCSV}
+                    disabled={filteredStudents.length === 0}
+                    className="gap-2"
+                  >
+                    <HugeiconsIcon icon={FileDownloadIcon} size={20} />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {filteredStudents.length === 0 ? "No students to export" : "Export as CSV"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleExportPDF}
+                    disabled={filteredStudents.length === 0}
+                    className="gap-2"
+                  >
+                    <HugeiconsIcon icon={FileExportIcon} size={20} />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {filteredStudents.length === 0 ? "No students to export" : "Export as PDF"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </motion.div>
 
@@ -255,7 +372,7 @@ export default function StudentsPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.6 }}
         className="bg-card rounded-xl border overflow-hidden"
       >
         {isLoading ? (
@@ -381,11 +498,11 @@ export default function StudentsPage() {
 
       {/* Add Student Dialog */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-brand/10">
-                <HugeiconsIcon icon={UserGroupIcon} size={20} className="text-brand" />
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand to-purple-600">
+                <HugeiconsIcon icon={UserGroupIcon} size={22} className="text-white" />
               </div>
               Add New Student
             </DialogTitle>
@@ -402,7 +519,7 @@ export default function StudentsPage() {
             </motion.div>
           )}
 
-          <form onSubmit={handleAddStudent} className="space-y-4">
+          <form onSubmit={handleAddStudent} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -410,12 +527,13 @@ export default function StudentsPage() {
                 transition={{ delay: 0.1 }}
                 className="space-y-2"
               >
-                <Label>First Name</Label>
+                <Label className="text-sm font-medium">First Name</Label>
                 <Input
                   value={formData.firstName}
                   onChange={(e) =>
                     setFormData({ ...formData, firstName: e.target.value })
                   }
+                  className="rounded-lg"
                   required
                 />
               </motion.div>
@@ -425,12 +543,13 @@ export default function StudentsPage() {
                 transition={{ delay: 0.1 }}
                 className="space-y-2"
               >
-                <Label>Last Name</Label>
+                <Label className="text-sm font-medium">Last Name</Label>
                 <Input
                   value={formData.lastName}
                   onChange={(e) =>
                     setFormData({ ...formData, lastName: e.target.value })
                   }
+                  className="rounded-lg"
                   required
                 />
               </motion.div>
@@ -442,13 +561,14 @@ export default function StudentsPage() {
               transition={{ delay: 0.2 }}
               className="space-y-2"
             >
-              <Label>Admission Number</Label>
+              <Label className="text-sm font-medium">Admission Number</Label>
               <Input
                 placeholder="e.g., STU-2024-001"
                 value={formData.admissionNumber}
                 onChange={(e) =>
                   setFormData({ ...formData, admissionNumber: e.target.value })
                 }
+                className="rounded-lg"
                 required
               />
             </motion.div>
@@ -460,13 +580,14 @@ export default function StudentsPage() {
                 transition={{ delay: 0.3 }}
                 className="space-y-2"
               >
-                <Label>Date of Birth</Label>
+                <Label className="text-sm font-medium">Date of Birth</Label>
                 <Input
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) =>
                     setFormData({ ...formData, dateOfBirth: e.target.value })
                   }
+                  className="rounded-lg"
                 />
               </motion.div>
               <motion.div
@@ -475,14 +596,14 @@ export default function StudentsPage() {
                 transition={{ delay: 0.3 }}
                 className="space-y-2"
               >
-                <Label>Gender</Label>
+                <Label className="text-sm font-medium">Gender</Label>
                 <Select
                   value={formData.gender}
                   onValueChange={(value) =>
                     setFormData({ ...formData, gender: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-lg">
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -498,18 +619,18 @@ export default function StudentsPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="flex gap-4 pt-4"
+              className="flex gap-3 pt-4"
             >
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 rounded-lg"
                 onClick={() => setShowAddModal(false)}
               >
                 <HugeiconsIcon icon={Cancel01Icon} size={18} />
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 gap-2" loading={createMutation.isPending}>
+              <Button type="submit" className="flex-1 gap-2 rounded-lg" loading={createMutation.isPending}>
                 {!createMutation.isPending && (
                   <>
                     <HugeiconsIcon icon={Add01Icon} size={18} />
