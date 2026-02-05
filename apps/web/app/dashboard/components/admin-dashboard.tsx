@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   ArrowUp01Icon,
   ArrowDown01Icon,
   Menu01Icon,
+  ChevronDownIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -50,6 +51,7 @@ const PIE_COLORS = ["#22c55e", "#f59e0b", "#ef4444"];
 export function AdminDashboard() {
   const { user, school } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const revenueChartRef = useRef<HTMLDivElement>(null);
   const feeStatusChartRef = useRef<HTMLDivElement>(null);
 
@@ -114,10 +116,15 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <DropdownMenu>
+          <DropdownMenu open={isQuickActionsOpen} onOpenChange={setIsQuickActionsOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <HugeiconsIcon icon={Menu01Icon} size={20} />
+              <Button variant="outline" className="gap-2">
+                <span>Quick actions</span>
+                <HugeiconsIcon 
+                  icon={ChevronDownIcon} 
+                  size={18}
+                  className={`transition-transform duration-200 ${isQuickActionsOpen ? "rotate-180" : ""}`}
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -137,6 +144,12 @@ export function AdminDashboard() {
                 <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
                   <HugeiconsIcon icon={Add01Icon} size={16} />
                   <span>Record Expense</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/fees?status=OVERDUE" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={16} />
+                  <span>View Overdue</span>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -273,7 +286,7 @@ export function AdminDashboard() {
 
       {/* Bottom Row: Quota & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Messaging Quota */}
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Messaging Quota</CardTitle>
@@ -305,40 +318,6 @@ export function AdminDashboard() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <CardDescription>Common tasks at a glance</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            <Link href="/dashboard/students/new">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                Add Student
-              </Button>
-            </Link>
-            <Link href="/dashboard/fees/new">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                Create Fee
-              </Button>
-            </Link>
-            <Link href="/dashboard/expenses/new">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                Record Expense
-              </Button>
-            </Link>
-            <Link href="/dashboard/fees?status=OVERDUE">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} className="size-4" />
-                View Overdue
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       </div>
