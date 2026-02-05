@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserGroupIcon,
@@ -17,13 +17,26 @@ import {
   FileDownloadIcon,
   FileExportIcon,
   PauseIcon,
+  Cancel01Icon,
+  Camera01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useStudents } from "@/lib/hooks";
+import { useStudents, useCreateStudent } from "@/lib/hooks";
+import { useClasses } from "@/lib/hooks/use-classes";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -48,10 +61,26 @@ import {
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 
 export default function StudentsPage() {
+  const searchParams = useSearchParams();
+  const { school } = useAuth();
+
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showAddModal, setShowAddModal] = useState(
+    searchParams.get("action") === "add"
+  );
+  const [classSearch, setClassSearch] = useState("");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "",
+    email: "",
+    phone: "",
+    classId: "",
+  });
 
   // Debounce search
   useEffect(() => {
@@ -68,6 +97,8 @@ export default function StudentsPage() {
     limit: 10,
     search: debouncedSearch || undefined,
   });
+  const { data: classesData, isLoading: loadingClasses } = useClasses();
+  const createMutation = useCreateStudent();
 
   const students = data?.students || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -87,6 +118,77 @@ export default function StudentsPage() {
     : statusFilter === "absent"
     ? [] // TODO: Update when backend supports status field
     : students.filter((s) => !s.isActive);
+
+  // Filter and group classes by level
+  type ClassWithLevel = {
+    id: string;
+    name: string;
+    level?: string | null;
+    _count?: { students: number };
+  };
+
+  const allClasses = classesData?.classes || [];
+  const filteredClasses = classSearch
+    ? allClasses.filter((c: ClassWithLevel) =>
+        c.name.toLowerCase().includes(classSearch.toLowerCase())
+      )
+    : allClasses;
+
+  const primaryClasses = filteredClasses.filter(
+    (c: ClassWithLevel) => c.level?.toLowerCase() === "primary"
+  );
+  const secondaryClasses = filteredClasses.filter(
+    (c: ClassWithLevel) => c.level?.toLowerCase() === "secondary"
+  );
+  const otherClasses = filteredClasses.filter(
+    (c: ClassWithLevel) =>
+      !c.level ||
+      (c.level.toLowerCase() !== "primary" &&
+        c.level.toLowerCase() !== "secondary")
+  );
+
+  // Generate Student ID
+  const generateStudentId = () => {
+    const schoolPrefix = (school?.name || "SCH")
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "X");
+    const year = new Date().getFullYear();
+    const uuid = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${schoolPrefix}-${year}-${uuid}`;
+  };
+
+  // Form handlers
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const studentId = generateStudentId();
+    const payload = {
+      ...formData,
+      admissionNumber: studentId,
+    };
+
+    createMutation.mutate(payload, {
+      onSuccess: () => {
+        setFormData({
+          firstName: "",
+          lastName: "",
+          dateOfBirth: "",
+          gender: "",
+          email: "",
+          phone: "",
+          classId: "",
+        });
+        setClassSearch("");
+        setShowAddModal(false);
+      },
+    });
+  };
+
+  const formError =
+    createMutation.error instanceof ApiError
+      ? createMutation.error.message
+      : createMutation.error?.message;
 
   // Export handlers
   const handleExportCSV = () => {
@@ -152,11 +254,9 @@ export default function StudentsPage() {
             Manage student records and enrollments
           </p>
         </div>
-        <Button asChild className="gap-2">
-          <Link href="/dashboard/students/new">
-            <HugeiconsIcon icon={Add01Icon} size={20} />
-            Add Student
-          </Link>
+        <Button onClick={() => setShowAddModal(true)} className="gap-2">
+          <HugeiconsIcon icon={Add01Icon} size={20} />
+          Add Student
         </Button>
       </motion.div>
 
@@ -341,11 +441,9 @@ export default function StudentsPage() {
             <p className="text-muted-foreground mb-4">
               {search || statusFilter !== "all" ? "No students match your filters" : "No students found"}
             </p>
-            <Button asChild className="gap-2">
-              <Link href="/dashboard/students/new">
-                <HugeiconsIcon icon={Add01Icon} size={20} />
-                Add Your First Student
-              </Link>
+            <Button onClick={() => setShowAddModal(true)} className="gap-2">
+              <HugeiconsIcon icon={Add01Icon} size={20} />
+              Add Your First Student
             </Button>
           </div>
         ) : (
@@ -451,6 +549,330 @@ export default function StudentsPage() {
           </>
         )}
       </motion.div>
+
+      {/* Add Student Dialog */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand to-purple-600">
+                <HugeiconsIcon icon={UserGroupIcon} size={22} className="text-white" />
+              </div>
+              Add New Student
+            </DialogTitle>
+          </DialogHeader>
+
+          {formError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Alert variant="destructive">
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          {loadingClasses ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : (
+            <form onSubmit={handleAddStudent} className="space-y-6">
+              {/* Profile Picture */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex justify-center"
+              >
+                <div className="relative group">
+                  <div className="size-24 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center border-4 border-background shadow-lg">
+                    <HugeiconsIcon icon={UserGroupIcon} size={40} className="text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute bottom-0 right-0 p-2 rounded-full bg-brand text-white shadow-lg hover:bg-brand/90 transition-all"
+                  >
+                    <HugeiconsIcon icon={Camera01Icon} size={16} />
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                  Personal Information
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">
+                      First Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      className="rounded-lg"
+                      placeholder="John"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">
+                      Last Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                      className="rounded-lg"
+                      placeholder="Doe"
+                      required
+                    />
+                  </motion.div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Date of Birth</Label>
+                    <Input
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dateOfBirth: e.target.value })
+                      }
+                      className="rounded-lg"
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Gender</Label>
+                    <Select
+                      value={formData.gender}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, gender: value })
+                      }
+                    >
+                      <SelectTrigger className="rounded-lg">
+                        <SelectValue placeholder="Select gender..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                  Contact Information
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Email</Label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      className="rounded-lg"
+                      placeholder="john.doe@example.com"
+                    />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Phone</Label>
+                    <Input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      className="rounded-lg"
+                      placeholder="+1234567890"
+                    />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Academic Information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                  Academic Information
+                </h3>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="space-y-2"
+                >
+                  <Label className="text-sm font-medium">
+                    Class <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Search classes..."
+                    value={classSearch}
+                    onChange={(e) => setClassSearch(e.target.value)}
+                    className="rounded-lg mb-2"
+                  />
+                  <Select
+                    value={formData.classId}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, classId: value })
+                    }
+                    required
+                  >
+                    <SelectTrigger className="rounded-lg">
+                      <SelectValue placeholder="Select class..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {primaryClasses.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                            PRIMARY
+                          </div>
+                          {primaryClasses.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
+                              {cls._count?.students !== undefined && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  ({cls._count.students} students)
+                                </span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {secondaryClasses.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-1">
+                            SECONDARY
+                          </div>
+                          {secondaryClasses.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
+                              {cls._count?.students !== undefined && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  ({cls._count.students} students)
+                                </span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {otherClasses.length > 0 && (
+                        <>
+                          {(primaryClasses.length > 0 ||
+                            secondaryClasses.length > 0) && (
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-1">
+                              OTHER
+                            </div>
+                          )}
+                          {otherClasses.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
+                              {cls._count?.students !== undefined && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  ({cls._count.students} students)
+                                </span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {filteredClasses.length === 0 && (
+                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          No classes found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Student ID will be auto-generated upon creation
+                  </p>
+                </motion.div>
+              </div>
+
+              {/* Action Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex gap-3 pt-4 border-t"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 gap-2 rounded-lg"
+                  onClick={() => setShowAddModal(false)}
+                  disabled={createMutation.isPending}
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 gap-2 rounded-lg"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Add01Icon} size={18} />
+                      Add Student
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
