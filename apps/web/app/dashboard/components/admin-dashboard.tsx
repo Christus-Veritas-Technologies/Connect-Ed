@@ -22,7 +22,7 @@ import {
   UserAdd01Icon,
   FileAddIcon,
   ShoppingBag01Icon,
-  Bell01Icon,
+  Notification01Icon,
   AlertTriangle,
   CheckmarkCircle02Icon,
   InformationCircleIcon,
@@ -178,7 +178,7 @@ export function AdminDashboard() {
             onClick={() => setIsNotificationsOpen(true)}
             className="relative"
           >
-            <HugeiconsIcon icon={Bell01Icon} size={20} />
+            <HugeiconsIcon icon={Notification01Icon} size={20} />
             {unreadCount > 0 && (
               <Badge 
                 variant="destructive" 
@@ -433,7 +433,7 @@ export function AdminDashboard() {
         <SheetContent side="right" className="w-full sm:w-96 flex flex-col">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={Bell01Icon} size={24} />
+              <HugeiconsIcon icon={Notification01Icon} size={24} />
               Notifications
             </SheetTitle>
             <SheetDescription>
@@ -445,7 +445,7 @@ export function AdminDashboard() {
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="p-4 rounded-full bg-muted mb-4">
-                  <HugeiconsIcon icon={Bell01Icon} size={32} className="text-muted-foreground" />
+                  <HugeiconsIcon icon={Notification01Icon} size={32} className="text-muted-foreground" />
                 </div>
                 <p className="text-muted-foreground">No notifications yet</p>
               </div>

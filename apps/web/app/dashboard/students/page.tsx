@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserGroupIcon,
@@ -9,7 +9,6 @@ import {
   Add01Icon,
   ViewIcon,
   PencilEdit01Icon,
-  Cancel01Icon,
   UserCheck01Icon,
   UserRemove01Icon,
   FilterIcon,
@@ -20,20 +19,11 @@ import {
   PauseIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useStudents, useCreateStudent } from "@/lib/hooks";
-import { ApiError } from "@/lib/api";
+import { useStudents } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -58,24 +48,10 @@ import {
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 
 export default function StudentsPage() {
-  const searchParams = useSearchParams();
-
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [showAddModal, setShowAddModal] = useState(
-    searchParams.get("action") === "add"
-  );
-
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    admissionNumber: "",
-    dateOfBirth: "",
-    gender: "",
-    classId: "",
-  });
 
   // Debounce search
   useEffect(() => {
@@ -92,8 +68,6 @@ export default function StudentsPage() {
     limit: 10,
     search: debouncedSearch || undefined,
   });
-
-  const createMutation = useCreateStudent();
 
   const students = data?.students || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -120,7 +94,7 @@ export default function StudentsPage() {
 
     const exportData = filteredStudents.map((student) => ({
       Name: `${student.firstName} ${student.lastName}`,
-      "Admission No": student.admissionNumber,
+      "Student ID": student.admissionNumber,
       Class: student.class?.name || "—",
       Status: student.isActive ? "Active" : "Inactive",
       Gender: student.gender || "—",
@@ -129,7 +103,7 @@ export default function StudentsPage() {
 
     exportDataAsCSV(
       exportData,
-      ["Name", "Admission No", "Class", "Status", "Gender", "DOB"],
+      ["Name", "Student ID", "Class", "Status", "Gender", "DOB"],
       `students-${new Date().toISOString().split("T")[0]}`
     );
   };
@@ -139,7 +113,7 @@ export default function StudentsPage() {
 
     const exportData = filteredStudents.map((student) => ({
       name: `${student.firstName} ${student.lastName}`,
-      admissionNumber: student.admissionNumber,
+      studentId: student.admissionNumber,
       class: student.class?.name || "—",
       status: student.isActive ? "Active" : "Inactive",
       gender: student.gender || "—",
@@ -149,7 +123,7 @@ export default function StudentsPage() {
       exportData,
       [
         { key: "name", label: "Name" },
-        { key: "admissionNumber", label: "Admission No" },
+        { key: "studentId", label: "Student ID" },
         { key: "class", label: "Class" },
         { key: "status", label: "Status" },
         { key: "gender", label: "Gender" },
@@ -158,28 +132,6 @@ export default function StudentsPage() {
       "Students Report"
     );
   };
-
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    createMutation.mutate(formData, {
-      onSuccess: () => {
-        setFormData({
-          firstName: "",
-          lastName: "",
-          admissionNumber: "",
-          dateOfBirth: "",
-          gender: "",
-          classId: "",
-        });
-        setShowAddModal(false);
-      },
-    });
-  };
-
-  const formError = createMutation.error instanceof ApiError 
-    ? createMutation.error.message 
-    : createMutation.error?.message;
 
   return (
     <div className="space-y-6">
@@ -200,9 +152,11 @@ export default function StudentsPage() {
             Manage student records and enrollments
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2">
-          <HugeiconsIcon icon={Add01Icon} size={20} />
-          Add Student
+        <Button asChild className="gap-2">
+          <Link href="/dashboard/students/new">
+            <HugeiconsIcon icon={Add01Icon} size={20} />
+            Add Student
+          </Link>
         </Button>
       </motion.div>
 
@@ -303,7 +257,7 @@ export default function StudentsPage() {
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            placeholder="Search by name or admission number..."
+            placeholder="Search by name or student ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -387,9 +341,11 @@ export default function StudentsPage() {
             <p className="text-muted-foreground mb-4">
               {search || statusFilter !== "all" ? "No students match your filters" : "No students found"}
             </p>
-            <Button onClick={() => setShowAddModal(true)} className="gap-2">
-              <HugeiconsIcon icon={Add01Icon} size={20} />
-              Add Your First Student
+            <Button asChild className="gap-2">
+              <Link href="/dashboard/students/new">
+                <HugeiconsIcon icon={Add01Icon} size={20} />
+                Add Your First Student
+              </Link>
             </Button>
           </div>
         ) : (
@@ -398,7 +354,7 @@ export default function StudentsPage() {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Name</TableHead>
-                  <TableHead>Admission No.</TableHead>
+                  <TableHead>Student ID</TableHead>
                   <TableHead>Class</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -495,153 +451,6 @@ export default function StudentsPage() {
           </>
         )}
       </motion.div>
-
-      {/* Add Student Dialog */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand to-purple-600">
-                <HugeiconsIcon icon={UserGroupIcon} size={22} className="text-white" />
-              </div>
-              Add New Student
-            </DialogTitle>
-          </DialogHeader>
-
-          {formError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Alert variant="destructive">
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
-          <form onSubmit={handleAddStudent} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="space-y-2"
-              >
-                <Label className="text-sm font-medium">First Name</Label>
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, firstName: e.target.value })
-                  }
-                  className="rounded-lg"
-                  required
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="space-y-2"
-              >
-                <Label className="text-sm font-medium">Last Name</Label>
-                <Input
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lastName: e.target.value })
-                  }
-                  className="rounded-lg"
-                  required
-                />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="space-y-2"
-            >
-              <Label className="text-sm font-medium">Admission Number</Label>
-              <Input
-                placeholder="e.g., STU-2024-001"
-                value={formData.admissionNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, admissionNumber: e.target.value })
-                }
-                className="rounded-lg"
-                required
-              />
-            </motion.div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-2"
-              >
-                <Label className="text-sm font-medium">Date of Birth</Label>
-                <Input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dateOfBirth: e.target.value })
-                  }
-                  className="rounded-lg"
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-2"
-              >
-                <Label className="text-sm font-medium">Gender</Label>
-                <Select
-                  value={formData.gender}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, gender: value })
-                  }
-                >
-                  <SelectTrigger className="rounded-lg">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MALE">Male</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex gap-3 pt-4"
-            >
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 gap-2 rounded-lg"
-                onClick={() => setShowAddModal(false)}
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={18} />
-                Cancel
-              </Button>
-              <Button type="submit" className="flex-1 gap-2 rounded-lg" loading={createMutation.isPending}>
-                {!createMutation.isPending && (
-                  <>
-                    <HugeiconsIcon icon={Add01Icon} size={18} />
-                    Add Student
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

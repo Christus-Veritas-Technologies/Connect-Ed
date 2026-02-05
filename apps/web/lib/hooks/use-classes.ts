@@ -7,6 +7,7 @@ import { api } from "../api";
 interface Class {
   id: string;
   name: string;
+  level?: string | null; // primary, secondary
   classTeacher?: { id: string; name: string; email: string } | null;
   _count?: { students: number };
   students?: {

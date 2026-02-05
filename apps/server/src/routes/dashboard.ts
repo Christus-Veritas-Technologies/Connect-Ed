@@ -751,19 +751,21 @@ dashboard.get("/notifications", requireAuth, async (c) => {
 
     const allowedRoles = roleFilters[userRole as keyof typeof roleFilters] || ["STUDENT"];
 
+    // Build OR conditions for role-based notifications
+    const roleConditions = allowedRoles.map(role => ({
+      userId: null,
+      metadata: {
+        path: ["role"],
+        equals: role,
+      },
+    }));
+
     const notifications = await db.notification.findMany({
       where: {
         schoolId,
         OR: [
           { userId }, // Personal notifications
-          { 
-            userId: null,
-            // Only show role-based notifications that the user can see
-            metadata: {
-              path: ["role"],
-              in: allowedRoles,
-            },
-          },
+          ...roleConditions, // Role-based notifications
         ],
       },
       orderBy: [
