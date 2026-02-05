@@ -23,9 +23,9 @@ import {
   FileAddIcon,
   ShoppingBag01Icon,
   Bell01Icon,
-  AlertTriangleIcon,
-  CheckCircle02Icon,
-  InfoCircleIcon,
+  AlertTriangle,
+  CheckmarkCircle02Icon,
+  InformationCircleIcon,
   Clock01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -452,10 +452,10 @@ export function AdminDashboard() {
             ) : (
               notifications.map((notification, index) => {
                 const iconMap = {
-                  SUCCESS: CheckCircle02Icon,
-                  WARNING: AlertTriangleIcon,
+                  SUCCESS: CheckmarkCircle02Icon,
+                  WARNING: AlertTriangle,
                   ERROR: AlertCircleIcon,
-                  INFO: InfoCircleIcon,
+                  INFO: InformationCircleIcon,
                 };
                 const colorMap = {
                   SUCCESS: "bg-green-100 text-green-700",
@@ -463,7 +463,7 @@ export function AdminDashboard() {
                   ERROR: "bg-red-100 text-red-700",
                   INFO: "bg-blue-100 text-blue-700",
                 };
-                const NotifIcon = iconMap[notification.type as keyof typeof iconMap] || InfoCircleIcon;
+                const NotifIcon = iconMap[notification.type as keyof typeof iconMap] || InformationCircleIcon;
                 const colorClass = colorMap[notification.type as keyof typeof colorMap] || "bg-blue-100 text-blue-700";
 
                 return (
