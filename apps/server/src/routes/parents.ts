@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db } from "@repo/db";
+import { db, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
@@ -192,6 +192,51 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
         },
       },
     });
+
+    // Send notifications
+    const notifications = [];
+
+    // 1. Notify admins about new parent
+    const admins = await db.user.findMany({
+      where: { schoolId, role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+
+    const childrenNames = students.map((s) => `${s.firstName} ${s.lastName}`).join(", ");
+
+    for (const admin of admins) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.SYSTEM_ALERT,
+            priority: NotificationPriority.MEDIUM,
+            title: "New Parent Added",
+            message: `${parent.name} has been added and linked to: ${childrenNames}.`,
+            actionUrl: `/dashboard/parents`,
+            schoolId,
+            userId: admin.id,
+          },
+        })
+      );
+    }
+
+    // 2. Welcome notification for parent
+    notifications.push(
+      db.notification.create({
+        data: {
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.HIGH,
+          title: "Welcome to Connect-Ed!",
+          message: `You've been linked to your ${students.length > 1 ? "children" : "child"}: ${childrenNames}. Check your email for login credentials.`,
+          actionUrl: `/login`,
+          schoolId,
+          metadata: { role: "PARENT" },
+        },
+      })
+    );
+
+    // Execute all notifications
+    await Promise.all(notifications);
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${parent.name} (${parent.id})`);
     

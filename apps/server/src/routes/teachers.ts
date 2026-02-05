@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db, Plan, Role } from "@repo/db";
+import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { successResponse, errors } from "../lib/response";
@@ -85,6 +85,49 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
         createdAt: true,
       },
     });
+
+    // Send notifications
+    const notifications = [];
+
+    // 1. Notify admins about new teacher
+    const admins = await db.user.findMany({
+      where: { schoolId, role: Role.ADMIN, isActive: true },
+      select: { id: true },
+    });
+
+    for (const admin of admins) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.TEACHER_ADDED,
+            priority: NotificationPriority.MEDIUM,
+            title: "New Teacher Added",
+            message: `${teacher.name} has been added to the school.`,
+            actionUrl: `/dashboard/teachers`,
+            schoolId,
+            userId: admin.id,
+          },
+        })
+      );
+    }
+
+    // 2. Welcome notification for teacher
+    notifications.push(
+      db.notification.create({
+        data: {
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.HIGH,
+          title: "Welcome to Connect-Ed!",
+          message: "Your teacher account has been created. Check your email for login credentials.",
+          actionUrl: `/login`,
+          schoolId,
+          metadata: { role: "TEACHER" },
+        },
+      })
+    );
+
+    // Execute all notifications
+    await Promise.all(notifications);
 
     // Return teacher with generated password (for email notification)
     return successResponse(

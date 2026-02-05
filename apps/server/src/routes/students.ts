@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db } from "@repo/db";
+import { db, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { createStudentSchema, updateStudentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { hashPassword, generateRandomPassword } from "../lib/password";
 
 const students = new Hono();
 
@@ -100,6 +101,7 @@ students.get("/:id", async (c) => {
 // POST /students - Create student
 students.post("/", zValidator("json", createStudentSchema), async (c) => {
   const schoolId = c.get("schoolId");
+  const userId = c.get("userId");
   console.log(`[POST /students] Creating new student for school: ${schoolId}`);
   
   try {
@@ -124,6 +126,14 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
       return errors.conflict(c, "A student with this admission number already exists");
     }
 
+    // Generate password for student if email provided
+    let generatedPassword: string | undefined;
+    let hashedPassword: string | undefined;
+    if (data.email) {
+      generatedPassword = generateRandomPassword();
+      hashedPassword = await hashPassword(generatedPassword);
+    }
+
     // Create student
     console.log(`[POST /students] Inserting student: ${data.firstName} ${data.lastName}`);
     const student = await db.student.create({
@@ -137,16 +147,94 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
         parentId: data.parentId || undefined,
         email: data.email || undefined,
         phone: data.phone || undefined,
+        password: hashedPassword,
         schoolId,
       },
       include: {
-        class: { select: { id: true, name: true } },
+        class: { 
+          select: { 
+            id: true, 
+            name: true,
+            classTeacherId: true,
+          } 
+        },
         parent: { select: { id: true, name: true } },
       },
     });
 
+    // Send notifications
+    const notifications = [];
+
+    // 1. Notify admins about new student
+    const admins = await db.user.findMany({
+      where: { schoolId, role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+
+    for (const admin of admins) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.STUDENT_ADDED,
+            priority: NotificationPriority.MEDIUM,
+            title: "New Student Added",
+            message: `${student.firstName} ${student.lastName} has been added${student.class ? ` to ${student.class.name}` : ""}.`,
+            actionUrl: `/dashboard/students`,
+            schoolId,
+            userId: admin.id,
+          },
+        })
+      );
+    }
+
+    // 2. Notify class teacher about new student
+    if (student.class?.classTeacherId) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.STUDENT_ADDED,
+            priority: NotificationPriority.HIGH,
+            title: "New Student in Your Class",
+            message: `${student.firstName} ${student.lastName} has been added to ${student.class.name}.`,
+            actionUrl: `/dashboard/classes/${student.class.id}`,
+            schoolId,
+            userId: student.class.classTeacherId,
+          },
+        })
+      );
+    }
+
+    // 3. Welcome notification for student (if email provided)
+    if (student.email) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.SYSTEM_ALERT,
+            priority: NotificationPriority.HIGH,
+            title: "Welcome to Connect-Ed!",
+            message: "Your account has been created. Check your email for login credentials.",
+            actionUrl: `/login`,
+            schoolId,
+            metadata: { role: "STUDENT" },
+          },
+        })
+      );
+    }
+
+    // Execute all notifications
+    await Promise.all(notifications);
+
     console.log(`[POST /students] ✅ Student created successfully: ${student.firstName} ${student.lastName} (${student.id})`);
-    return successResponse(c, { student }, 201);
+    
+    // Return student with generated password (for email notification)
+    return successResponse(
+      c,
+      {
+        student,
+        ...(generatedPassword && { password: generatedPassword }),
+      },
+      201
+    );
   } catch (error) {
     console.error(`[POST /students] ❌ Create student error:`, error);
     return errors.internalError(c);
