@@ -19,9 +19,9 @@ import {
   ArrowDown01Icon,
   Menu01Icon,
   ChevronDown,
-  UserPlus01Icon,
-  FileAdd01Icon,
-  ShoppingCart01Icon,
+  UserAdd01Icon,
+  FileAddIcon,
+  ShoppingBag01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -169,19 +169,19 @@ export function AdminDashboard() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/students/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={UserPlus01Icon} size={16} />
+                  <HugeiconsIcon icon={UserAdd01Icon} size={16} />
                   <span>Add Student</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/fees/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={FileAdd01Icon} size={16} />
+                  <HugeiconsIcon icon={FileAddIcon} size={16} />
                   <span>Create Fee</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={ShoppingCart01Icon} size={16} />
+                  <HugeiconsIcon icon={ShoppingBag01Icon} size={16} />
                   <span>Record Expense</span>
                 </Link>
               </DropdownMenuItem>
