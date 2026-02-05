@@ -8,3 +8,4 @@ export * from "./use-expenses";
 export * from "./use-classes";
 export * from "./use-teachers";
 export * from "./use-dashboard";
+export * from "./use-notifications";

@@ -732,6 +732,59 @@ dashboard.get("/student", requireStudentAuth, async (c) => {
 // NOTIFICATIONS
 // ============================================
 
+// GET /dashboard/notifications - Get all notifications for current user/school with role filtering
+dashboard.get("/notifications", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const schoolId = c.get("schoolId");
+    const userRole = c.get("role");
+
+    // Fetch notifications for this user
+    // Admins see all notifications
+    // Teachers see notifications with TEACHER+ role
+    // Students see notifications with STUDENT role
+    const roleFilters = {
+      ADMIN: ["ADMIN", "TEACHER", "STUDENT"],
+      TEACHER: ["TEACHER", "STUDENT"],
+      STUDENT: ["STUDENT"],
+    };
+
+    const allowedRoles = roleFilters[userRole as keyof typeof roleFilters] || ["STUDENT"];
+
+    const notifications = await db.notification.findMany({
+      where: {
+        schoolId,
+        OR: [
+          { userId }, // Personal notifications
+          { 
+            userId: null,
+            // Only show role-based notifications that the user can see
+            metadata: {
+              path: ["role"],
+              in: allowedRoles,
+            },
+          },
+        ],
+      },
+      orderBy: [
+        { isRead: "asc" },
+        { createdAt: "desc" }
+      ],
+      take: 100,
+    });
+
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    return successResponse(c, {
+      notifications,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("Get notifications error:", error);
+    return errors.internalError(c);
+  }
+});
+
 // GET /dashboard/notifications/unread-counts - Get unread notification counts grouped by actionUrl
 dashboard.get("/notifications/unread-counts", requireAuth, async (c) => {
   try {

@@ -22,10 +22,15 @@ import {
   UserAdd01Icon,
   FileAddIcon,
   ShoppingBag01Icon,
+  Bell01Icon,
+  AlertTriangleIcon,
+  CheckCircle02Icon,
+  InfoCircleIcon,
+  Clock01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { useDashboardStats } from "@/lib/hooks";
+import { useDashboardStats, useNotifications } from "@/lib/hooks";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +40,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import {
   ChartContainer,
@@ -55,8 +67,13 @@ const PIE_COLORS = ["#22c55e", "#f59e0b", "#ef4444"];
 export function AdminDashboard() {
   const { user, school } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  const { data: notificationsData } = useNotifications();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const feeStatusChartRef = useRef<HTMLDivElement>(null);
+
+  const notifications = notificationsData?.notifications || [];
+  const unreadCount = notificationsData?.unreadCount || 0;
 
   if (isLoading || !stats) {
     return (
@@ -155,6 +172,23 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary" 
+            size="icon"
+            onClick={() => setIsNotificationsOpen(true)}
+            className="relative"
+          >
+            <HugeiconsIcon icon={Bell01Icon} size={20} />
+            {unreadCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 size-6 flex items-center justify-center p-0 text-xs"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Badge>
+            )}
+          </Button>
+
           <DropdownMenu open={isQuickActionsOpen} onOpenChange={setIsQuickActionsOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -393,6 +427,89 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Notifications Sheet */}
+      <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+        <SheetContent side="right" className="w-full sm:w-96 flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Bell01Icon} size={24} />
+              Notifications
+            </SheetTitle>
+            <SheetDescription>
+              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-2 py-4">
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <HugeiconsIcon icon={Bell01Icon} size={32} className="text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">No notifications yet</p>
+              </div>
+            ) : (
+              notifications.map((notification, index) => {
+                const iconMap = {
+                  SUCCESS: CheckCircle02Icon,
+                  WARNING: AlertTriangleIcon,
+                  ERROR: AlertCircleIcon,
+                  INFO: InfoCircleIcon,
+                };
+                const colorMap = {
+                  SUCCESS: "bg-green-100 text-green-700",
+                  WARNING: "bg-orange-100 text-orange-700",
+                  ERROR: "bg-red-100 text-red-700",
+                  INFO: "bg-blue-100 text-blue-700",
+                };
+                const NotifIcon = iconMap[notification.type as keyof typeof iconMap] || InfoCircleIcon;
+                const colorClass = colorMap[notification.type as keyof typeof colorMap] || "bg-blue-100 text-blue-700";
+
+                return (
+                  <motion.div
+                    key={notification.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`p-4 rounded-lg border transition-all ${
+                      notification.isRead
+                        ? "bg-muted/30 border-muted"
+                        : "bg-card border-brand/20 shadow-sm"
+                    }`}
+                  >
+                    <div className="flex gap-3">
+                      <div className={`p-2 rounded-lg ${colorClass} flex-shrink-0`}>
+                        <HugeiconsIcon icon={NotifIcon} size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-sm">{notification.title}</p>
+                          {!notification.isRead && (
+                            <div className="size-2 rounded-full bg-brand flex-shrink-0 mt-1" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                          <HugeiconsIcon icon={Clock01Icon} size={14} />
+                          {new Date(notification.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
