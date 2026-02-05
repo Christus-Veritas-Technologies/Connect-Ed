@@ -99,10 +99,10 @@ export function AdminDashboard() {
 
   const handleExportRevenueWord = async () => {
     try {
-      const rows = revenueData.map((d: any) => [d.name || d.month, d.value || d.collected]);
+      const rows = revenueData.map((d: any) => [d.name || d.month, `$${(d.value || d.collected).toLocaleString()}`]);
       
       // Get auth token
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       
       // Use fetch directly for binary response
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/reports/export-docx`, {
@@ -113,8 +113,10 @@ export function AdminDashboard() {
         },
         body: JSON.stringify({
           title: "Monthly Revenue Report",
-          headers: ["Month", "Collected"],
+          subtitle: school?.name || "School Management System",
+          headers: ["Month", "Revenue Collected"],
           rows,
+          footer: `Total Revenue: $${revenueData.reduce((sum, d) => sum + (d.value || d.collected), 0).toLocaleString()}`,
         }),
       });
       
@@ -127,7 +129,7 @@ export function AdminDashboard() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `monthly-revenue-${Date.now()}.docx`;
+      link.download = `${school?.name?.replace(/\s+/g, "-") || "monthly-revenue"}-${Date.now()}.docx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

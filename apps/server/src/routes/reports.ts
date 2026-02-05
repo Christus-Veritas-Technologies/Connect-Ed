@@ -124,85 +124,160 @@ reports.post("/export-docx", async (c) => {
   try {
     const body = await c.req.json() as {
       title: string;
+      subtitle?: string;
       headers: string[];
       rows: (string | number)[][];
+      footer?: string;
     };
-    const { title, headers, rows } = body;
+    const { title, subtitle, headers, rows, footer } = body;
 
     if (!title || !headers || !rows) {
       return errors.badRequest(c, "Missing required fields: title, headers, rows");
     }
 
+    const schoolId = c.get("schoolId");
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true, plan: true },
+    });
+
     // Create table rows
     const tableRows = [
       // Header row
       new TableRow({
-        height: { value: 400, rule: "atLeast" },
+        height: { value: 500, rule: "atLeast" },
         children: headers.map(
           (header) =>
             new TableCell({
-              children: [new Paragraph({ text: header, bold: true })],
+              children: [new Paragraph({ 
+                text: header, 
+                bold: true,
+                color: "FFFFFF",
+              })],
               shading: { fill: "3B82F6" }, // Brand color
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 150, bottom: 150, left: 150, right: 150 },
               verticalAlign: VerticalAlign.CENTER,
             })
         ),
       }),
       // Data rows
       ...rows.map(
-        (row) =>
+        (row, index) =>
           new TableRow({
             children: row.map(
               (cell) =>
                 new TableCell({
-                  children: [new Paragraph({ text: String(cell) })],
-                  margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                  children: [new Paragraph({ 
+                    text: String(cell),
+                    alignment: typeof cell === 'number' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                  })],
+                  shading: { fill: index % 2 === 0 ? "FFFFFF" : "F8FAFC" }, // Alternating rows
+                  margins: { top: 120, bottom: 120, left: 150, right: 150 },
                 })
             ),
           })
       ),
     ];
 
+    // Create document sections
+    const documentSections = [
+      // School Header
+      new Paragraph({
+        text: school?.name || "Connect-Ed School Management",
+        fontSize: 32,
+        bold: true,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 100 },
+        color: "3B82F6",
+      }),
+
+      new Paragraph({
+        text: subtitle || "",
+        fontSize: 14,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+        color: "6B7280",
+      }),
+
+      // Report Title
+      new Paragraph({
+        text: title,
+        fontSize: 24,
+        bold: true,
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 200 },
+      }),
+
+      // Generated timestamp
+      new Paragraph({
+        text: `Generated: ${new Date().toLocaleString('en-US', { 
+          dateStyle: 'full', 
+          timeStyle: 'short' 
+        })}`,
+        fontSize: 10,
+        color: "6B7280",
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 400 },
+      }),
+
+      // Table
+      new Table({
+        rows: tableRows,
+        width: {
+          size: 100,
+          type: WidthType.PERCENTAGE,
+        },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+          left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+          right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
+          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
+        },
+      }),
+    ];
+
+    // Add footer if provided
+    if (footer) {
+      documentSections.push(
+        new Paragraph({
+          text: footer,
+          fontSize: 14,
+          bold: true,
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 400 },
+          color: "1F2937",
+        })
+      );
+    }
+
+    // Add school plan info
+    documentSections.push(
+      new Paragraph({
+        text: `Plan: ${school?.plan || 'LITE'}`,
+        fontSize: 9,
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 600 },
+        color: "9CA3AF",
+      })
+    );
+
     // Create document
     const doc = new Document({
       sections: [
         {
-          children: [
-            // Title
-            new Paragraph({
-              text: title,
-              fontSize: 28,
-              bold: true,
-              alignment: AlignmentType.LEFT,
-              spacing: { after: 200 },
-            }),
-
-            // Generated timestamp
-            new Paragraph({
-              text: `Generated: ${new Date().toLocaleString()}`,
-              fontSize: 10,
-              color: "666666",
-              alignment: AlignmentType.LEFT,
-              spacing: { after: 400 },
-            }),
-
-            // Table
-            new Table({
-              rows: tableRows,
-              width: {
-                size: 100,
-                type: WidthType.PERCENTAGE,
+          properties: {
+            page: {
+              margin: {
+                top: 1440,    // 1 inch
+                bottom: 1440,
+                left: 1440,
+                right: 1440,
               },
-              borders: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-                left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-                right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
-              },
-            }),
-          ],
+            },
+          },
+          children: documentSections,
         },
       ],
     });
