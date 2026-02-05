@@ -4,6 +4,7 @@ import { db, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
+import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { z } from "zod";
 
 const parents = new Hono();
@@ -237,6 +238,26 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
 
     // Execute all notifications
     await Promise.all(notifications);
+
+    // Send welcome email with credentials
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true },
+    });
+
+    await sendEmail({
+      to: parent.email,
+      subject: "Welcome to Connect-Ed - Your Login Credentials",
+      html: generateWelcomeEmailWithCredentials({
+        name: parent.name,
+        email: parent.email,
+        password: generatedPassword,
+        role: "PARENT",
+        schoolName: school?.name,
+        additionalInfo: `You have been linked to your ${students.length > 1 ? "children" : "child"}: ${childrenNames}.`,
+      }),
+      schoolId,
+    });
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${parent.name} (${parent.id})`);
     

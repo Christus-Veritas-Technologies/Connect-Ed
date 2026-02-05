@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
+import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { successResponse, errors } from "../lib/response";
 import { z } from "zod";
 
@@ -128,6 +129,25 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
 
     // Execute all notifications
     await Promise.all(notifications);
+
+    // Send welcome email with credentials
+    const school = await db.school.findFirst({
+      where: { id: schoolId },
+      select: { name: true },
+    });
+
+    await sendEmail({
+      to: teacher.email,
+      subject: "Welcome to Connect-Ed - Your Login Credentials",
+      html: generateWelcomeEmailWithCredentials({
+        name: teacher.name,
+        email: teacher.email,
+        password: generatedPassword,
+        role: "TEACHER",
+        schoolName: school?.name,
+      }),
+      schoolId,
+    });
 
     // Return teacher with generated password (for email notification)
     return successResponse(

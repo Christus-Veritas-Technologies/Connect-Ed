@@ -188,3 +188,80 @@ export function generatePaymentFailedEmail(params: {
     </html>
   `;
 }
+
+export function generateWelcomeEmailWithCredentials(params: {
+  name: string;
+  email: string;
+  password: string;
+  role: "STUDENT" | "PARENT" | "TEACHER";
+  schoolName?: string;
+  additionalInfo?: string;
+}): string {
+  const roleTitle = params.role === "STUDENT" ? "Student" : params.role === "PARENT" ? "Parent" : "Teacher";
+  const portalUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .welcome-badge { background: #10b981; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin: 20px 0; }
+          .credentials { background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+          .credential-item { padding: 10px 0; }
+          .credential-label { font-weight: bold; color: #1e40af; }
+          .credential-value { font-family: monospace; background: white; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+          .warning { background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+          .button { background: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Welcome to Connect-Ed!</h1>
+            <p>Your ${roleTitle} Account Has Been Created</p>
+          </div>
+          <div class="content">
+            <div class="welcome-badge">✓ Account Active</div>
+            <p>Hi ${params.name},</p>
+            <p>Welcome to Connect-Ed${params.schoolName ? ` at ${params.schoolName}` : ""}! Your ${roleTitle.toLowerCase()} account has been successfully created.</p>
+            ${params.additionalInfo ? `<p>${params.additionalInfo}</p>` : ""}
+            
+            <div class="credentials">
+              <h3 style="margin-top: 0;">🔐 Your Login Credentials</h3>
+              <div class="credential-item">
+                <div class="credential-label">Email Address:</div>
+                <div class="credential-value">${params.email}</div>
+              </div>
+              <div class="credential-item">
+                <div class="credential-label">Temporary Password:</div>
+                <div class="credential-value">${params.password}</div>
+              </div>
+            </div>
+
+            <div class="warning">
+              <strong>⚠️ Important Security Notice:</strong>
+              <p style="margin: 10px 0 0 0;">This is a temporary password. Please change it immediately after your first login to keep your account secure.</p>
+            </div>
+
+            <div style="text-align: center;">
+              <a href="${portalUrl}" class="button">Login to Your Account</a>
+            </div>
+
+            <p style="margin-top: 30px; color: #6b7280;">If you have any questions or need assistance, please don't hesitate to contact the school administration.</p>
+          </div>
+          <div class="footer">
+            <p><strong>Connect-Ed School Management System</strong></p>
+            <p>Streamlining education for a better tomorrow</p>
+            <p style="margin-top: 15px; font-size: 12px;">If you did not expect this email, please contact your school administration immediately.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+

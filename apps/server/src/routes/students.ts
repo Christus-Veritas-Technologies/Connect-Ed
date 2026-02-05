@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth";
 import { createStudentSchema, updateStudentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
+import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 
 const students = new Hono();
 
@@ -223,6 +224,27 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     // Execute all notifications
     await Promise.all(notifications);
+
+    // Send welcome email with credentials if email provided
+    if (student.email && generatedPassword) {
+      const school = await db.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true },
+      });
+
+      await sendEmail({
+        to: student.email,
+        subject: "Welcome to Connect-Ed - Your Login Credentials",
+        html: generateWelcomeEmailWithCredentials({
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          password: generatedPassword,
+          role: "STUDENT",
+          schoolName: school?.name,
+        }),
+        schoolId,
+      });
+    }
 
     console.log(`[POST /students] ✅ Student created successfully: ${student.firstName} ${student.lastName} (${student.id})`);
     
