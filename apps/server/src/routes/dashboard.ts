@@ -138,7 +138,7 @@ dashboard.get("/stats", requireAuth, async (c) => {
         FROM fee_payments
         WHERE "schoolId" = ${schoolId}
           AND "createdAt" >= ${new Date(now.getFullYear(), now.getMonth() - 5, 1)}
-        GROUP BY DATE_TRUNC('month', "createdAt")
+        GROUP BY DATE_TRUNC('month', "createdAt"), TO_CHAR(DATE_TRUNC('month', "createdAt"), 'Mon'), EXTRACT(MONTH FROM "createdAt")
         ORDER BY DATE_TRUNC('month', "createdAt")
       ` as Promise<{ month: string; month_num: number; collected: number }[]>,
 
