@@ -38,11 +38,13 @@ export function AddParentDialog({
   onSuccess,
 }: AddParentDialogProps) {
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     studentIds: [] as string[],
   });
+  const [childSearch, setChildSearch] = useState("");
 
   const { data: studentsData } = useStudents({ limit: 1000 });
   const createMutation = useCreateParent();
@@ -58,6 +60,15 @@ export function AddParentDialog({
   }, [preselectedStudentId]);
 
   const students = studentsData?.students || [];
+  
+  // Filter students based on search
+  const filteredStudents = childSearch
+    ? students.filter((s) =>
+        `${s.firstName} ${s.lastName} ${s.admissionNumber}`
+          .toLowerCase()
+          .includes(childSearch.toLowerCase())
+      )
+    : students;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +76,13 @@ export function AddParentDialog({
     createMutation.mutate(formData, {
       onSuccess: (data) => {
         setFormData({
-          name: "",
+          firstName: "",
+          lastName: "",
           email: "",
           phone: "",
           studentIds: [],
         });
+        setChildSearch("");
         onOpenChange(false);
         onSuccess?.(data.parent);
       },
@@ -114,26 +127,48 @@ export function AddParentDialog({
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
               Personal Information
             </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="space-y-2"
+              >
+                <Label className="text-sm font-medium">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  className="rounded-lg"
+                  placeholder="John"
+                  required
+                />
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="space-y-2"
-            >
-              <Label className="text-sm font-medium">
-                Full Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="rounded-lg"
-                placeholder="John Doe"
-                required
-              />
-            </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="space-y-2"
+              >
+                <Label className="text-sm font-medium">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  className="rounded-lg"
+                  placeholder="Doe"
+                  required
+                />
+              </motion.div>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <motion.div
@@ -189,9 +224,15 @@ export function AddParentDialog({
               transition={{ delay: 0.3 }}
               className="space-y-2"
             >
-              <Label className="text-sm font-medium">Select Children</Label>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg p-3">
-                {students.map((student) => (
+              <Label className="text-sm font-medium">Search and Select Children</Label>
+              <Input
+                placeholder="Search by name or student ID..."
+                value={childSearch}
+                onChange={(e) => setChildSearch(e.target.value)}
+                className="rounded-lg mb-3"
+              />
+              <div className="space-y-2 max-h-[250px] overflow-y-auto border rounded-lg p-3">
+                {filteredStudents.map((student) => (
                   <div
                     key={student.id}
                     className="flex items-center space-x-2 p-2 hover:bg-muted rounded-lg cursor-pointer"
@@ -209,9 +250,9 @@ export function AddParentDialog({
                     </label>
                   </div>
                 ))}
-                {students.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No students available
+                {filteredStudents.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4\">
+                    {childSearch ? "No students match your search" : "No students available"}
                   </p>
                 )}
               </div>

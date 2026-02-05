@@ -13,6 +13,15 @@ export async function verifyPassword(
   return bcrypt.compare(password, hashedPassword);
 }
 
+export function generateRandomPassword(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 export function validatePasswordStrength(password: string): {
   isValid: boolean;
   errors: string[];

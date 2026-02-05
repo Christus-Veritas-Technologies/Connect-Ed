@@ -14,14 +14,16 @@ parents.use("*", requireAuth);
 
 // Validation schemas
 const createParentSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
   studentIds: z.array(z.string()).min(1, "At least one student is required"),
 });
 
 const updateParentSchema = z.object({
-  name: z.string().min(1).optional(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -123,8 +125,10 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
   
   try {
     const data = c.req.valid("json");
+    const fullName = `${data.firstName} ${data.lastName}`;
+    
     console.log(`[POST /parents] Parent data:`, {
-      name: data.name,
+      name: fullName,
       email: data.email,
       studentIds: data.studentIds,
     });
@@ -158,10 +162,10 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     const hashedPassword = await hashPassword(generatedPassword);
 
     // Create parent
-    console.log(`[POST /parents] Inserting parent: ${data.name}`);
+    console.log(`[POST /parents] Inserting parent: ${fullName}`);
     const parent = await db.parent.create({
       data: {
-        name: data.name,
+        name: fullName,
         email: data.email,
         phone: data.phone || undefined,
         password: hashedPassword,
@@ -212,7 +216,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
             type: NotificationType.SYSTEM_ALERT,
             priority: NotificationPriority.MEDIUM,
             title: "New Parent Added",
-            message: `${parent.name} has been added and linked to: ${childrenNames}.`,
+            message: `${fullName} has been added and linked to: ${childrenNames}.`,
             actionUrl: `/dashboard/parents`,
             schoolId,
             userId: admin.id,
@@ -249,7 +253,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       to: parent.email,
       subject: "Welcome to Connect-Ed - Your Login Credentials",
       html: generateWelcomeEmailWithCredentials({
-        name: parent.name,
+        name: fullName,
         email: parent.email,
         password: generatedPassword,
         role: "PARENT",
@@ -259,7 +263,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       schoolId,
     });
 
-    console.log(`[POST /parents] ✅ Parent created successfully: ${parent.name} (${parent.id})`);
+    console.log(`[POST /parents] ✅ Parent created successfully: ${fullName} (${parent.id})`);
     
     // Return parent with generated password (for email notification)
     return successResponse(
