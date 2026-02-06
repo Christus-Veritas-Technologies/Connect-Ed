@@ -75,7 +75,7 @@ interface Teacher {
 }
 
 export default function ClassesPage() {
-  const { school } = useAuth();
+  const { school, user } = useAuth();
   const router = useRouter();
 
   const [search, setSearch] = useState("");
@@ -101,6 +101,15 @@ export default function ClassesPage() {
   
   const classes = classesData?.classes || [];
   const teachers = teachersData?.teachers || [];
+
+  // Show loading state while auth is initializing
+  if (!user || !school) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   // Debounce search
   useEffect(() => {
