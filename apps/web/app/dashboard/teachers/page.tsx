@@ -153,11 +153,13 @@ export default function TeachersPage() {
   };
 
   // View Details and Delete Handlers
-  const handleViewTeacherDetails = (teacher: Teacher) => {
+  const handleViewTeacherDetails = (teacher: Teacher, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/teachers/${teacher.id}`);
   };
 
-  const handleDeleteTeacher = (teacher: Teacher) => {
+  const handleDeleteTeacher = (teacher: Teacher, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSelectedTeacher(teacher);
     setShowDeleteModal(true);
   };
@@ -499,7 +501,7 @@ export default function TeachersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                  onClick={() => handleViewTeacherDetails(teacher)}
+                                  onClick={(e) => handleViewTeacherDetails(teacher, e)}
                                 >
                                   <HugeiconsIcon icon={ViewIcon} size={16} />
                                   View details
@@ -508,7 +510,7 @@ export default function TeachersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => handleDeleteTeacher(teacher)}
+                                  onClick={(e) => handleDeleteTeacher(teacher, e)}
                                 >
                                   <HugeiconsIcon icon={Delete02Icon} size={16} />
                                   Delete {teacher.name.split(" ")[0]}
@@ -578,11 +580,11 @@ export default function TeachersPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={() => handleViewTeacherDetails(teacher)}>
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={(e) => handleViewTeacherDetails(teacher, e)}>
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
                               View details
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={() => handleDeleteTeacher(teacher)}>
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={(e) => handleDeleteTeacher(teacher, e)}>
                               <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-1" />
                               Delete
                             </Button>

@@ -277,11 +277,13 @@ export default function StudentsPage() {
   };
 
   // View Details and Delete Handlers
-  const handleViewStudentDetails = (student: typeof students[0]) => {
+  const handleViewStudentDetails = (student: typeof students[0], e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/students/${student.id}`);
   };
 
-  const handleDeleteStudent = (student: typeof students[0]) => {
+  const handleDeleteStudent = (student: typeof students[0], e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSelectedStudent(student);
     setShowDeleteModal(true);
   };
@@ -614,7 +616,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                onClick={() => handleViewStudentDetails(student)}
+                                onClick={(e) => handleViewStudentDetails(student, e)}
                               >
                                 <HugeiconsIcon icon={ViewIcon} size={16} />
                                 View details
@@ -623,7 +625,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleDeleteStudent(student)}
+                                onClick={(e) => handleDeleteStudent(student, e)}
                               >
                                 <HugeiconsIcon icon={Delete02Icon} size={16} />
                                 Delete {student.firstName}
@@ -685,11 +687,11 @@ export default function StudentsPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={() => handleViewStudentDetails(student)}>
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={(e) => handleViewStudentDetails(student, e)}>
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
                               View details
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={() => handleDeleteStudent(student)}>
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={(e) => handleDeleteStudent(student, e)}>
                               <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-1" />
                               Delete
                             </Button>
@@ -755,7 +757,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                onClick={() => handleViewStudentDetails(student)}
+                                onClick={(e) => handleViewStudentDetails(student, e)}
                               >
                                 <HugeiconsIcon icon={ViewIcon} size={16} />
                                 View details
@@ -764,7 +766,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleDeleteStudent(student)}
+                                onClick={(e) => handleDeleteStudent(student, e)}
                               >
                                 <HugeiconsIcon icon={Delete02Icon} size={16} />
                                 Delete {student.firstName}

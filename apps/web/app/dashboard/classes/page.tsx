@@ -130,17 +130,20 @@ export default function ClassesPage() {
   };
 
   // Handle view details
-  const handleViewDetails = (classItem: Class) => {
+  const handleViewDetails = (classItem: Class, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/classes/${classItem.id}`);
   };
 
   // Handle edit
-  const handleEdit = (classItem: Class) => {
+  const handleEdit = (classItem: Class, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/classes/${classItem.id}?edit=true`);
   };
 
   // Handle delete
-  const handleDelete = (classItem: Class) => {
+  const handleDelete = (classItem: Class, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSelectedClass(classItem);
     setShowDeleteModal(true);
   };
@@ -472,7 +475,7 @@ export default function ClassesPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                  onClick={() => handleViewDetails(classItem)}
+                                  onClick={(e) => handleViewDetails(classItem, e)}
                                 >
                                   <HugeiconsIcon icon={ViewIcon} size={16} />
                                   View details
@@ -481,7 +484,7 @@ export default function ClassesPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-blue/10 hover:text-blue-600"
-                                  onClick={() => handleEdit(classItem)}
+                                  onClick={(e) => handleEdit(classItem, e)}
                                 >
                                   <HugeiconsIcon icon={PencilEdit01Icon} size={16} />
                                   Edit details
@@ -490,7 +493,7 @@ export default function ClassesPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => handleDelete(classItem)}
+                                  onClick={(e) => handleDelete(classItem, e)}
                                 >
                                   <HugeiconsIcon icon={Delete02Icon} size={16} />
                                   Delete class
@@ -578,7 +581,7 @@ export default function ClassesPage() {
                               variant="outline"
                               size="sm"
                               className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand"
-                              onClick={() => handleViewDetails(classItem)}
+                              onClick={(e) => handleViewDetails(classItem, e)}
                             >
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
                               View
@@ -587,7 +590,7 @@ export default function ClassesPage() {
                               variant="outline"
                               size="sm"
                               className="flex-1 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
-                              onClick={() => handleEdit(classItem)}
+                              onClick={(e) => handleEdit(classItem, e)}
                             >
                               <HugeiconsIcon icon={PencilEdit01Icon} size={16} className="mr-1" />
                               Edit
@@ -596,7 +599,7 @@ export default function ClassesPage() {
                               variant="outline"
                               size="icon-sm"
                               className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-                              onClick={() => handleDelete(classItem)}
+                              onClick={(e) => handleDelete(classItem, e)}
                             >
                               <HugeiconsIcon icon={Delete02Icon} size={16} />
                             </Button>
