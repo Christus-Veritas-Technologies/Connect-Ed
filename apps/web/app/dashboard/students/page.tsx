@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   UserGroupIcon,
   Search01Icon,
@@ -88,6 +89,10 @@ export default function StudentsPage() {
   const [classSearch, setClassSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("table");
   const [createAccount, setCreateAccount] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<typeof students[0] | null>(null);
+  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -270,6 +275,40 @@ export default function StudentsPage() {
       `students-${new Date().toISOString().split("T")[0]}`,
       "Students Report"
     );
+  };
+
+  // View Details and Delete Handlers
+  const handleViewStudentDetails = (student: typeof students[0]) => {
+    setSelectedStudent(student);
+    setShowViewDetailsModal(true);
+  };
+
+  const handleDeleteStudent = (student: typeof students[0]) => {
+    setSelectedStudent(student);
+    setShowDeleteModal(true);
+  };
+
+  const queryClient = useQueryClient();
+
+  const confirmDeleteStudent = async () => {
+    if (!selectedStudent) return;
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/students/${selectedStudent.id}`);
+      toast.success("Student deleted successfully", {
+        description: `${selectedStudent.firstName} ${selectedStudent.lastName} has been removed.`,
+      });
+      setShowDeleteModal(false);
+      setSelectedStudent(null);
+      // Refetch students by invalidating the query
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    } catch (error) {
+      const err = error instanceof ApiError ? error.message : "Failed to delete student";
+      toast.error(err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -582,6 +621,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                                onClick={() => handleViewStudentDetails(student)}
                               >
                                 <HugeiconsIcon icon={ViewIcon} size={16} />
                                 View details
@@ -590,6 +630,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDeleteStudent(student)}
                               >
                                 <HugeiconsIcon icon={Delete02Icon} size={16} />
                                 Delete {student.firstName}
@@ -651,11 +692,11 @@ export default function StudentsPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={() => handleViewStudentDetails(student)}>
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
                               View details
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive">
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={() => handleDeleteStudent(student)}>
                               <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-1" />
                               Delete
                             </Button>
@@ -721,6 +762,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                                onClick={() => handleViewStudentDetails(student)}
                               >
                                 <HugeiconsIcon icon={ViewIcon} size={16} />
                                 View details
@@ -729,6 +771,7 @@ export default function StudentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDeleteStudent(student)}
                               >
                                 <HugeiconsIcon icon={Delete02Icon} size={16} />
                                 Delete {student.firstName}
@@ -1174,6 +1217,125 @@ export default function StudentsPage() {
           }
         }}
       />
+
+      {/* View Student Details Modal */}
+      <Dialog open={showViewDetailsModal} onOpenChange={setShowViewDetailsModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Student Details</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="size-16 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md">
+                  <span className="text-2xl font-bold text-white">
+                    {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {selectedStudent.firstName} {selectedStudent.lastName}
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {selectedStudent.admissionNumber}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Gender</p>
+                  <p className="text-sm font-medium capitalize">{selectedStudent.gender || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Status</p>
+                  <Badge className={selectedStudent.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                    {selectedStudent.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Class</p>
+                  <p className="text-sm font-medium">{selectedStudent.class?.name || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Date of Birth</p>
+                  <p className="text-sm font-medium">
+                    {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Email</p>
+                <p className="text-sm break-all">{selectedStudent.email}</p>
+              </div>
+
+              {selectedStudent.phone && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Phone</p>
+                  <p className="text-sm">{selectedStudent.phone}</p>
+                </div>
+              )}
+
+              <Button onClick={() => setShowViewDetailsModal(false)} className="w-full">
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Student Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Student</DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <strong>{selectedStudent.firstName} {selectedStudent.lastName}</strong>?
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This action cannot be undone. All associated data will be removed.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={confirmDeleteStudent}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

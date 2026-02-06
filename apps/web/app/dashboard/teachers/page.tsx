@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   UserGroupIcon,
   Search01Icon,
@@ -88,6 +89,10 @@ export default function TeachersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -171,6 +176,41 @@ export default function TeachersPage() {
       toast.error(error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // View Details and Delete Handlers
+  const queryClient = useQueryClient();
+
+  const handleViewTeacherDetails = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setShowViewDetailsModal(true);
+  };
+
+  const handleDeleteTeacher = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteTeacher = async () => {
+    if (!selectedTeacher) return;
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/teachers/${selectedTeacher.id}`);
+      toast.success("Teacher deleted successfully", {
+        description: `${selectedTeacher.name} has been removed.`,
+      });
+      setShowDeleteModal(false);
+      setSelectedTeacher(null);
+      // Refetch teachers
+      queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      await fetchTeachers();
+    } catch (error) {
+      const err = error instanceof ApiError ? error.message : "Failed to delete teacher";
+      toast.error(err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -493,6 +533,7 @@ export default function TeachersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                                  onClick={() => handleViewTeacherDetails(teacher)}
                                 >
                                   <HugeiconsIcon icon={ViewIcon} size={16} />
                                   View details
@@ -501,6 +542,7 @@ export default function TeachersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => handleDeleteTeacher(teacher)}
                                 >
                                   <HugeiconsIcon icon={Delete02Icon} size={16} />
                                   Delete {teacher.name.split(" ")[0]}
@@ -570,11 +612,11 @@ export default function TeachersPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand" onClick={() => handleViewTeacherDetails(teacher)}>
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
                               View details
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive">
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive" onClick={() => handleDeleteTeacher(teacher)}>
                               <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-1" />
                               Delete
                             </Button>
@@ -811,6 +853,120 @@ export default function TeachersPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Teacher Details Modal */}
+      <Dialog open={showViewDetailsModal} onOpenChange={setShowViewDetailsModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Teacher Details</DialogTitle>
+          </DialogHeader>
+          {selectedTeacher && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="size-16 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                  <span className="text-2xl font-bold text-white">
+                    {selectedTeacher.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {selectedTeacher.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedTeacher.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Status</p>
+                  <Badge className={selectedTeacher.isActive ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}>
+                    {selectedTeacher.isActive ? "Active" : "On Leave"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Classes</p>
+                  <p className="text-sm font-medium">
+                    {selectedTeacher.classes && selectedTeacher.classes.length > 0
+                      ? selectedTeacher.classes.length
+                      : "0"}
+                  </p>
+                </div>
+              </div>
+
+              {selectedTeacher.classes && selectedTeacher.classes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Assigned Classes</p>
+                  <div className="space-y-1">
+                    {selectedTeacher.classes.map((cls) => (
+                      <Badge key={cls.id} variant="outline" className="mr-2">
+                        {cls.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button onClick={() => setShowViewDetailsModal(false)} className="w-full">
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Teacher Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Teacher</DialogTitle>
+          </DialogHeader>
+          {selectedTeacher && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <strong>{selectedTeacher.name}</strong>?
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This action cannot be undone. All associated data will be removed.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={confirmDeleteTeacher}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
