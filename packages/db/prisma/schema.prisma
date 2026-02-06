@@ -141,6 +141,7 @@ model User {
   email        String  @unique
   password     String
   name         String
+  phone        String?
   role         Role
   isActive     Boolean @default(true)
   tokenVersion Int     @default(0) // For refresh token invalidation
