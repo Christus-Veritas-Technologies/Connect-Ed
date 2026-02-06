@@ -21,6 +21,8 @@ import {
   GridIcon,
   ListViewIcon,
   TableIcon,
+  MoreVerticalIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useStudents, useCreateStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
@@ -60,6 +62,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 import { AddParentDialog } from "@/components/dialogs/add-parent-dialog";
@@ -457,7 +464,7 @@ export default function StudentsPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55 }}
-        className="flex justify-end"
+        className="flex justify-start"
       >
         <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
           <TabsList>
@@ -563,14 +570,33 @@ export default function StudentsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                            <HugeiconsIcon icon={ViewIcon} size={18} />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                            <HugeiconsIcon icon={PencilEdit01Icon} size={18} />
-                          </Button>
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
+                              <HugeiconsIcon icon={MoreVerticalIcon} size={18} />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48" align="end">
+                            <div className="flex flex-col gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                              >
+                                <HugeiconsIcon icon={ViewIcon} size={16} />
+                                View details
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <HugeiconsIcon icon={Delete02Icon} size={16} />
+                                Delete {student.firstName}
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </TableCell>
                     </motion.tr>
                   ))}
@@ -627,11 +653,11 @@ export default function StudentsPage() {
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
                               <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
-                              View
+                              View details
                             </Button>
-                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
-                              <HugeiconsIcon icon={PencilEdit01Icon} size={16} className="mr-1" />
-                              Edit
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive">
+                              <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-1" />
+                              Delete
                             </Button>
                           </div>
                         </CardContent>
@@ -683,14 +709,33 @@ export default function StudentsPage() {
                             <span>{student.class?.name || "—"}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                            <HugeiconsIcon icon={ViewIcon} size={18} />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                            <HugeiconsIcon icon={PencilEdit01Icon} size={18} />
-                          </Button>
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
+                              <HugeiconsIcon icon={MoreVerticalIcon} size={18} />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48" align="end">
+                            <div className="flex flex-col gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                              >
+                                <HugeiconsIcon icon={ViewIcon} size={16} />
+                                View details
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <HugeiconsIcon icon={Delete02Icon} size={16} />
+                                Delete {student.firstName}
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </motion.div>
                   ))}
