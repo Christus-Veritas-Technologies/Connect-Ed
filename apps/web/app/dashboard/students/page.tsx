@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserGroupIcon,
@@ -74,6 +74,7 @@ import { toast } from "sonner";
 
 export default function StudentsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { school } = useAuth();
 
   const [page, setPage] = useState(1);
@@ -89,7 +90,6 @@ export default function StudentsPage() {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("table");
   const [createAccount, setCreateAccount] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<typeof students[0] | null>(null);
-  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -278,8 +278,7 @@ export default function StudentsPage() {
 
   // View Details and Delete Handlers
   const handleViewStudentDetails = (student: typeof students[0]) => {
-    setSelectedStudent(student);
-    setShowViewDetailsModal(true);
+    router.push(`/dashboard/students/${student.id}`);
   };
 
   const handleDeleteStudent = (student: typeof students[0]) => {
@@ -1212,74 +1211,7 @@ export default function StudentsPage() {
         }}
       />
 
-      {/* View Student Details Modal */}
-      <Dialog open={showViewDetailsModal} onOpenChange={setShowViewDetailsModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Student Details</DialogTitle>
-          </DialogHeader>
-          {selectedStudent && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="size-16 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md">
-                  <span className="text-2xl font-bold text-white">
-                    {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {selectedStudent.firstName} {selectedStudent.lastName}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {selectedStudent.admissionNumber}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Gender</p>
-                  <p className="text-sm font-medium capitalize">{selectedStudent.gender || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Status</p>
-                  <Badge className={selectedStudent.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                    {selectedStudent.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Class</p>
-                  <p className="text-sm font-medium">{selectedStudent.class?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Date of Birth</p>
-                  <p className="text-sm font-medium">
-                    {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : "—"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Email</p>
-                <p className="text-sm break-all">{selectedStudent.email}</p>
-              </div>
-
-              {selectedStudent.phone && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">Phone</p>
-                  <p className="text-sm">{selectedStudent.phone}</p>
-                </div>
-              )}
-
-              <Button onClick={() => setShowViewDetailsModal(false)} className="w-full">
-                Close
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Student Confirmation Modal */}
+      {/* Delete Student Confirmation Modal */}}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

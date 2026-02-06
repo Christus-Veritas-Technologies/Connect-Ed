@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserGroupIcon,
@@ -79,6 +80,7 @@ interface Teacher {
 
 export default function TeachersPage() {
   const { school } = useAuth();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -86,7 +88,6 @@ export default function TeachersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [formError, setFormError] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
-  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -153,8 +154,7 @@ export default function TeachersPage() {
 
   // View Details and Delete Handlers
   const handleViewTeacherDetails = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
-    setShowViewDetailsModal(true);
+    router.push(`/dashboard/teachers/${teacher.id}`);
   };
 
   const handleDeleteTeacher = (teacher: Teacher) => {
@@ -819,68 +819,6 @@ export default function TeachersPage() {
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Teacher Details Modal */}
-      <Dialog open={showViewDetailsModal} onOpenChange={setShowViewDetailsModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Teacher Details</DialogTitle>
-          </DialogHeader>
-          {selectedTeacher && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="size-16 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                  <span className="text-2xl font-bold text-white">
-                    {selectedTeacher.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {selectedTeacher.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedTeacher.email}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Status</p>
-                  <Badge className={selectedTeacher.isActive ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}>
-                    {selectedTeacher.isActive ? "Active" : "On Leave"}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Classes</p>
-                  <p className="text-sm font-medium">
-                    {selectedTeacher.classes && selectedTeacher.classes.length > 0
-                      ? selectedTeacher.classes.length
-                      : "0"}
-                  </p>
-                </div>
-              </div>
-
-              {selectedTeacher.classes && selectedTeacher.classes.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">Assigned Classes</p>
-                  <div className="space-y-1">
-                    {selectedTeacher.classes.map((cls) => (
-                      <Badge key={cls.id} variant="outline" className="mr-2">
-                        {cls.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button onClick={() => setShowViewDetailsModal(false)} className="w-full">
-                Close
-              </Button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
 
