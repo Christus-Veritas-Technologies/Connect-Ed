@@ -11,7 +11,7 @@ import {
   BookmarkAdd01Icon,
   UserIcon,
   Mail01Icon,
-  Phone01Icon,
+  TelephoneIcon,
   CalendarIcon,
   DollarCircleIcon,
   Tick02Icon,
@@ -304,7 +304,7 @@ export default function StudentDetailPage() {
 
                 {student.phone && (
                   <div className="flex items-center gap-3 py-3 border-b">
-                    <HugeiconsIcon icon={Phone01Icon} size={20} className="text-muted-foreground" />
+                    <HugeiconsIcon icon={TelephoneIcon} size={20} className="text-muted-foreground" />
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-semibold">{student.phone}</p>
@@ -408,7 +408,7 @@ export default function StudentDetailPage() {
                       </div>
                       {student.parent.phone && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <HugeiconsIcon icon={Phone01Icon} size={14} />
+                          <HugeiconsIcon icon={TelephoneIcon} size={14} />
                           <span>{student.parent.phone}</span>
                         </div>
                       )}

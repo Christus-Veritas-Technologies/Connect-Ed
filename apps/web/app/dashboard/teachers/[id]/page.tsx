@@ -11,7 +11,7 @@ import {
   BookmarkAdd01Icon,
   UserGroupIcon,
   Mail01Icon,
-  Phone01Icon,
+  TelephoneIcon,
   CalendarIcon,
   Cancel01Icon,
   Tick02Icon,
@@ -179,7 +179,7 @@ export default function TeacherDetailPage() {
                   </div>
                   {teacher.phone && (
                     <div className="flex items-center gap-2 text-white/90">
-                      <HugeiconsIcon icon={Phone01Icon} size={18} />
+                      <HugeiconsIcon icon={TelephoneIcon} size={18} />
                       <span className="text-sm md:text-base">{teacher.phone}</span>
                     </div>
                   )}
@@ -304,7 +304,7 @@ export default function TeacherDetailPage() {
 
                 {teacher.phone && (
                   <div className="flex items-center gap-3 py-3 border-b">
-                    <HugeiconsIcon icon={Phone01Icon} size={20} className="text-muted-foreground" />
+                    <HugeiconsIcon icon={TelephoneIcon} size={20} className="text-muted-foreground" />
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-semibold">{teacher.phone}</p>
