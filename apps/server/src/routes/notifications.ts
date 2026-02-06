@@ -123,6 +123,37 @@ notifications.post("/read-all", requireAuth, async (c) => {
   }
 });
 
+// POST /notifications/read-by-url - Mark notifications by actionUrl as read
+notifications.post("/read-by-url", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const schoolId = c.get("schoolId");
+    const userRole = c.get("role");
+    const { actionUrl } = await c.req.json();
+
+    if (!actionUrl) {
+      return errors.badRequest(c, "actionUrl is required");
+    }
+
+    const where = userRole === "ADMIN"
+      ? { schoolId, actionUrl, isRead: false }
+      : { userId, schoolId, actionUrl, isRead: false };
+
+    const result = await db.notification.updateMany({
+      where,
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+
+    return successResponse(c, { updated: result.count });
+  } catch (error) {
+    console.error("Mark by URL as read error:", error);
+    return errors.internalError(c);
+  }
+});
+
 // DELETE /notifications/:id - Delete notification
 notifications.delete("/:id", requireAuth, async (c) => {
   try {

@@ -18,9 +18,12 @@ import {
   FileExportIcon,
   PauseIcon,
   Cancel01Icon,
+  GridIcon,
+  ListViewIcon,
+  TableIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useStudents, useCreateStudent } from "@/lib/hooks";
+import { useStudents, useCreateStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
 import { useClasses } from "@/lib/hooks/use-classes";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
@@ -57,6 +60,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 import { AddParentDialog } from "@/components/dialogs/add-parent-dialog";
 import { toast } from "sonner";
@@ -75,6 +79,8 @@ export default function StudentsPage() {
   const [showParentModal, setShowParentModal] = useState(false);
   const [newlyCreatedStudentId, setNewlyCreatedStudentId] = useState<string | undefined>();
   const [classSearch, setClassSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("table");
+  const [createAccount, setCreateAccount] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -102,6 +108,12 @@ export default function StudentsPage() {
   });
   const { data: classesData, isLoading: loadingClasses } = useClasses();
   const createMutation = useCreateStudent();
+  const markNotificationsByUrl = useMarkNotificationsByUrl();
+
+  // Mark notifications as read when page loads
+  useEffect(() => {
+    markNotificationsByUrl.mutate("/dashboard/students");
+  }, []);
 
   const students = data?.students || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -183,6 +195,7 @@ export default function StudentsPage() {
           classId: "",
         });
         setClassSearch("");
+        setCreateAccount(false);
         setShowAddModal(false);
         
         // Show success toast
@@ -439,6 +452,31 @@ export default function StudentsPage() {
         </div>
       </motion.div>
 
+      {/* View Mode Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.55 }}
+        className="flex justify-end"
+      >
+        <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
+          <TabsList>
+            <TabsTrigger value="cards" className="gap-2">
+              <HugeiconsIcon icon={GridIcon} size={18} />
+              Cards
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-2">
+              <HugeiconsIcon icon={TableIcon} size={18} />
+              Table
+            </TabsTrigger>
+            <TabsTrigger value="list" className="gap-2">
+              <HugeiconsIcon icon={ListViewIcon} size={18} />
+              List
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </motion.div>
+
       {/* Students Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -465,17 +503,19 @@ export default function StudentsPage() {
           </div>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {/* Table View */}
+            {viewMode === "table" && (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                 <AnimatePresence>
                   {filteredStudents.map((student, index) => (
                     <motion.tr
@@ -512,8 +552,12 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={student.isActive ? "default" : "secondary"}
-                          className={student.isActive ? "bg-green-500 hover:bg-green-600" : ""}
+                          variant="outline"
+                          className={
+                            student.isActive
+                              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          }
                         >
                           {student.isActive ? "Active" : "Inactive"}
                         </Badge>
@@ -533,6 +577,126 @@ export default function StudentsPage() {
                 </AnimatePresence>
               </TableBody>
             </Table>
+            )}
+
+            {/* Cards View */}
+            {viewMode === "cards" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+                <AnimatePresence>
+                  {filteredStudents.map((student, index) => (
+                    <motion.div
+                      key={student.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className="group hover:shadow-lg transition-all duration-200 hover:border-brand/50">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3 mb-4">
+                            <div className="size-12 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
+                              <span className="text-base font-bold text-white">
+                                {student.firstName[0]}{student.lastName[0]}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-sm truncate">
+                                {student.firstName} {student.lastName}
+                              </h4>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {student.admissionNumber}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={
+                                student.isActive
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-gray-50 text-gray-700 border-gray-200"
+                              }
+                            >
+                              {student.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2 mb-4">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">Class:</span>
+                              <span className="font-medium">{student.class?.name || "—"}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
+                              <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
+                              View
+                            </Button>
+                            <Button variant="outline" size="sm" className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand">
+                              <HugeiconsIcon icon={PencilEdit01Icon} size={16} className="mr-1" />
+                              Edit
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* List View */}
+            {viewMode === "list" && (
+              <div className="divide-y">
+                <AnimatePresence>
+                  {filteredStudents.map((student, index) => (
+                    <motion.div
+                      key={student.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group hover:bg-muted/50 transition-colors p-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
+                          <span className="text-sm font-bold text-white">
+                            {student.firstName[0]}{student.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold truncate">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className={
+                                student.isActive
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-gray-50 text-gray-700 border-gray-200"
+                              }
+                            >
+                              {student.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="font-mono">{student.admissionNumber}</span>
+                            <span>•</span>
+                            <span>{student.class?.name || "—"}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
+                            <HugeiconsIcon icon={ViewIcon} size={18} />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={18} />
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-muted/30">
@@ -690,6 +854,32 @@ export default function StudentsPage() {
                   Contact Information
                 </h3>
 
+                {/* Create Account Switch */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                >
+                  <div className="flex-1">
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Create Account
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Enable for students who need login access (email required)
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={createAccount}
+                      onChange={(e) => setCreateAccount(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+                  </label>
+                </motion.div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -697,7 +887,9 @@ export default function StudentsPage() {
                     transition={{ delay: 0.3 }}
                     className="space-y-2"
                   >
-                    <Label className="text-sm font-medium">Email</Label>
+                    <Label className="text-sm font-medium">
+                      Email {createAccount && <span className="text-destructive">*</span>}
+                    </Label>
                     <Input
                       type="email"
                       value={formData.email}
@@ -706,7 +898,11 @@ export default function StudentsPage() {
                       }
                       className="rounded-lg"
                       placeholder="john.doe@example.com"
+                      required={createAccount}
                     />
+                    {createAccount && !formData.email && (
+                      <p className="text-xs text-destructive">Email is required for account creation</p>
+                    )}
                   </motion.div>
 
                   <motion.div

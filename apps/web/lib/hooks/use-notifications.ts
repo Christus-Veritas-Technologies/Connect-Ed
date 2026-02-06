@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 
 interface NotificationCountsResponse {
@@ -49,5 +49,19 @@ export function useNotifications() {
     },
     refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 25000, // Consider data stale after 25 seconds
+  });
+}
+
+export function useMarkNotificationsByUrl() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (actionUrl: string) => {
+      return api.post("/notifications/read-by-url", { actionUrl });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
 }
