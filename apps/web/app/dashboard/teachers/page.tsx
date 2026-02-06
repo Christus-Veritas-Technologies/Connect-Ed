@@ -731,62 +731,67 @@ export default function TeachersPage() {
               <Label className="text-sm font-medium">
                 Assign Class (Optional)
               </Label>
-              <Input
-                placeholder="Search classes..."
-                value={classSearch}
-                onChange={(e) => setClassSearch(e.target.value)}
-                className="rounded-lg mb-2"
-              />
-              <Select
-                value={formData.classId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, classId: value })
-                }
-              >
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder="Select class..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {classes
-                    .filter((cls) =>
-                      classSearch
-                        ? cls.name.toLowerCase().includes(classSearch.toLowerCase())
-                        : true
-                    )
-                    .map((cls) => {
-                      const isTaken = cls.teacherId && cls.teacherId !== "";
-                      return (
-                        <SelectItem
-                          key={cls.id}
-                          value={cls.id}
-                          disabled={isTaken}
-                          className={isTaken ? "opacity-60" : ""}
-                        >
-                          <div className="flex items-center justify-between w-full gap-2">
-                            <span>{cls.name}</span>
-                            {isTaken && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs"
-                              >
-                                TAKEN
-                              </Badge>
+              <div className="relative">
+                <Input
+                  placeholder="Search and select class..."
+                  value={classSearch}
+                  onChange={(e) => setClassSearch(e.target.value)}
+                  className="rounded-lg"
+                />
+                {classSearch && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[300px] overflow-y-auto">
+                    {classes
+                      .filter((cls) =>
+                        cls.name.toLowerCase().includes(classSearch.toLowerCase())
+                      )
+                      .map((cls) => {
+                        const isTaken = cls.teacherId && cls.teacherId !== "";
+                        return (
+                          <button
+                            key={cls.id}
+                            type="button"
+                            onClick={() => {
+                              if (!isTaken) {
+                                setFormData({ ...formData, classId: cls.id });
+                                setClassSearch("");
+                              }
+                            }}
+                            disabled={isTaken}
+                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between group ${
+                              isTaken
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-muted cursor-pointer"
+                            }`}
+                          >
+                            <span className="text-sm">
+                              {cls.name}
+                              {isTaken && (
+                                <Badge className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-300">
+                                  TAKEN
+                                </Badge>
+                              )}
+                            </span>
+                            {formData.classId === cls.id && (
+                              <div className="w-2 h-2 rounded-full bg-brand"></div>
                             )}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  {classes.filter((cls) =>
-                    classSearch
-                      ? cls.name.toLowerCase().includes(classSearch.toLowerCase())
-                      : true
-                  ).length === 0 && (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      No classes found
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                          </button>
+                        );
+                      })}
+                    {classes.filter((cls) =>
+                      cls.name.toLowerCase().includes(classSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        No classes match
+                      </div>
+                    )}
+                  </div>
+                )}
+                {formData.classId && !classSearch && (
+                  <div className="mt-2 p-2 bg-brand/10 border border-brand/30 rounded text-sm text-brand font-medium">
+                    Selected: {classes.find(c => c.id === formData.classId)?.name}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Classes with existing class teachers are marked as TAKEN
               </p>

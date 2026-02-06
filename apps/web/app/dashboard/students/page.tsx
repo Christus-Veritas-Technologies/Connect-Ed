@@ -985,84 +985,122 @@ export default function StudentsPage() {
                   <Label className="text-sm font-medium">
                     Class <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    placeholder="Search classes..."
-                    value={classSearch}
-                    onChange={(e) => setClassSearch(e.target.value)}
-                    className="rounded-lg mb-2"
-                  />
-                  <Select
-                    value={formData.classId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, classId: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger className="rounded-lg">
-                      <SelectValue placeholder="Select class..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      {primaryClasses.length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                            PRIMARY
-                          </div>
-                          {primaryClasses.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>
-                              {cls.name}
-                              {cls._count?.students !== undefined && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  ({cls._count.students} students)
-                                </span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {secondaryClasses.length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-1">
-                            SECONDARY
-                          </div>
-                          {secondaryClasses.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>
-                              {cls.name}
-                              {cls._count?.students !== undefined && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  ({cls._count.students} students)
-                                </span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {otherClasses.length > 0 && (
-                        <>
-                          {(primaryClasses.length > 0 ||
-                            secondaryClasses.length > 0) && (
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-1">
-                              OTHER
+                  <div className="relative">
+                    <Input
+                      placeholder="Search and select class..."
+                      value={classSearch}
+                      onChange={(e) => setClassSearch(e.target.value)}
+                      className="rounded-lg"
+                    />
+                    {classSearch && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[300px] overflow-y-auto">
+                        {primaryClasses.length > 0 && (
+                          <>
+                            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                              PRIMARY
                             </div>
-                          )}
-                          {otherClasses.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>
-                              {cls.name}
-                              {cls._count?.students !== undefined && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  ({cls._count.students} students)
+                            {primaryClasses.map((cls) => (
+                              <button
+                                key={cls.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, classId: cls.id });
+                                  setClassSearch("");
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between group"
+                              >
+                                <span className="text-sm">
+                                  {cls.name}
+                                  {cls._count?.students !== undefined && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({cls._count.students} students)
+                                    </span>
+                                  )}
                                 </span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {filteredClasses.length === 0 && (
-                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                          No classes found
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                                {formData.classId === cls.id && (
+                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {secondaryClasses.length > 0 && (
+                          <>
+                            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                              SECONDARY
+                            </div>
+                            {secondaryClasses.map((cls) => (
+                              <button
+                                key={cls.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, classId: cls.id });
+                                  setClassSearch("");
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between"
+                              >
+                                <span className="text-sm">
+                                  {cls.name}
+                                  {cls._count?.students !== undefined && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({cls._count.students} students)
+                                    </span>
+                                  )}
+                                </span>
+                                {formData.classId === cls.id && (
+                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {otherClasses.length > 0 && (
+                          <>
+                            {(primaryClasses.length > 0 || secondaryClasses.length > 0) && (
+                              <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                                OTHER
+                              </div>
+                            )}
+                            {otherClasses.map((cls) => (
+                              <button
+                                key={cls.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, classId: cls.id });
+                                  setClassSearch("");
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between"
+                              >
+                                <span className="text-sm">
+                                  {cls.name}
+                                  {cls._count?.students !== undefined && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({cls._count.students} students)
+                                    </span>
+                                  )}
+                                </span>
+                                {formData.classId === cls.id && (
+                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {primaryClasses.length === 0 &&
+                          secondaryClasses.length === 0 &&
+                          otherClasses.length === 0 && (
+                          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                            No classes match
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {formData.classId && !classSearch && (
+                      <div className="mt-2 p-2 bg-brand/10 border border-brand/30 rounded text-sm text-brand font-medium">
+                        Selected: {allClasses.find(c => c.id === formData.classId)?.name}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Student ID will be auto-generated upon creation
                   </p>
