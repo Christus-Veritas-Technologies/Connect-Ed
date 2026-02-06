@@ -92,8 +92,11 @@ export default function TeachersPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
+    phone: "",
+    classId: "",
   });
+  const [classSearch, setClassSearch] = useState("");
+  const [classes, setClasses] = useState<Array<{ id: string; name: string; level?: string | null; teacherId?: string | null }>>([]);
 
   const markNotificationsByUrl = useMarkNotificationsByUrl();
 
@@ -125,8 +128,19 @@ export default function TeachersPage() {
     }
   };
 
+  // Fetch classes
+  const fetchClasses = async () => {
+    try {
+      const data = await api.get<{ classes: Array<{ id: string; name: string; level?: string | null; teacherId?: string | null }> }>("/classes");
+      setClasses(data.classes);
+    } catch (error) {
+      console.error("Failed to fetch classes:", error);
+    }
+  };
+
   useEffect(() => {
     fetchTeachers();
+    fetchClasses();
   }, []);
 
   const handleAddTeacher = async (e: React.FormEvent) => {
@@ -135,15 +149,22 @@ export default function TeachersPage() {
     setIsSubmitting(true);
 
     try {
+      // Generate a random password
+      const generatedPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + "@1";
+      
       await api.post("/teachers", {
         ...formData,
+        password: generatedPassword,
         role: "TEACHER",
       });
 
-      setFormData({ name: "", email: "", password: "" });
+      setFormData({ name: "", email: "", phone: "", classId: "" });
+      setClassSearch("");
       setShowAddModal(false);
       fetchTeachers();
-      toast.success("Teacher added successfully!");
+      toast.success("Teacher added successfully!", {
+        description: "Welcome email with login credentials has been sent.",
+      });
     } catch (err) {
       const error = err instanceof ApiError ? err.message : "Failed to add teacher";
       setFormError(error);
@@ -502,46 +523,50 @@ export default function TeachersPage() {
                   {filteredTeachers.map((teacher, index) => (
                     <motion.div
                       key={teacher.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ delay: index * 0.05 }}
                     >
-                      <Card className="group hover:shadow-lg transition-all duration-200 hover:border-brand/50">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3 mb-4">
-                            <div className="size-12 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
-                              <span className="text-base font-bold text-white">
+                      <Card className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-brand/50 bg-gradient-to-br from-white to-brand/5">
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="size-14 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg flex-shrink-0 ring-2 ring-white">
+                              <span className="text-lg font-bold text-white">
                                 {teacher.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
                               </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-sm truncate">
-                                {teacher.name}
-                              </h4>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {teacher.email}
-                              </p>
                             </div>
                             <Badge
                               variant="outline"
                               className={
                                 teacher.isActive
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : "bg-orange-50 text-orange-700 border-orange-200"
+                                  ? "bg-green-50 text-green-700 border-green-300 shadow-sm"
+                                  : "bg-orange-50 text-orange-700 border-orange-300 shadow-sm"
                               }
                             >
                               {teacher.isActive ? "Active" : "On Leave"}
                             </Badge>
                           </div>
                           <div className="space-y-2 mb-4">
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="text-muted-foreground">Classes:</span>
-                              <span className="font-medium">
-                                {teacher.classes && teacher.classes.length > 0
-                                  ? teacher.classes.map(c => c.name).join(", ")
-                                  : "None assigned"}
-                              </span>
+                            <h4 className="font-bold text-lg truncate">
+                              {teacher.name}
+                            </h4>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              <span className="truncate">{teacher.email}</span>
+                            </div>
+                            <div className="pt-2 border-t">
+                              <div className="flex items-center gap-2 text-sm">
+                                <HugeiconsIcon icon={BookmarkAdd01Icon} size={16} className="text-brand" />
+                                <span className="text-muted-foreground">Classes:</span>
+                                <span className="font-semibold text-brand">
+                                  {teacher.classes && teacher.classes.length > 0
+                                    ? teacher.classes.map(c => c.name).join(", ")
+                                    : "None"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -675,30 +700,95 @@ export default function TeachersPage() {
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Email <span className="text-destructive">*</span>
+                Email Address <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="teacher@school.com"
+                placeholder="john.smith@school.com"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Login credentials will be sent via email
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Phone Number <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+254 712 345 678"
                 required
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Initial Password <span className="text-destructive">*</span>
+                Assign Class (Optional)
               </Label>
               <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Temporary password"
-                required
+                placeholder="Search classes..."
+                value={classSearch}
+                onChange={(e) => setClassSearch(e.target.value)}
+                className="rounded-lg mb-2"
               />
+              <Select
+                value={formData.classId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, classId: value })
+                }
+              >
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Select class..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {classes
+                    .filter((cls) =>
+                      classSearch
+                        ? cls.name.toLowerCase().includes(classSearch.toLowerCase())
+                        : true
+                    )
+                    .map((cls) => {
+                      const isTaken = cls.teacherId && cls.teacherId !== "";
+                      return (
+                        <SelectItem
+                          key={cls.id}
+                          value={cls.id}
+                          disabled={isTaken}
+                          className={isTaken ? "opacity-60" : ""}
+                        >
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{cls.name}</span>
+                            {isTaken && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs"
+                              >
+                                TAKEN
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  {classes.filter((cls) =>
+                    classSearch
+                      ? cls.name.toLowerCase().includes(classSearch.toLowerCase())
+                      : true
+                  ).length === 0 && (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      No classes found
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                Teacher should change this on first login
+                Classes with existing class teachers are marked as TAKEN
               </p>
             </div>
 
