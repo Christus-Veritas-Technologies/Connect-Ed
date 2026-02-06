@@ -728,13 +728,26 @@ export default function TeachersPage() {
               <Label className="text-sm font-medium">
                 Phone Number <span className="text-destructive">*</span>
               </Label>
-              <Input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+254 712 345 678"
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value="+263"
+                  disabled
+                  className="w-20"
+                />
+                <Input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="712345678"
+                  maxLength={9}
+                  required
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter 9-digit phone number (must start with 7)
+              </p>
             </div>
 
             <div className="space-y-2">

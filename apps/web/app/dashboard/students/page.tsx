@@ -995,15 +995,27 @@ export default function StudentsPage() {
                     className="space-y-2"
                   >
                     <Label className="text-sm font-medium">Phone</Label>
-                    <Input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      className="rounded-lg"
-                      placeholder="+1234567890"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        value="+263"
+                        disabled
+                        className="w-20 rounded-lg"
+                      />
+                      <Input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className="rounded-lg flex-1"
+                        placeholder="712345678"
+                        maxLength={9}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter 9-digit phone number (must start with 7)
+                    </p>
                   </motion.div>
                 </div>
               </div>
