@@ -273,6 +273,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
           schoolName: school?.name,
         }),
         schoolId,
+        type: "KIN",
       });
     }
 

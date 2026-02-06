@@ -174,6 +174,7 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
         schoolName: school?.name,
       }),
       schoolId,
+      type: "KIN",
     });
 
     // Return teacher with generated password (for email notification)

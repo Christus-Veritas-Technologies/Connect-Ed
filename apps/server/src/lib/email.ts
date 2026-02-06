@@ -1,48 +1,94 @@
 import { db, MessageType, MessageStatus } from "@repo/db";
 import nodemailer from "nodemailer";
 
+export type EmailType = "KIN" | "NOREPLY" | "SALES";
+
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   schoolId: string;
+  type?: EmailType; // Defaults to KIN for friendly emails
 }
 
-// Create reusable transporter object using SMTP transport
-const createTransporter = () => {
+// Create transporter for Kin's emails (welcome emails, friendly communication)
+const createKinTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+    host: process.env.KIN_SMTP_HOST,
+    port: parseInt(process.env.KIN_SMTP_PORT || "587"),
+    secure: process.env.KIN_SMTP_SECURE === "true",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.KIN_SMTP_USER,
+      pass: process.env.KIN_SMTP_PASS,
+    },
+  });
+};
+
+// Create transporter for no-reply emails (one-sided notifications)
+const createNoReplyTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.NOREPLY_SMTP_HOST,
+    port: parseInt(process.env.NOREPLY_SMTP_PORT || "587"),
+    secure: process.env.NOREPLY_SMTP_SECURE === "true",
+    auth: {
+      user: process.env.NOREPLY_SMTP_USER,
+      pass: process.env.NOREPLY_SMTP_PASS,
+    },
+  });
+};
+
+// Create transporter for sales emails (plan purchases, sales)
+const createSalesTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SALES_SMTP_HOST,
+    port: parseInt(process.env.SALES_SMTP_PORT || "587"),
+    secure: process.env.SALES_SMTP_SECURE === "true",
+    auth: {
+      user: process.env.SALES_SMTP_USER,
+      pass: process.env.SALES_SMTP_PASS,
     },
   });
 };
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
-  const { to, subject, html, schoolId } = options;
+  const { to, subject, html, schoolId, type = "KIN" } = options;
 
   try {
-    console.log("📧 Sending email:", {
+    console.log(`📧 Sending ${type} email:`, {
       to,
       subject,
       preview: html.substring(0, 100) + "...",
     });
 
-    // Create transporter
-    const transporter = createTransporter();
+    // Create appropriate transporter based on email type
+    let transporter;
+    let fromEmail;
+    
+    switch (type) {
+      case "NOREPLY":
+        transporter = createNoReplyTransporter();
+        fromEmail = process.env.NOREPLY_FROM_EMAIL || "Connect-Ed <no-reply@connect-ed.co.zw>";
+        break;
+      case "SALES":
+        transporter = createSalesTransporter();
+        fromEmail = process.env.SALES_FROM_EMAIL || "Connect-Ed Sales <sales@connect-ed.co.zw>";
+        break;
+      case "KIN":
+      default:
+        transporter = createKinTransporter();
+        fromEmail = process.env.KIN_FROM_EMAIL || "Kin - Connect-Ed <kin@connect-ed.co.zw>";
+        break;
+    }
 
     // Send email
     const info = await transporter.sendMail({
-      from: process.env.FROM_EMAIL || "Connect-Ed <noreply@connect-ed.com>",
+      from: fromEmail,
       to,
       subject,
       html,
     });
 
-    console.log("✅ Email sent successfully:", info.messageId);
+    console.log(`✅ ${type} email sent successfully:`, info.messageId);
 
     // Log the successful email in the database
     await db.messageLog.create({
@@ -59,7 +105,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
+    console.error(`❌ ${type} email sending failed:`, error);
 
     // Log the failure
     await db.messageLog.create({
@@ -130,10 +176,11 @@ export function generatePaymentSuccessEmail(params: {
             </div>
             <p>Your school's plan has been activated and all services are now available.</p>
             <a href="${process.env.APP_URL}/dashboard" class="button">Go to Dashboard</a>
+            <p style="margin-top: 20px; color: #6b7280;">Thank you for choosing Connect-Ed to power your school management!</p>
           </div>
           <div class="footer">
             <p>Connect-Ed School Management System</p>
-            <p>If you have any questions, please contact our support team.</p>
+            <p>Questions about your plan? Contact us at <a href="mailto:sales@connect-ed.co.zw" style="color: #3b82f6;">sales@connect-ed.co.zw</a></p>
           </div>
         </div>
       </body>
@@ -178,10 +225,11 @@ export function generatePaymentFailedEmail(params: {
               <p>Please try again or contact your bank if the issue persists.</p>
             </div>
             <a href="${process.env.APP_URL}/payment" class="button">Retry Payment</a>
+            <p style="margin-top: 20px; color: #6b7280;">Need help with your payment? Our sales team is here to assist you.</p>
           </div>
           <div class="footer">
             <p>Connect-Ed School Management System</p>
-            <p>Need help? Contact our support team for assistance.</p>
+            <p>Need help? Contact our sales team at <a href="mailto:sales@connect-ed.co.zw" style="color: #3b82f6;">sales@connect-ed.co.zw</a></p>
           </div>
         </div>
       </body>
@@ -252,7 +300,12 @@ export function generateWelcomeEmailWithCredentials(params: {
               <a href="${portalUrl}" class="button">Login to Your Account</a>
             </div>
 
-            <p style="margin-top: 30px; color: #6b7280;">If you have any questions or need assistance, please don't hesitate to contact the school administration.</p>
+            <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">💬 Need Help or Have Questions?</p>
+              <p style="margin: 0; color: #1e40af;">I'm Kin, and I'm here to help! Feel free to reach out to me directly at <a href="mailto:kin@connect-ed.co.zw" style="color: #3b82f6; text-decoration: none; font-weight: bold;">kin@connect-ed.co.zw</a> if you have any questions, need assistance getting started, or just want to share feedback. I'd love to hear from you!</p>
+            </div>
+
+            <p style="margin-top: 20px; color: #6b7280;">If you have any questions or need assistance, please don't hesitate to reach out.</p>
           </div>
           <div class="footer">
             <p><strong>Connect-Ed School Management System</strong></p>

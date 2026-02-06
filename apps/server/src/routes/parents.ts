@@ -362,6 +362,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
         additionalInfo: emailAdditionalInfo,
       }),
       schoolId,
+      type: "KIN",
     });
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${fullName} (${parent.id})`);
@@ -647,6 +648,7 @@ parents.post("/requests/:id/accept", async (c) => {
         <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
       `,
       schoolId,
+      type: "NOREPLY",
     });
 
     return successResponse(c, { 
@@ -770,6 +772,7 @@ parents.post("/requests/:id/decline", async (c) => {
         <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
       `,
       schoolId,
+      type: "NOREPLY",
     });
 
     return successResponse(c, { 

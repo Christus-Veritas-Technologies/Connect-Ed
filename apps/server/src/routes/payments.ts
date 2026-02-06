@@ -191,6 +191,7 @@ payments.post("/callback", async (c) => {
           transactionId: intermediatePaymentId,
         }),
         schoolId: intermediatePayment.schoolId,
+        type: "SALES",
       });
     } else {
       // Create failure notification for admin
@@ -218,6 +219,7 @@ payments.post("/callback", async (c) => {
           plan: intermediatePayment.plan,
         }),
         schoolId: intermediatePayment.schoolId,
+        type: "SALES",
       });
     }
 
