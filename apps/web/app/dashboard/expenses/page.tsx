@@ -52,7 +52,7 @@ const EXPENSE_CATEGORIES = [
 
 export default function ExpensesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const [formData, setFormData] = useState<{
     amount: string;
@@ -68,7 +68,7 @@ export default function ExpensesPage() {
 
   // Query hooks
   const { data, isLoading } = useExpenses({
-    category: categoryFilter || undefined,
+    category: categoryFilter !== "all" ? categoryFilter : undefined,
   });
   const createMutation = useCreateExpense();
 
@@ -134,7 +134,7 @@ export default function ExpensesPage() {
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {EXPENSE_CATEGORIES.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}

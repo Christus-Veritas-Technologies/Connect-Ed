@@ -96,7 +96,7 @@ export default function ClassDetailPage() {
       setFormData({
         name: data.class.name,
         level: data.class.level || "",
-        classTeacherId: data.class.classTeacher?.id || "",
+        classTeacherId: data.class.classTeacher?.id || "none",
       });
     } catch (error) {
       console.error("Failed to fetch class:", error);
@@ -125,7 +125,12 @@ export default function ClassDetailPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await api.patch(`/classes/${classId}`, formData);
+      const dataToSave = {
+        name: formData.name,
+        level: formData.level || null,
+        classTeacherId: formData.classTeacherId === "none" ? null : formData.classTeacherId || null,
+      };
+      await api.patch(`/classes/${classId}`, dataToSave);
       toast.success("Class updated successfully!");
       setIsEditing(false);
       await fetchClass();
@@ -391,7 +396,7 @@ export default function ClassDetailPage() {
                           <SelectValue placeholder="Select teacher..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {teachers.map((teacher) => (
                             <SelectItem key={teacher.id} value={teacher.id}>
                               {teacher.name}
