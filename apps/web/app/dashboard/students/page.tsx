@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   UserGroupIcon,
   Search01Icon,
@@ -26,7 +25,7 @@ import {
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useStudents, useCreateStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
+import { useStudents, useCreateStudent, useDeleteStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
 import { useClasses } from "@/lib/hooks/use-classes";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
@@ -92,7 +91,6 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<typeof students[0] | null>(null);
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -120,6 +118,7 @@ export default function StudentsPage() {
   });
   const { data: classesData, isLoading: loadingClasses } = useClasses();
   const createMutation = useCreateStudent();
+  const deleteMutation = useDeleteStudent();
   const markNotificationsByUrl = useMarkNotificationsByUrl();
 
   // Mark notifications as read when page loads
@@ -288,27 +287,22 @@ export default function StudentsPage() {
     setShowDeleteModal(true);
   };
 
-  const queryClient = useQueryClient();
-
   const confirmDeleteStudent = async () => {
     if (!selectedStudent) return;
 
-    setIsDeleting(true);
-    try {
-      await api.delete(`/students/${selectedStudent.id}`);
-      toast.success("Student deleted successfully", {
-        description: `${selectedStudent.firstName} ${selectedStudent.lastName} has been removed.`,
-      });
-      setShowDeleteModal(false);
-      setSelectedStudent(null);
-      // Refetch students by invalidating the query
-      queryClient.invalidateQueries({ queryKey: ["students"] });
-    } catch (error) {
-      const err = error instanceof ApiError ? error.message : "Failed to delete student";
-      toast.error(err);
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(selectedStudent.id, {
+      onSuccess: () => {
+        toast.success("Student deleted successfully", {
+          description: `${selectedStudent.firstName} ${selectedStudent.lastName} has been removed.`,
+        });
+        setShowDeleteModal(false);
+        setSelectedStudent(null);
+      },
+      onError: (error) => {
+        const err = error instanceof ApiError ? error.message : "Failed to delete student";
+        toast.error(err);
+      },
+    });
   };
 
   return (
@@ -1308,7 +1302,7 @@ export default function StudentsPage() {
                   variant="outline"
                   className="flex-1"
                   onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
                   Cancel
                 </Button>
@@ -1317,9 +1311,9 @@ export default function StudentsPage() {
                   variant="destructive"
                   className="flex-1"
                   onClick={confirmDeleteStudent}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
-                  {isDeleting ? (
+                  {deleteMutation.isPending ? (
                     <>
                       <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
                       Deleting...

@@ -16,6 +16,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,10 +67,11 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const { school } = useAuth();
+  const { school, user } = useAuth();
 
   const classId = params.id as string;
   const isEditMode = searchParams.get("edit") === "true";
+  const canEdit = canEditEntity(user?.role, "class");
 
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -233,7 +235,7 @@ export default function ClassDetailPage() {
             </div>
 
             <div className="flex gap-2">
-              {!isEditing ? (
+              {canEdit && !isEditing ? (
                 <>
                   <Button
                     onClick={() => setIsEditing(true)}
@@ -252,7 +254,7 @@ export default function ClassDetailPage() {
                     Delete
                   </Button>
                 </>
-              ) : (
+              ) : canEdit && isEditing ? (
                 <>
                   <Button
                     onClick={() => {
@@ -284,7 +286,7 @@ export default function ClassDetailPage() {
                     )}
                   </Button>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -542,55 +544,57 @@ export default function ClassDetailPage() {
         </motion.div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Class</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete <strong>{classData.name}</strong>?
-              </p>
-              <p className="text-xs text-destructive/80">
-                This action cannot be undone. All students will be unassigned from this class.
-              </p>
-            </div>
+      {/* Delete Confirmation Dialog - Only shown if user has edit permissions */}
+      {canEdit && (
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Class</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <strong>{classData.name}</strong>?
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This action cannot be undone. All students will be unassigned from this class.
+                </p>
+              </div>
 
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteDialog(false)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                className="flex-1"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
-                    Delete
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteDialog(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

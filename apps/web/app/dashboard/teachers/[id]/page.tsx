@@ -18,6 +18,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,9 +59,10 @@ interface TeacherDetail {
 export default function TeacherDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { school } = useAuth();
+  const { school, user } = useAuth();
 
   const teacherId = params.id as string;
+  const canEdit = canEditEntity(user?.role, "teacher");
 
   const [teacher, setTeacher] = useState<TeacherDetail | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -199,24 +201,26 @@ export default function TeacherDetailPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={() => router.push(`/dashboard/teachers/${teacherId}/edit`)}
-                variant="secondary"
-                className="gap-2 shadow-lg"
-              >
-                <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
-                Edit
-              </Button>
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                variant="destructive"
-                className="gap-2 shadow-lg"
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={20} />
-                Delete
-              </Button>
-            </div>
+            {canEdit && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => router.push(`/dashboard/teachers/${teacherId}/edit`)}
+                  variant="secondary"
+                  className="gap-2 shadow-lg"
+                >
+                  <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="destructive"
+                  className="gap-2 shadow-lg"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={20} />
+                  Delete
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -468,12 +472,13 @@ export default function TeacherDetailPage() {
         </motion.div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Teacher</DialogTitle>
-          </DialogHeader>
+      {/* Delete Confirmation Dialog - Only shown if user has edit permissions */}
+      {canEdit && (
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Teacher</DialogTitle>
+            </DialogHeader>
           <div className="space-y-6">
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
@@ -517,6 +522,7 @@ export default function TeacherDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }

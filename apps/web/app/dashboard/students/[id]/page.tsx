@@ -20,6 +20,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,9 +58,10 @@ interface StudentDetail {
 export default function StudentDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { school } = useAuth();
+  const { school, user } = useAuth();
 
   const studentId = params.id as string;
+  const canEdit = canEditEntity(user?.role, "student");
 
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -184,24 +186,26 @@ export default function StudentDetailPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={() => router.push(`/dashboard/students/${studentId}/edit`)}
-                variant="secondary"
-                className="gap-2 shadow-lg"
-              >
-                <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
-                Edit
-              </Button>
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                variant="destructive"
-                className="gap-2 shadow-lg"
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={20} />
-                Delete
-              </Button>
-            </div>
+            {canEdit && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => router.push(`/dashboard/students/${studentId}/edit`)}
+                  variant="secondary"
+                  className="gap-2 shadow-lg"
+                >
+                  <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="destructive"
+                  className="gap-2 shadow-lg"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={20} />
+                  Delete
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -494,59 +498,61 @@ export default function StudentDetailPage() {
         </motion.div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Student</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete{" "}
-                <strong>
-                  {student.firstName} {student.lastName}
-                </strong>
-                ?
-              </p>
-              <p className="text-xs text-destructive/80">
-                This action cannot be undone. All associated data will be removed.
-              </p>
-            </div>
+      {/* Delete Confirmation Dialog - Only shown if user has edit permissions */}
+      {canEdit && (
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Student</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete{" "}
+                  <strong>
+                    {student.firstName} {student.lastName}
+                  </strong>
+                  ?
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This action cannot be undone. All associated data will be removed.
+                </p>
+              </div>
 
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteDialog(false)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                className="flex-1"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
-                    Delete
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteDialog(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

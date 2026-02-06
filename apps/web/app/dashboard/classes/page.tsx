@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   BookmarkAdd01Icon,
@@ -21,7 +20,9 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError } from "@/lib/api";
+import { useClasses, useCreateClass, useDeleteClass } from "@/lib/hooks/use-classes";
+import { useTeachers } from "@/lib/hooks/use-teachers";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,27 +77,30 @@ interface Teacher {
 export default function ClassesPage() {
   const { school } = useAuth();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
     level: "",
     classTeacherId: "",
   });
+  
+  // TanStack Query hooks
+  const { data: classesData, isLoading } = useClasses();
+  const { data: teachersData } = useTeachers();
+  const createMutation = useCreateClass();
+  const deleteMutation = useDeleteClass();
+  
+  const classes = classesData?.classes || [];
+  const teachers = teachersData?.teachers || [];
 
   // Debounce search
   useEffect(() => {
@@ -106,54 +110,23 @@ export default function ClassesPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch classes
-  const fetchClasses = async () => {
-    setIsLoading(true);
-    try {
-      const data = await api.get<{ classes: Class[] }>("/classes");
-      setClasses(data.classes);
-    } catch (error) {
-      console.error("Failed to fetch classes:", error);
-      toast.error("Failed to load classes");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch teachers
-  const fetchTeachers = async () => {
-    try {
-      const data = await api.get<{ teachers: Teacher[] }>("/teachers");
-      setTeachers(data.teachers);
-    } catch (error) {
-      console.error("Failed to fetch teachers:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchClasses();
-    fetchTeachers();
-  }, []);
-
   // Handle add class
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    setIsSubmitting(true);
 
-    try {
-      await api.post("/classes", formData);
-      toast.success("Class created successfully!");
-      setFormData({ name: "", level: "", classTeacherId: "" });
-      setShowAddModal(false);
-      await fetchClasses();
-    } catch (err) {
-      const error = err instanceof ApiError ? err.message : "Failed to create class";
-      setFormError(error);
-      toast.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    createMutation.mutate(formData, {
+      onSuccess: () => {
+        toast.success("Class created successfully!");
+        setFormData({ name: "", level: "", classTeacherId: "" });
+        setShowAddModal(false);
+      },
+      onError: (err) => {
+        const error = err instanceof ApiError ? err.message : "Failed to create class";
+        setFormError(error);
+        toast.error(error);
+      },
+    });
   };
 
   // Handle view details
@@ -175,22 +148,19 @@ export default function ClassesPage() {
   const confirmDelete = async () => {
     if (!selectedClass) return;
 
-    setIsDeleting(true);
-    try {
-      await api.delete(`/classes/${selectedClass.id}`);
-      toast.success("Class deleted successfully", {
-        description: `${selectedClass.name} has been removed.`,
-      });
-      setShowDeleteModal(false);
-      setSelectedClass(null);
-      queryClient.invalidateQueries({ queryKey: ["classes"] });
-      await fetchClasses();
-    } catch (error) {
-      const err = error instanceof ApiError ? error.message : "Failed to delete class";
-      toast.error(err);
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(selectedClass.id, {
+      onSuccess: () => {
+        toast.success("Class deleted successfully", {
+          description: `${selectedClass.name} has been removed.`,
+        });
+        setShowDeleteModal(false);
+        setSelectedClass(null);
+      },
+      onError: (error) => {
+        const err = error instanceof ApiError ? error.message : "Failed to delete class";
+        toast.error(err);
+      },
+    });
   };
 
   // Filter classes
@@ -707,13 +677,13 @@ export default function ClassesPage() {
                 variant="outline"
                 className="flex-1"
                 onClick={() => setShowAddModal(false)}
-                disabled={isSubmitting}
+                disabled={createMutation.isPending}
               >
                 <HugeiconsIcon icon={Cancel01Icon} size={18} className="mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
+                {createMutation.isPending ? (
                   <>
                     <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
                     Creating...
@@ -753,7 +723,7 @@ export default function ClassesPage() {
                   variant="outline"
                   className="flex-1"
                   onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
                   Cancel
                 </Button>
@@ -762,9 +732,9 @@ export default function ClassesPage() {
                   variant="destructive"
                   className="flex-1"
                   onClick={confirmDelete}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
-                  {isDeleting ? (
+                  {deleteMutation.isPending ? (
                     <>
                       <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
                       Deleting...

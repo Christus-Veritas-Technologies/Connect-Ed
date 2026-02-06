@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   UserGroupIcon,
   Search01Icon,
@@ -24,9 +23,10 @@ import {
   BookmarkAdd01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useMarkNotificationsByUrl } from "@/lib/hooks";
+import { useMarkNotificationsByUrl, useTeachers, useCreateTeacher, useDeleteTeacher } from "@/lib/hooks";
+import { useClasses } from "@/lib/hooks/use-classes";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,20 +79,15 @@ interface Teacher {
 
 export default function TeachersPage() {
   const { school } = useAuth();
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("table");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -101,9 +96,17 @@ export default function TeachersPage() {
     classId: "",
   });
   const [classSearch, setClassSearch] = useState("");
-  const [classes, setClasses] = useState<Array<{ id: string; name: string; level?: string | null; teacherId?: string | null }>>([]);
 
   const markNotificationsByUrl = useMarkNotificationsByUrl();
+  
+  // TanStack Query hooks
+  const { data: teachersData, isLoading } = useTeachers();
+  const { data: classesData } = useClasses();
+  const createMutation = useCreateTeacher();
+  const deleteMutation = useDeleteTeacher();
+  
+  const teachers = teachersData?.teachers || [];
+  const classes = classesData?.classes || [];
 
   // Mark notifications as read when page loads
   useEffect(() => {
@@ -114,74 +117,41 @@ export default function TeachersPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch teachers
-  const fetchTeachers = async () => {
-    setIsLoading(true);
-    try {
-      const data = await api.get<{ teachers: Teacher[] }>("/teachers");
-      setTeachers(data.teachers);
-    } catch (error) {
-      console.error("Failed to fetch teachers:", error);
-      toast.error("Failed to load teachers");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch classes
-  const fetchClasses = async () => {
-    try {
-      const data = await api.get<{ classes: Array<{ id: string; name: string; level?: string | null; teacherId?: string | null }> }>("/classes");
-      setClasses(data.classes);
-    } catch (error) {
-      console.error("Failed to fetch classes:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchTeachers();
-    fetchClasses();
-  }, []);
-
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    setIsSubmitting(true);
 
-    try {
-      // Generate a random password
-      const generatedPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + "@1";
-      
-      await api.post("/teachers", {
+    // Generate a random password
+    const generatedPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + "@1";
+    
+    createMutation.mutate(
+      {
         ...formData,
         password: generatedPassword,
-        role: "TEACHER",
-      });
-
-      setFormData({ name: "", email: "", phone: "", classId: "" });
-      setClassSearch("");
-      setShowAddModal(false);
-      fetchTeachers();
-      toast.success("Teacher added successfully!", {
-        description: "Welcome email with login credentials has been sent.",
-      });
-    } catch (err) {
-      const error = err instanceof ApiError ? err.message : "Failed to add teacher";
-      setFormError(error);
-      toast.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setFormData({ name: "", email: "", phone: "", classId: "" });
+          setClassSearch("");
+          setShowAddModal(false);
+          toast.success("Teacher added successfully!", {
+            description: "Welcome email with login credentials has been sent.",
+          });
+        },
+        onError: (err) => {
+          const error = err instanceof ApiError ? err.message : "Failed to add teacher";
+          setFormError(error);
+          toast.error(error);
+        },
+      }
+    );
   };
 
   // View Details and Delete Handlers
-  const queryClient = useQueryClient();
-
   const handleViewTeacherDetails = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setShowViewDetailsModal(true);
@@ -195,23 +165,19 @@ export default function TeachersPage() {
   const confirmDeleteTeacher = async () => {
     if (!selectedTeacher) return;
 
-    setIsDeleting(true);
-    try {
-      await api.delete(`/teachers/${selectedTeacher.id}`);
-      toast.success("Teacher deleted successfully", {
-        description: `${selectedTeacher.name} has been removed.`,
-      });
-      setShowDeleteModal(false);
-      setSelectedTeacher(null);
-      // Refetch teachers
-      queryClient.invalidateQueries({ queryKey: ["teachers"] });
-      await fetchTeachers();
-    } catch (error) {
-      const err = error instanceof ApiError ? error.message : "Failed to delete teacher";
-      toast.error(err);
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(selectedTeacher.id, {
+      onSuccess: () => {
+        toast.success("Teacher deleted successfully", {
+          description: `${selectedTeacher.name} has been removed.`,
+        });
+        setShowDeleteModal(false);
+        setSelectedTeacher(null);
+      },
+      onError: (error) => {
+        const err = error instanceof ApiError ? error.message : "Failed to delete teacher";
+        toast.error(err);
+      },
+    });
   };
 
   // Filter teachers
@@ -848,8 +814,8 @@ export default function TeachersPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? "Adding..." : "Add Teacher"}
+              <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Adding..." : "Add Teacher"}
               </Button>
             </div>
           </form>
@@ -941,7 +907,7 @@ export default function TeachersPage() {
                   variant="outline"
                   className="flex-1"
                   onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
                   Cancel
                 </Button>
@@ -950,9 +916,9 @@ export default function TeachersPage() {
                   variant="destructive"
                   className="flex-1"
                   onClick={confirmDeleteTeacher}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                 >
-                  {isDeleting ? (
+                  {deleteMutation.isPending ? (
                     <>
                       <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
                       Deleting...
