@@ -171,7 +171,7 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
         email: teacher.email,
         password: generatedPassword,
         role: "TEACHER",
-        schoolName: school?.name,
+        schoolName: school?.name ?? undefined,
       }),
       schoolId,
       type: "KIN",
@@ -274,10 +274,9 @@ teachers.delete("/:id", async (c) => {
       return errors.notFound(c, "Teacher");
     }
 
-    // Soft delete by deactivating
-    await db.user.update({
-      where: { id },
-      data: { isActive: false },
+    // Delete the teacher
+    await db.user.delete({
+      where: { id }
     });
 
     return successResponse(c, { message: "Teacher deactivated successfully" });
