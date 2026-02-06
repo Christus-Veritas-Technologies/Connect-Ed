@@ -133,16 +133,32 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       studentIds: data.studentIds,
     });
 
-    // Check for duplicate email
-    const existing = await db.parent.findFirst({
+    // Check for duplicate email (school-specific)
+    const existingEmail = await db.parent.findFirst({
       where: {
-        email: data.email,
+        schoolId,
+        email: data.email.toLowerCase(),
       },
     });
 
-    if (existing) {
+    if (existingEmail) {
       console.log(`[POST /parents] ❌ Duplicate email: ${data.email}`);
-      return errors.conflict(c, "A parent with this email already exists");
+      return errors.conflict(c, `Email "${data.email}" is already in use by another parent in your school`);
+    }
+
+    // Check for duplicate phone (if provided and school-specific)
+    if (data.phone) {
+      const existingPhone = await db.parent.findFirst({
+        where: {
+          schoolId,
+          phone: data.phone,
+        },
+      });
+
+      if (existingPhone) {
+        console.log(`[POST /parents] ❌ Duplicate phone: ${data.phone}`);
+        return errors.conflict(c, `Phone number "${data.phone}" is already in use by another parent in your school`);
+      }
     }
 
     // Verify all students exist and belong to this school

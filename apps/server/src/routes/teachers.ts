@@ -10,6 +10,9 @@ import { z } from "zod";
 const createTeacherSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  classId: z.string().optional(),
+  password: z.string().optional(), // Generated on backend if not provided
   role: z.literal("TEACHER"),
 });
 
@@ -55,13 +58,27 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
     const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
 
-    // Check for existing email
-    const existingUser = await db.user.findUnique({
+    // Check for existing email globally (emails must be unique across all users)
+    const existingEmail = await db.user.findUnique({
       where: { email: data.email.toLowerCase() },
     });
 
-    if (existingUser) {
-      return errors.conflict(c, "A user with this email already exists");
+    if (existingEmail) {
+      return errors.conflict(c, `Email "${data.email}" is already in use. Please use a different email address.`);
+    }
+
+    // Check for phone number if provided (school-specific)
+    if (data.phone) {
+      const existingPhone = await db.user.findFirst({
+        where: {
+          schoolId,
+          phone: data.phone,
+        },
+      });
+
+      if (existingPhone) {
+        return errors.conflict(c, `Phone number "${data.phone}" is already in use by another teacher in your school`);
+      }
     }
 
     // Generate random password
@@ -74,16 +91,26 @@ teachers.post("/", zValidator("json", createTeacherSchema), async (c) => {
         email: data.email.toLowerCase(),
         password: hashedPassword,
         name: data.name,
+        phone: data.phone || undefined,
         role: Role.TEACHER,
         schoolId,
+        ...(data.classId && {
+          classes: {
+            connect: { id: data.classId },
+          },
+        }),
       },
       select: {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
         isActive: true,
         createdAt: true,
+        classes: {
+          select: { id: true, name: true },
+        },
       },
     });
 

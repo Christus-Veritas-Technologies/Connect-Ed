@@ -127,6 +127,36 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
       return errors.conflict(c, "A student with this admission number already exists");
     }
 
+    // Check for duplicate email (if provided and school-specific)
+    if (data.email) {
+      const existingEmail = await db.student.findFirst({
+        where: {
+          schoolId,
+          email: data.email.toLowerCase(),
+        },
+      });
+
+      if (existingEmail) {
+        console.log(`[POST /students] ❌ Duplicate email: ${data.email}`);
+        return errors.conflict(c, `A student with email "${data.email}" already exists in your school`);
+      }
+    }
+
+    // Check for duplicate phone (if provided and school-specific)
+    if (data.phone) {
+      const existingPhone = await db.student.findFirst({
+        where: {
+          schoolId,
+          phone: data.phone,
+        },
+      });
+
+      if (existingPhone) {
+        console.log(`[POST /students] ❌ Duplicate phone: ${data.phone}`);
+        return errors.conflict(c, `A student with phone number "${data.phone}" already exists in your school`);
+      }
+    }
+
     // Generate password for student if email provided
     let generatedPassword: string | undefined;
     let hashedPassword: string | undefined;
