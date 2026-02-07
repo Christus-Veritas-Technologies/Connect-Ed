@@ -132,12 +132,19 @@ fees.get("/", async (c) => {
     const filter = c.req.query("filter");
     const term = c.req.query("term");
     const year = c.req.query("year");
+    const dateFrom = c.req.query("dateFrom");
+    const dateTo = c.req.query("dateTo");
 
     const skip = (page - 1) * limit;
 
-    // Calculate date range for term/year filters
+    // Calculate date range for term/year filters or custom date range
     let dateFilter: { gte?: Date; lte?: Date } | undefined;
-    if (year) {
+    if (dateFrom || dateTo) {
+      // Custom date range takes priority
+      dateFilter = {};
+      if (dateFrom) dateFilter.gte = new Date(dateFrom);
+      if (dateTo) dateFilter.lte = new Date(dateTo + "T23:59:59");
+    } else if (year) {
       const y = parseInt(year);
       if (term) {
         const t = parseInt(term);

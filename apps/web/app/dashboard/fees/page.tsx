@@ -66,6 +66,9 @@ export default function FeesPage() {
   const [filter, setFilter] = useState(searchParams.get("filter") || "all");
   const [termFilter, setTermFilter] = useState<string>("");
   const [yearFilter, setYearFilter] = useState<string>("");
+  const [timePeriod, setTimePeriod] = useState<string>("all");
+  const [customDateFrom, setCustomDateFrom] = useState<string>("");
+  const [customDateTo, setCustomDateTo] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState<Fee | null>(null);
 
@@ -82,11 +85,49 @@ export default function FeesPage() {
     notes: "",
   });
 
+  // Compute date filters from time period
+  const getDateFilters = () => {
+    const now = new Date();
+    switch (timePeriod) {
+      case "this_week": {
+        const dayOfWeek = now.getDay();
+        const start = new Date(now);
+        start.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+      }
+      case "this_month": {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+      }
+      case "this_term": {
+        const month = now.getMonth();
+        const termStartMonth = month < 4 ? 0 : month < 8 ? 4 : 8;
+        const start = new Date(now.getFullYear(), termStartMonth, 1);
+        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+      }
+      case "this_year": {
+        const start = new Date(now.getFullYear(), 0, 1);
+        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+      }
+      case "custom":
+        return {
+          dateFrom: customDateFrom || undefined,
+          dateTo: customDateTo || undefined,
+        };
+      default:
+        return {};
+    }
+  };
+
+  const dateFilters = getDateFilters();
+
   // Query hooks
   const { data: feesData, isLoading } = useFees({
     status: filter !== "all" ? filter.toUpperCase() : undefined,
     term: termFilter && termFilter !== "all_terms" ? parseInt(termFilter) : undefined,
     year: yearFilter && yearFilter !== "all_years" ? parseInt(yearFilter) : undefined,
+    dateFrom: dateFilters.dateFrom,
+    dateTo: dateFilters.dateTo,
   });
   const { data: studentsData } = useStudents({ limit: 1000 });
   const { data: feeStats } = useFeeStats();
@@ -368,7 +409,54 @@ export default function FeesPage() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="py-4">
+        <CardContent className="py-4 space-y-4">
+          {/* Time Period Presets */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground mr-1">Period:</span>
+            {[
+              { value: "all", label: "All Time" },
+              { value: "this_week", label: "This Week" },
+              { value: "this_month", label: "This Month" },
+              { value: "this_term", label: "This Term" },
+              { value: "this_year", label: "This Year" },
+              { value: "custom", label: "Custom" },
+            ].map((period) => (
+              <Button
+                key={period.value}
+                variant={timePeriod === period.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimePeriod(period.value)}
+              >
+                {period.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Custom Date Range */}
+          {timePeriod === "custom" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">From:</Label>
+                <Input
+                  type="date"
+                  value={customDateFrom}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="w-auto h-9"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">To:</Label>
+                <Input
+                  type="date"
+                  value={customDateTo}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="w-auto h-9"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Status + Term/Year Filters */}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex flex-wrap gap-2">
               {["all", "pending", "partial", "paid", "overdue"].map((f) => (
