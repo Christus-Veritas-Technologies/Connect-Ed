@@ -119,7 +119,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     const staffUser = await db.user.findUnique({
       where: { email: emailLower },
       include: { school: true },
-    });
+    }) as any;
 
     if (staffUser) {
       // Verify password
@@ -182,13 +182,13 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
       where: { email: emailLower },
       include: { 
         school: true,
-        students: {
+        children: {
           include: {
             class: true,
           }
         }
       },
-    });
+    }) as any;
 
     if (parent) {
       // Verify password
@@ -226,7 +226,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           email: parent.email,
           name: parent.name,
           role: "PARENT",
-          children: parent.students.map(s => ({
+          children: parent.children.map((s: any) => ({
             id: s.id,
             name: `${s.firstName} ${s.lastName}`,
             class: s.class?.name,
@@ -252,14 +252,14 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     }
 
     // Try to find student
-    const student = await db.student.findUnique({
+    const student = await db.student.findFirst({
       where: { email: emailLower },
       include: { 
         school: true,
         class: true,
         parent: true,
       },
-    });
+    }) as any;
 
     if (student) {
       // Check if student has password (some students might not have accounts)
@@ -354,7 +354,7 @@ auth.post("/refresh", async (c) => {
     const staffUser = await db.user.findUnique({
       where: { id: payload.sub },
       include: { school: true },
-    });
+    }) as any;
 
     if (staffUser && staffUser.tokenVersion === payload.version) {
       // Check if user is active
@@ -406,15 +406,11 @@ auth.post("/refresh", async (c) => {
     // Try to find parent
     const parent = await db.parent.findUnique({
       where: { id: payload.sub },
-      include: { 
+      include: {
         school: true,
-        students: {
-          include: {
-            class: true,
-          }
-        }
+        children: { include: { class: true } },
       },
-    });
+    }) as any;
 
     if (parent && parent.tokenVersion === payload.version) {
       if (!parent.isActive) {
@@ -441,7 +437,7 @@ auth.post("/refresh", async (c) => {
           email: parent.email,
           name: parent.name,
           role: "PARENT",
-          children: parent.students.map(s => ({
+          children: parent.children.map((s: any) => ({
             id: s.id,
             name: `${s.firstName} ${s.lastName}`,
             class: s.class?.name,
@@ -469,11 +465,11 @@ auth.post("/refresh", async (c) => {
     // Try to find student
     const student = await db.student.findUnique({
       where: { id: payload.sub },
-      include: { 
+      include: {
         school: true,
         class: true,
       },
-    });
+    }) as any;
 
     if (student && (student.tokenVersion || 0) === payload.version) {
       if (!student.isActive) {
@@ -523,6 +519,8 @@ auth.post("/refresh", async (c) => {
     }
 
     // No valid user found or token version mismatch
+    // User was deleted from database or token is invalid - treat as unauthorized
+    console.log(`Invalid refresh attempt: user ${payload.sub} not found or token mismatch`);
     return errors.unauthorized(c);
   } catch (error) {
     console.error("Refresh token error:", error);

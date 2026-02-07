@@ -75,7 +75,6 @@ export default function SignupPage() {
 
       {/* Important Notice */}
       <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
         <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
           <strong>School Owners Only:</strong> This signup is exclusively for school administrators.
           If you're a teacher, parent, or student, please contact your school administrator to receive an invitation to join.
