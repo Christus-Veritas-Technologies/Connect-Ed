@@ -88,6 +88,11 @@ enum StudentStatus {
   ABSENT
 }
 
+enum SchoolPeriodType {
+  TERM
+  HOLIDAY
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -99,6 +104,14 @@ model School {
   isActive           Boolean  @default(false)
   signupFeePaid      Boolean  @default(false)
   onboardingComplete Boolean  @default(false)
+
+  // Term and period management
+  termlyFee         Decimal?         @db.Decimal(10, 2)
+  currentTermNumber Int?
+  currentTermYear   Int?
+  termStartDate     DateTime?
+  currentPeriodType SchoolPeriodType @default(TERM)
+  holidayStartDate  DateTime?
 
   // Analytics
   studentCount Int?

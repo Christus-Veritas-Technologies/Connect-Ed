@@ -70,6 +70,13 @@ onboarding.post("/", async (c) => {
           studentCount: data.studentCount,
           onboardingComplete: true,
           isActive: true,
+          termlyFee: data.termlyFee || null,
+          currentTermNumber: data.currentTermNumber || null,
+          currentTermYear: data.currentTermYear || null,
+          termStartDate: data.currentTermYear && data.termStartMonth && data.termStartDay
+            ? new Date(data.currentTermYear, data.termStartMonth - 1, data.termStartDay)
+            : null,
+          currentPeriodType: "TERM",
         },
       });
       console.log(`[POST /onboarding] School updated: ${updatedSchool.name}`);

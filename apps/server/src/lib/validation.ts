@@ -54,6 +54,11 @@ export const onboardingSchema = z.object({
   })).min(1, "At least one class is required"),
   teacherCount: z.number().int().min(1, "Must have at least 1 teacher"),
   studentCount: z.number().int().min(1, "Must have at least 1 student"),
+  termlyFee: z.number().positive("Termly fee must be positive").optional(),
+  currentTermNumber: z.number().int().min(1).max(3).optional(),
+  currentTermYear: z.number().int().min(2020).max(2100).optional(),
+  termStartMonth: z.number().int().min(1).max(12).optional(),
+  termStartDay: z.number().int().min(1).max(31).optional(),
 });
 
 // Student schemas
@@ -130,6 +135,14 @@ export const sendRemindersSchema = z.object({
   channels: z.array(z.enum(["email", "whatsapp", "sms"])).min(1),
 });
 
+// Period management schemas
+export const startTermSchema = z.object({
+  termNumber: z.number().int().min(1).max(3),
+  year: z.number().int().min(2020).max(2100),
+  month: z.number().int().min(1).max(12),
+  day: z.number().int().min(1).max(31),
+});
+
 // Type exports
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -144,3 +157,4 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 export type UpdateSchoolInput = z.infer<typeof updateSchoolSchema>;
 export type SendRemindersInput = z.infer<typeof sendRemindersSchema>;
+export type StartTermInput = z.infer<typeof startTermSchema>;

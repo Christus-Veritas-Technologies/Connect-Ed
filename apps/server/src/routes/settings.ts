@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db, Role } from "@repo/db";
+import { db, Role, SchoolPeriodType } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { updateSchoolSchema } from "../lib/validation";
+import { updateSchoolSchema, startTermSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 
 const settings = new Hono();
@@ -34,6 +34,12 @@ settings.get("/school", async (c) => {
         smsUsed: true,
         quotaResetDate: true,
         createdAt: true,
+        termlyFee: true,
+        currentTermNumber: true,
+        currentTermYear: true,
+        termStartDate: true,
+        currentPeriodType: true,
+        holidayStartDate: true,
       },
     });
 
@@ -100,6 +106,88 @@ settings.get("/users", async (c) => {
     return successResponse(c, { users });
   } catch (error) {
     console.error("List users error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /settings/period/end - End the current period (term → holiday)
+settings.post("/period/end", async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        currentPeriodType: true,
+        currentTermNumber: true,
+        currentTermYear: true,
+      },
+    });
+
+    if (!school) {
+      return errors.notFound(c, "School");
+    }
+
+    if (school.currentPeriodType !== SchoolPeriodType.TERM) {
+      return errors.badRequest(c, "School is not currently in a term period");
+    }
+
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        currentPeriodType: SchoolPeriodType.HOLIDAY,
+        holidayStartDate: new Date(),
+      },
+    });
+
+    return successResponse(c, {
+      message: `Term ${school.currentTermNumber} of ${school.currentTermYear} has ended. Holiday period has started.`,
+      periodType: "HOLIDAY",
+    });
+  } catch (error) {
+    console.error("End period error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /settings/period/start-term - Start a new term (holiday → term)
+settings.post("/period/start-term", zValidator("json", startTermSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const data = c.req.valid("json");
+
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: { currentPeriodType: true },
+    });
+
+    if (!school) {
+      return errors.notFound(c, "School");
+    }
+
+    if (school.currentPeriodType !== SchoolPeriodType.HOLIDAY) {
+      return errors.badRequest(c, "School is not currently in a holiday period");
+    }
+
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        currentPeriodType: SchoolPeriodType.TERM,
+        currentTermNumber: data.termNumber,
+        currentTermYear: data.year,
+        termStartDate: new Date(data.year, data.month - 1, data.day),
+        holidayStartDate: null,
+      },
+    });
+
+    return successResponse(c, {
+      message: `Term ${data.termNumber} of ${data.year} has started.`,
+      periodType: "TERM",
+      termNumber: data.termNumber,
+      year: data.year,
+    });
+  } catch (error) {
+    console.error("Start term error:", error);
     return errors.internalError(c);
   }
 });
