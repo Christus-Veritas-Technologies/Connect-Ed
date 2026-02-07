@@ -145,6 +145,7 @@ model School {
   messageLogs    MessageLog[]
   notifications  Notification[]
   parentRequests ParentRequest[]
+  onboardingProgress OnboardingProgress?
 
   @@map("schools")
 }
@@ -224,6 +225,7 @@ model Student {
 
   fees           Fee[]
   parentRequests ParentRequest[]
+  subjects       StudentSubject[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -326,6 +328,7 @@ model Subject {
   id       String  @id @default(cuid())
   name     String
   code     String?
+  level    String? // "primary" or "secondary"
   isActive Boolean @default(true)
 
   // Timestamps
@@ -336,7 +339,8 @@ model Subject {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  classes SubjectClass[]
+  classes  SubjectClass[]
+  students StudentSubject[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -354,6 +358,68 @@ model SubjectClass {
 
   @@unique([subjectId, classId])
   @@map("subject_classes")
+}
+
+model StudentSubject {
+  id String @id @default(cuid())
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@map("student_subjects")
+}
+
+model OnboardingProgress {
+  id String @id @default(cuid())
+
+  // School info (step 1)
+  schoolName  String?
+  address     String?
+  phone       String?
+  email       String?
+  isLandline  Boolean?
+
+  // Curriculum info (step 2)
+  cambridge  Boolean?
+  zimsec     Boolean?
+  hasPrimary Boolean?
+  hasSecondary Boolean?
+  subjectsData Json? // Array of {name, level}
+
+  // Classes info (step 3)
+  classesData Json? // Array of {name, capacity, level}
+
+  // Fee info (step 4)
+  termlyFee Decimal? @db.Decimal(10, 2)
+
+  // Term info (step 5)
+  currentTermNumber Int?
+  currentTermYear   Int?
+  termStartMonth    Int?
+  termStartDay      Int?
+
+  // Progress tracking
+  currentStep Int @default(0)
+  completedSteps Int[] @default([])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_progress")
 }
 
 model Fee {
