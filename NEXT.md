@@ -29,4 +29,5 @@ And then on the dash for the admin, add 2 unique buttons (somewhere where they a
 
 Okay okay, jsut note this:
 - A date can either be a holiday period or a (school) term, okay ? 
-- Because term and holiday days are unpredictable, somehow allow the admin to denote the start of a holiday, a new term, with holiday start (end can be provided anytime by clicking on the "end {holiday / term})
+- Because term and holiday days are unpredictable, somehow allow the admin to denote the start of a holiday, a new term, with holiday start (end can be provided anytime by clicking on the "end {holiday / term})" button (make this the same button, with different logic depending on wyether the current period is a (school) term or a holiday)
+- Think deeply about the above change and apply it throughout the entire school
