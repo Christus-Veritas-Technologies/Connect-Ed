@@ -77,6 +77,8 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
 import { exportDataAsCSV } from "@/lib/export-utils";
+import { AddStudentDialog } from "@/components/dialogs/add-student-dialog";
+import { AddFeeDialog } from "@/components/dialogs/add-fee-dialog";
 import { toast } from "sonner";
 
 const quotaIcons = {
@@ -94,6 +96,8 @@ export function AdminDashboard() {
   const { data: notificationsData } = useNotifications();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showAddFeeModal, setShowAddFeeModal] = useState(false);
   const [isEndPeriodDialogOpen, setIsEndPeriodDialogOpen] = useState(false);
   const [isStartTermDialogOpen, setIsStartTermDialogOpen] = useState(false);
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
@@ -344,17 +348,13 @@ export function AdminDashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/students/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={UserAdd01Icon} size={16} />
-                  <span>Add Student</span>
-                </Link>
+              <DropdownMenuItem onClick={() => setShowAddStudentModal(true)}>
+                <HugeiconsIcon icon={UserAdd01Icon} size={16} />
+                <span>Add Student</span>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/fees/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={FileAddIcon} size={16} />
-                  <span>Create Fee</span>
-                </Link>
+              <DropdownMenuItem onClick={() => setShowAddFeeModal(true)}>
+                <HugeiconsIcon icon={FileAddIcon} size={16} />
+                <span>Add New Payment</span>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
@@ -800,6 +800,26 @@ export function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Student Dialog */}
+      <AddStudentDialog
+        open={showAddStudentModal}
+        onOpenChange={setShowAddStudentModal}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["students"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        }}
+      />
+
+      {/* Add Fee Dialog */}
+      <AddFeeDialog
+        open={showAddFeeModal}
+        onOpenChange={setShowAddFeeModal}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["fees"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        }}
+      />
     </div>
   );
 }

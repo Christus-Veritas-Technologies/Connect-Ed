@@ -8,7 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { OnboardingProvider } from "./onboarding-context";
+import { OnboardingProvider, useOnboarding } from "./onboarding-context";
 import { OnboardingStep1 } from "./step-1";
 import { OnboardingStep2 } from "./step-2";
 import { OnboardingStep3 } from "./step-3";
@@ -25,10 +25,10 @@ const STEPS = [
   { number: 6, title: "Review", description: "Confirm your information" },
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const { school } = useAuth();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(0);
+  const { currentStep, setCurrentStep, isLoading, clearProgress } = useOnboarding();
 
   useEffect(() => {
     if (school && !school.signupFeePaid) {
@@ -40,7 +40,8 @@ export default function OnboardingPage() {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Final step completed
+      // Final step completed - clear progress
+      clearProgress();
       router.push("/dashboard");
     }
   };
@@ -51,20 +52,30 @@ export default function OnboardingPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-slate-600">Loading your progress...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <OnboardingProvider>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center pt-8 pb-12"
-        >
-          <h1 className="text-4xl font-bold text-slate-900">Welcome to Connect-Ed!</h1>
-          <p className="text-slate-600 mt-2 text-lg">
-            Let&apos;s set up your school account
-          </p>
-        </motion.div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center pt-8 pb-12"
+      >
+        <h1 className="text-4xl font-bold text-slate-900">Welcome to Connect-Ed!</h1>
+        <p className="text-slate-600 mt-2 text-lg">
+          Let&apos;s set up your school account
+        </p>
+      </motion.div>
 
       <div className="max-w-4xl mx-auto px-4 pb-12">
         {/* Horizontal Step Indicator */}
@@ -160,7 +171,14 @@ export default function OnboardingPage() {
           {currentStep === 5 && <OnboardingStep6 onBack={handleBack} />}
         </motion.div>
       </div>
-      </div>
+    </div>
+    );
+}
+
+export default function OnboardingPage() {
+  return (
+    <OnboardingProvider>
+      <OnboardingContent />
     </OnboardingProvider>
-  )
+  );
 }

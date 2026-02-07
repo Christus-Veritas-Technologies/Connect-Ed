@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ApiError } from "@/lib/api";
 import { useCreateStudent } from "@/lib/hooks";
 import { useClasses } from "@/lib/hooks/use-classes";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -46,6 +48,9 @@ export function AddStudentDialog({
 }: AddStudentDialogProps) {
   const [createAccount, setCreateAccount] = useState(false);
   const [classSearch, setClassSearch] = useState("");
+  const [subjects, setSubjects] = useState<Array<{id: string; name: string; level?: string | null}>>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -55,6 +60,42 @@ export function AddStudentDialog({
     phone: "",
     classId: preSelectedClassId || "",
   });
+
+  // Fetch subjects when class is selected
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (!formData.classId) {
+        setSubjects([]);
+        setSelectedSubjects([]);
+        return;
+      }
+
+      setSubjectsLoading(true);
+      try {
+        const selectedClass = allClasses.find((c: ClassWithLevel) => c.id === formData.classId);
+        const level = selectedClass?.level?.toLowerCase();
+        
+        const response = await api.get("/subjects");
+        const allSubjects = response.data.subjects || [];
+        
+        // Filter subjects by level if class has a level
+        const filtered = level
+          ? allSubjects.filter((s: {level?: string | null}) => 
+              !s.level || s.level.toLowerCase() === level
+            )
+          : allSubjects;
+        
+        setSubjects(filtered);
+      } catch (error) {
+        console.error("Failed to fetch subjects:", error);
+        setSubjects([]);
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, [formData.classId, allClasses]);
 
   const { data: classesData, isLoading: loadingClasses } = useClasses();
   const createMutation = useCreateStudent();
@@ -85,6 +126,7 @@ export function AddStudentDialog({
     const payload = {
       ...formData,
       admissionNumber: generateStudentId(),
+      subjectIds: selectedSubjects,
     };
 
     createMutation.mutate(payload, {
@@ -101,6 +143,8 @@ export function AddStudentDialog({
         });
         setClassSearch("");
         setCreateAccount(false);
+        setSelectedSubjects([]);
+        setSubjects([]);
         
         toast.success("Student created successfully!", {
           description: `${data.student.firstName} ${data.student.lastName} has been added.`,
@@ -363,6 +407,65 @@ export function AddStudentDialog({
                 </Select>
               </div>
             </div>
+
+            {/* Subject Selection */}
+            {formData.classId && subjects.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Subject Selection
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedSubjects.length === subjects.length) {
+                        setSelectedSubjects([]);
+                      } else {
+                        setSelectedSubjects(subjects.map(s => s.id));
+                      }
+                    }}
+                  >
+                    {selectedSubjects.length === subjects.length ? "Deselect All" : "Select All"}
+                  </Button>
+                </div>
+
+                {subjectsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="size-6 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2">
+                    {subjects.map((subject) => (
+                      <div
+                        key={subject.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <Label htmlFor={`subject-${subject.id}`} className="text-sm font-medium cursor-pointer flex-1">
+                          {subject.name}
+                        </Label>
+                        <Switch
+                          id={`subject-${subject.id}`}
+                          checked={selectedSubjects.includes(subject.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedSubjects(prev =>
+                              checked
+                                ? [...prev, subject.id]
+                                : prev.filter(id => id !== subject.id)
+                            );
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  {selectedSubjects.length} of {subjects.length} subjects selected
+                </p>
+              </div>
+            )}
 
             {/* Form Actions */}
             <div className="flex gap-3 pt-4">
