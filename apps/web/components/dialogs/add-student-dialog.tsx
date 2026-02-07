@@ -61,6 +61,11 @@ export function AddStudentDialog({
     classId: preSelectedClassId || "",
   });
 
+  const { data: classesData, isLoading: loadingClasses } = useClasses();
+  const createMutation = useCreateStudent();
+
+  const allClasses = classesData?.classes || [];
+
   // Fetch subjects when class is selected
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -95,12 +100,7 @@ export function AddStudentDialog({
     };
 
     fetchSubjects();
-  }, [formData.classId, allClasses]);
-
-  const { data: classesData, isLoading: loadingClasses } = useClasses();
-  const createMutation = useCreateStudent();
-
-  const allClasses = classesData?.classes || [];
+  }, [formData.classId]);
   const filteredClasses = classSearch
     ? allClasses.filter((c: ClassWithLevel) =>
         c.name.toLowerCase().includes(classSearch.toLowerCase())
