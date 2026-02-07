@@ -18,6 +18,8 @@ Finally, add filters for the time period at the top, allowign the user to select
 
 And then when creating a new fee payment, allow the receptionist or admin (these are the people who can create fee payments) to tie the payment to a student, and then subtract that from their termly fee owing . Then send a notification to the admin, the parent and the student for the new fee payment. Make commits for these changes
 
+-----------------------------------------------------------------------
+
 And then in the onboarding, add 2 more steps:
 (1) Termly fees - the amount, in USD, that has to be paid by the students each term
 (2) Current term - this step asks the admin to enter the start date of the current term and the term number for the year (the year is a read-only input field with the current year in it, the user has to enter the start month and date), then apply this to the entire app, so on the dash, all users see "Welcome, {user.name} and below that: "Term {X}, {year}"
