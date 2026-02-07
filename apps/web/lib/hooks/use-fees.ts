@@ -40,6 +40,25 @@ interface FeeListResponse {
   };
 }
 
+interface StudentOwing {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  admissionNumber: string;
+  className: string;
+  totalOwed: number;
+}
+
+interface FeeStatsResponse {
+  termNumber: number;
+  currentYear: number;
+  feesPaidThisTerm: number;
+  unpaidFeesThisTerm: number;
+  feesPaidThisYear: number;
+  unpaidFeesThisYear: number;
+  studentsOwing: StudentOwing[];
+}
+
 interface FeeFilters {
   page?: number;
   limit?: number;
@@ -69,9 +88,17 @@ export const feeKeys = {
   list: (filters: FeeFilters) => [...feeKeys.lists(), filters] as const,
   details: () => [...feeKeys.all, "detail"] as const,
   detail: (id: string) => [...feeKeys.details(), id] as const,
+  stats: () => [...feeKeys.all, "stats"] as const,
 };
 
 // Queries
+export function useFeeStats() {
+  return useQuery<FeeStatsResponse>({
+    queryKey: feeKeys.stats(),
+    queryFn: () => api.get("/fees/stats"),
+  });
+}
+
 export function useFees(filters: FeeFilters = {}) {
   const params = new URLSearchParams();
   if (filters.page) params.set("page", filters.page.toString());

@@ -10,6 +10,116 @@ const fees = new Hono();
 // Apply auth middleware to all routes
 fees.use("*", requireAuth);
 
+// GET /fees/stats - Get fee statistics
+fees.get("/stats", async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+    // Determine current term dates (3 terms per year)
+    // Term 1: Jan-Apr, Term 2: May-Aug, Term 3: Sep-Dec
+    const currentMonth = now.getMonth(); // 0-11
+    let termStart: Date;
+    let termEnd: Date;
+    let termNumber: number;
+
+    if (currentMonth < 4) {
+      termNumber = 1;
+      termStart = new Date(currentYear, 0, 1);
+      termEnd = new Date(currentYear, 3, 30, 23, 59, 59);
+    } else if (currentMonth < 8) {
+      termNumber = 2;
+      termStart = new Date(currentYear, 4, 1);
+      termEnd = new Date(currentYear, 7, 31, 23, 59, 59);
+    } else {
+      termNumber = 3;
+      termStart = new Date(currentYear, 8, 1);
+      termEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+    }
+
+    // Fees paid this term (sum of paidAmount for fees created in current term)
+    const termFees = await db.fee.aggregate({
+      where: {
+        schoolId,
+        createdAt: { gte: termStart, lte: termEnd },
+      },
+      _sum: { paidAmount: true, amount: true },
+    });
+
+    const feesPaidThisTerm = Number(termFees._sum.paidAmount || 0);
+    const totalFeesThisTerm = Number(termFees._sum.amount || 0);
+    const unpaidFeesThisTerm = totalFeesThisTerm - feesPaidThisTerm;
+
+    // Fees paid this year
+    const yearFees = await db.fee.aggregate({
+      where: {
+        schoolId,
+        createdAt: { gte: yearStart, lte: yearEnd },
+      },
+      _sum: { paidAmount: true, amount: true },
+    });
+
+    const feesPaidThisYear = Number(yearFees._sum.paidAmount || 0);
+    const totalFeesThisYear = Number(yearFees._sum.amount || 0);
+    const unpaidFeesThisYear = totalFeesThisYear - feesPaidThisYear;
+
+    // Students owing (students with unpaid fees)
+    const studentsOwing = await db.fee.groupBy({
+      by: ["studentId"],
+      where: {
+        schoolId,
+        status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+      },
+      _sum: { amount: true, paidAmount: true },
+    });
+
+    // Get student details for owing students
+    const owingStudentIds = studentsOwing.map((s) => s.studentId);
+    const owingStudents = await db.student.findMany({
+      where: { id: { in: owingStudentIds } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        admissionNumber: true,
+        class: { select: { name: true } },
+      },
+    });
+
+    const studentsOwingList = studentsOwing.map((s) => {
+      const student = owingStudents.find((st) => st.id === s.studentId);
+      const totalAmount = Number(s._sum.amount || 0);
+      const paidAmount = Number(s._sum.paidAmount || 0);
+      return {
+        studentId: s.studentId,
+        firstName: student?.firstName || "",
+        lastName: student?.lastName || "",
+        admissionNumber: student?.admissionNumber || "",
+        className: student?.class?.name || "—",
+        totalOwed: totalAmount - paidAmount,
+      };
+    }).filter((s) => s.totalOwed > 0)
+      .sort((a, b) => b.totalOwed - a.totalOwed);
+
+    return successResponse(c, {
+      termNumber,
+      currentYear,
+      feesPaidThisTerm,
+      unpaidFeesThisTerm,
+      feesPaidThisYear,
+      unpaidFeesThisYear,
+      studentsOwing: studentsOwingList,
+    });
+  } catch (error) {
+    console.error("Fee stats error:", error);
+    return errors.internalError(c);
+  }
+});
+
 // GET /fees - List fees
 fees.get("/", async (c) => {
   try {

@@ -7,9 +7,13 @@ import {
   Money01Icon,
   Add01Icon,
   Cancel01Icon,
+  CheckmarkCircle02Icon,
+  TimeQuarterIcon,
+  Calendar01Icon,
+  AlertCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useFees, useCreateFee, useRecordPayment, useStudents } from "@/lib/hooks";
+import { useFees, useFeeStats, useCreateFee, useRecordPayment, useStudents } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +83,7 @@ export default function FeesPage() {
     status: filter !== "all" ? filter.toUpperCase() : undefined,
   });
   const { data: studentsData } = useStudents({ limit: 1000 });
+  const { data: feeStats } = useFeeStats();
   const createFeeMutation = useCreateFee();
   const recordPaymentMutation = useRecordPayment();
 
@@ -160,6 +165,93 @@ export default function FeesPage() {
           <HugeiconsIcon icon={Add01Icon} size={20} />
           Create New Fee Record
         </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <Card className="overflow-hidden border-l-4 border-l-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Fees Paid This Term</p>
+                  <p className="text-2xl font-bold mt-1 text-green-600">
+                    ${(feeStats?.feesPaidThisTerm || 0).toLocaleString()}
+                  </p>
+                  {feeStats && (
+                    <p className="text-xs text-muted-foreground mt-1">Term {feeStats.termNumber}</p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-green-100 dark:bg-green-950">
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={24} className="text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="overflow-hidden border-l-4 border-l-orange-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Unpaid Fees This Term</p>
+                  <p className="text-2xl font-bold mt-1 text-orange-600">
+                    ${(feeStats?.unpaidFeesThisTerm || 0).toLocaleString()}
+                  </p>
+                  {feeStats && (
+                    <p className="text-xs text-muted-foreground mt-1">Term {feeStats.termNumber}</p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-orange-100 dark:bg-orange-950">
+                  <HugeiconsIcon icon={TimeQuarterIcon} size={24} className="text-orange-600 dark:text-orange-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="overflow-hidden border-l-4 border-l-blue-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Fees Paid This Year</p>
+                  <p className="text-2xl font-bold mt-1 text-blue-600">
+                    ${(feeStats?.feesPaidThisYear || 0).toLocaleString()}
+                  </p>
+                  {feeStats && (
+                    <p className="text-xs text-muted-foreground mt-1">{feeStats.currentYear}</p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-950">
+                  <HugeiconsIcon icon={Calendar01Icon} size={24} className="text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <Card className="overflow-hidden border-l-4 border-l-red-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Unpaid This Year</p>
+                  <p className="text-2xl font-bold mt-1 text-red-600">
+                    ${(feeStats?.unpaidFeesThisYear || 0).toLocaleString()}
+                  </p>
+                  {feeStats && (
+                    <p className="text-xs text-muted-foreground mt-1">{feeStats.currentYear}</p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={24} className="text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Filters */}
