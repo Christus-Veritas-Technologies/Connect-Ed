@@ -62,6 +62,8 @@ export default function FeesPage() {
   const searchParams = useSearchParams();
 
   const [filter, setFilter] = useState(searchParams.get("filter") || "all");
+  const [termFilter, setTermFilter] = useState<string>("");
+  const [yearFilter, setYearFilter] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState<Fee | null>(null);
 
@@ -81,6 +83,8 @@ export default function FeesPage() {
   // Query hooks
   const { data: feesData, isLoading } = useFees({
     status: filter !== "all" ? filter.toUpperCase() : undefined,
+    term: termFilter && termFilter !== "all_terms" ? parseInt(termFilter) : undefined,
+    year: yearFilter && yearFilter !== "all_years" ? parseInt(yearFilter) : undefined,
   });
   const { data: studentsData } = useStudents({ limit: 1000 });
   const { data: feeStats } = useFeeStats();
@@ -257,18 +261,60 @@ export default function FeesPage() {
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-wrap gap-2">
-            {["all", "pending", "partial", "paid", "overdue"].map((f) => (
-              <Button
-                key={f}
-                variant={filter === f ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(f)}
-                className="capitalize"
-              >
-                {f}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              {["all", "pending", "partial", "paid", "overdue"].map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter(f)}
+                  className="capitalize"
+                >
+                  {f}
+                </Button>
+              ))}
+            </div>
+
+            <div className="h-6 w-px bg-border hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <Select value={yearFilter} onValueChange={setYearFilter}>
+                <SelectTrigger className="w-[120px] h-9">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_years">All Years</SelectItem>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={termFilter} onValueChange={setTermFilter}>
+                <SelectTrigger className="w-[120px] h-9">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_terms">All Terms</SelectItem>
+                  <SelectItem value="1">Term 1</SelectItem>
+                  <SelectItem value="2">Term 2</SelectItem>
+                  <SelectItem value="3">Term 3</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(termFilter && termFilter !== "all_terms" || yearFilter && yearFilter !== "all_years") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setTermFilter(""); setYearFilter(""); }}
+                  className="text-muted-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

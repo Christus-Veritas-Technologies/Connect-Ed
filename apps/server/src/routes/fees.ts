@@ -130,8 +130,31 @@ fees.get("/", async (c) => {
     const studentId = c.req.query("studentId");
     const status = c.req.query("status");
     const filter = c.req.query("filter");
+    const term = c.req.query("term");
+    const year = c.req.query("year");
 
     const skip = (page - 1) * limit;
+
+    // Calculate date range for term/year filters
+    let dateFilter: { gte?: Date; lte?: Date } | undefined;
+    if (year) {
+      const y = parseInt(year);
+      if (term) {
+        const t = parseInt(term);
+        // Term 1: Jan-Apr, Term 2: May-Aug, Term 3: Sep-Dec
+        const termStartMonth = (t - 1) * 4;
+        const termEndMonth = termStartMonth + 3;
+        dateFilter = {
+          gte: new Date(y, termStartMonth, 1),
+          lte: new Date(y, termEndMonth + 1, 0, 23, 59, 59), // last day of end month
+        };
+      } else {
+        dateFilter = {
+          gte: new Date(y, 0, 1),
+          lte: new Date(y, 11, 31, 23, 59, 59),
+        };
+      }
+    }
 
     // Build where clause
     const where: Parameters<typeof db.fee.findMany>[0]["where"] = {
@@ -142,6 +165,7 @@ fees.get("/", async (c) => {
         status: { not: FeeStatus.PAID },
         dueDate: { lt: new Date() },
       }),
+      ...(dateFilter && { createdAt: dateFilter }),
     };
 
     const [fees, total] = await Promise.all([

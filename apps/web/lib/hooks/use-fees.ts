@@ -65,6 +65,8 @@ interface FeeFilters {
   studentId?: string;
   status?: string;
   filter?: "overdue";
+  term?: number;
+  year?: number;
 }
 
 interface CreateFeeInput {
@@ -106,6 +108,8 @@ export function useFees(filters: FeeFilters = {}) {
   if (filters.studentId) params.set("studentId", filters.studentId);
   if (filters.status) params.set("status", filters.status);
   if (filters.filter) params.set("filter", filters.filter);
+  if (filters.term) params.set("term", filters.term.toString());
+  if (filters.year) params.set("year", filters.year.toString());
 
   return useQuery<FeeListResponse>({
     queryKey: feeKeys.list(filters),
