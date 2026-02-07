@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Invoice03Icon,
   Add01Icon,
   Cancel01Icon,
+  Search01Icon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useExpenses, useCreateExpense } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
+import { exportDataAsCSV } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 
 const EXPENSE_CATEGORIES = [
   "Supplies",
@@ -53,6 +57,8 @@ const EXPENSE_CATEGORIES = [
 export default function ExpensesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [formData, setFormData] = useState<{
     amount: string;
@@ -66,6 +72,14 @@ export default function ExpensesPage() {
     date: new Date().toISOString().split("T")[0] as string,
   });
 
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Query hooks
   const { data, isLoading } = useExpenses({
     category: categoryFilter !== "all" ? categoryFilter : undefined,
@@ -74,6 +88,43 @@ export default function ExpensesPage() {
 
   const expenses = data?.expenses || [];
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Filter expenses
+  const filteredExpenses = expenses.filter((expense) => {
+    const matchesSearch = debouncedSearch
+      ? expense.description.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        expense.category.toLowerCase().includes(debouncedSearch.toLowerCase())
+      : true;
+    return matchesSearch;
+  });
+
+  // Export expenses as CSV
+  const handleExportCSV = () => {
+    if (filteredExpenses.length === 0) {
+      toast.error("No expenses to export");
+      return;
+    }
+
+    const exportData = filteredExpenses.map((expense) => ({
+      date: new Date(expense.date).toLocaleDateString(),
+      category: expense.category,
+      description: expense.description,
+      amount: expense.amount,
+    }));
+
+    exportDataAsCSV(
+      exportData,
+      [
+        { key: "date", label: "Date" },
+        { key: "category", label: "Category" },
+        { key: "description", label: "Description" },
+        { key: "amount", label: "Amount" },
+      ],
+      `expenses-${new Date().toISOString().split("T")[0]}`
+    );
+
+    toast.success("Expenses exported successfully");
+  };
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +135,7 @@ export default function ExpensesPage() {
         description: formData.description,
         date: formData.date,
       },
-      {
+      {formError && (
         onSuccess: () => {
           setFormData({
             amount: "",
@@ -93,6 +144,7 @@ export default function ExpensesPage() {
             date: new Date().toISOString().split("T")[0] as string,
           });
           setShowAddModal(false);
+          toast.success("Expense recorded successfully");
         },
       }
     );
@@ -115,22 +167,47 @@ export default function ExpensesPage() {
             Track and manage school expenses
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
-          <HugeiconsIcon icon={Add01Icon} size={20} />
-          Add Expense
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filteredExpenses.length === 0}>
+            <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+            Export CSV
+          </Button>
+          <Button onClick={() => setShowAddModal(true)}>
+            <HugeiconsIcon icon={Add01Icon} size={20} />
+            Add Expense
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Card */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-3xl font-bold">${totalExpenses.toLocaleString()}</p>
+      {/* Summary and Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-sm text-muted-foreground">Total Expenses</p>
+            <p className="text-3xl font-bold text-red-600">${totalExpenses.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {expenses.length} expense{expenses.length !== 1 ? "s" : ""} recorded
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="py-4 space-y-3">
+            <div className="relative">
+              <HugeiconsIcon 
+                icon={Search01Icon} 
+                size={18} 
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
+              />
+              <Input
+                placeholder="Search expenses..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger>
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -142,9 +219,9 @@ export default function ExpensesPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Expenses Table */}
       <Card>
@@ -162,6 +239,11 @@ export default function ExpensesPage() {
                 Record Your First Expense
               </Button>
             </div>
+          ) : filteredExpenses.length === 0 ? (
+            <div className="text-center py-12">
+              <HugeiconsIcon icon={Search01Icon} size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No expenses match your search</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -174,7 +256,7 @@ export default function ExpensesPage() {
               </TableHeader>
               <TableBody>
                 <AnimatePresence>
-                  {expenses.map((expense, index) => (
+                  {filteredExpenses.map((expense, index) => (
                     <motion.tr
                       key={expense.id}
                       initial={{ opacity: 0, y: 10 }}
