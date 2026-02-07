@@ -86,6 +86,7 @@ export default function ClassesPage() {
   const [formError, setFormError] = useState("");
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -680,21 +681,34 @@ export default function ClassesPage() {
 
             <div>
               <Label>Class Teacher <span className="text-destructive">*</span></Label>
-              <Select
-                value={formData.classTeacherId}
-                onValueChange={(value) => setFormData({ ...formData, classTeacherId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select teacher..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {teachers.map((teacher) => (
-                    <SelectItem key={teacher.id} value={teacher.id}>
-                      {teacher.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search teachers..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                />
+                <Select
+                  value={formData.classTeacherId}
+                  onValueChange={(value) => setFormData({ ...formData, classTeacherId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select teacher..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers
+                      .filter((teacher) =>
+                        teacherSearch
+                          ? teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
+                          : true
+                      )
+                      .map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
