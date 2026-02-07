@@ -11,10 +11,12 @@ import {
   TimeQuarterIcon,
   Calendar01Icon,
   AlertCircleIcon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useFees, useFeeStats, useCreateFee, useRecordPayment, useStudents } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
+import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,6 +154,102 @@ export default function FeesPage() {
     ? recordPaymentMutation.error.message 
     : recordPaymentMutation.error?.message;
 
+  // Export all fee records as CSV
+  const handleExportFeesCSV = () => {
+    if (fees.length === 0) return;
+    const exportData = fees.map((fee) => ({
+      student: `${fee.student.firstName} ${fee.student.lastName}`,
+      admissionNumber: fee.student.admissionNumber,
+      description: fee.description,
+      amount: fee.amount,
+      paidAmount: fee.paidAmount,
+      outstanding: fee.amount - fee.paidAmount,
+      dueDate: new Date(fee.dueDate).toLocaleDateString(),
+      status: fee.status,
+    }));
+    exportToCSV(
+      exportData,
+      [
+        { key: "student", label: "Student" },
+        { key: "admissionNumber", label: "Admission No." },
+        { key: "description", label: "Description" },
+        { key: "amount", label: "Amount" },
+        { key: "paidAmount", label: "Paid" },
+        { key: "outstanding", label: "Outstanding" },
+        { key: "dueDate", label: "Due Date" },
+        { key: "status", label: "Status" },
+      ],
+      `fee-records-${new Date().toISOString().split("T")[0]}`
+    );
+  };
+
+  const handleExportFeesPDF = () => {
+    if (fees.length === 0) return;
+    const exportData = fees.map((fee) => ({
+      student: `${fee.student.firstName} ${fee.student.lastName}`,
+      description: fee.description,
+      amount: `$${fee.amount.toLocaleString()}`,
+      paid: `$${fee.paidAmount.toLocaleString()}`,
+      outstanding: `$${(fee.amount - fee.paidAmount).toLocaleString()}`,
+      status: fee.status,
+    }));
+    exportToPDF(
+      exportData,
+      [
+        { key: "student", label: "Student" },
+        { key: "description", label: "Description" },
+        { key: "amount", label: "Amount" },
+        { key: "paid", label: "Paid" },
+        { key: "outstanding", label: "Outstanding" },
+        { key: "status", label: "Status" },
+      ],
+      `fee-records-${new Date().toISOString().split("T")[0]}`,
+      "Fee Records Report"
+    );
+  };
+
+  // Export students owing
+  const handleExportOwingCSV = () => {
+    if (!feeStats || feeStats.studentsOwing.length === 0) return;
+    const exportData = feeStats.studentsOwing.map((s) => ({
+      student: `${s.firstName} ${s.lastName}`,
+      admissionNumber: s.admissionNumber,
+      className: s.className,
+      totalOwed: s.totalOwed,
+    }));
+    exportToCSV(
+      exportData,
+      [
+        { key: "student", label: "Student" },
+        { key: "admissionNumber", label: "Admission No." },
+        { key: "className", label: "Class" },
+        { key: "totalOwed", label: "Amount Owed" },
+      ],
+      `students-owing-${new Date().toISOString().split("T")[0]}`
+    );
+  };
+
+  const handleExportOwingPDF = () => {
+    if (!feeStats || feeStats.studentsOwing.length === 0) return;
+    const exportData = feeStats.studentsOwing.map((s) => ({
+      student: `${s.firstName} ${s.lastName}`,
+      admissionNumber: s.admissionNumber,
+      className: s.className,
+      totalOwed: `$${s.totalOwed.toLocaleString()}`,
+    }));
+    exportToPDF(
+      exportData,
+      [
+        { key: "student", label: "Student" },
+        { key: "admissionNumber", label: "Admission No." },
+        { key: "className", label: "Class" },
+        { key: "totalOwed", label: "Amount Owed" },
+      ],
+      `students-owing-${new Date().toISOString().split("T")[0]}`,
+      "Students Owing Report"
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -165,10 +263,20 @@ export default function FeesPage() {
             Track student fees and payments
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
-          <HugeiconsIcon icon={Add01Icon} size={20} />
-          Create New Fee Record
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportFeesCSV} disabled={fees.length === 0}>
+            <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportFeesPDF} disabled={fees.length === 0}>
+            <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+            PDF
+          </Button>
+          <Button onClick={() => setShowAddModal(true)}>
+            <HugeiconsIcon icon={Add01Icon} size={20} />
+            Create New Fee Record
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -414,13 +522,27 @@ export default function FeesPage() {
       {feeStats && feeStats.studentsOwing.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HugeiconsIcon icon={AlertCircleIcon} size={20} className="text-red-500" />
-              Students Owing
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {feeStats.studentsOwing.length} student{feeStats.studentsOwing.length !== 1 ? "s" : ""} with outstanding fees
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={20} className="text-red-500" />
+                  Students Owing
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {feeStats.studentsOwing.length} student{feeStats.studentsOwing.length !== 1 ? "s" : ""} with outstanding fees
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleExportOwingCSV}>
+                  <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                  CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportOwingPDF}>
+                  <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                  PDF
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
