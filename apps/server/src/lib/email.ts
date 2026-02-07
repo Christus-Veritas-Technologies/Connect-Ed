@@ -54,7 +54,47 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const { to, subject, html, schoolId, type = "KIN" } = options;
 
   try {
-    console.log(`📧 Sending ${type} email:`, {
+    // Check if school has email quota remaining
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        emailQuota: true,
+        emailUsed: true,
+        plan: true,
+        name: true,
+      },
+    });
+
+    if (!school) {
+      console.error("❌ School not found:", schoolId);
+      return false;
+    }
+
+    // Check if quota exceeded
+    if (school.emailUsed >= school.emailQuota) {
+      console.error(`❌ Email quota exceeded for ${school.name}:`, {
+        used: school.emailUsed,
+        quota: school.emailQuota,
+        plan: school.plan,
+      });
+      
+      // Log the failure
+      await db.messageLog.create({
+        data: {
+          type: "EMAIL" as any,
+          recipient: to,
+          subject,
+          content: html,
+          status: "FAILED" as any,
+          errorMessage: `Email quota exceeded. Used ${school.emailUsed}/${school.emailQuota} emails. Please upgrade your plan or wait for quota reset.`,
+          schoolId,
+        },
+      });
+
+      return false;
+    }
+
+    console.log(`📧 Sending ${type} email (${school.emailUsed + 1}/${school.emailQuota}):`, {
       to,
       subject,
       preview: html.substring(0, 100) + "...",
@@ -90,14 +130,26 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     console.log(`✅ ${type} email sent successfully:`, info.messageId);
 
+    // Increment email quota usage
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        emailUsed: {
+          increment: 1,
+        },
+      },
+    });
+
+    console.log(`📊 Email quota updated: ${school.emailUsed + 1}/${school.emailQuota}`);
+
     // Log the successful email in the database
     await db.messageLog.create({
       data: {
-        type: MessageType.EMAIL,
+        type: "EMAIL" as any,
         recipient: to,
         subject,
         content: html,
-        status: MessageStatus.SENT,
+        status: "SENT" as any,
         sentAt: new Date(),
         schoolId,
       },
@@ -110,11 +162,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     // Log the failure
     await db.messageLog.create({
       data: {
-        type: MessageType.EMAIL,
+        type: "EMAIL" as any,
         recipient: to,
         subject,
         content: html,
-        status: MessageStatus.FAILED,
+        status: "FAILED" as any,
         errorMessage: error instanceof Error ? error.message : "Unknown error",
         schoolId,
       },

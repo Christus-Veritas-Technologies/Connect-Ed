@@ -12,7 +12,7 @@ import {
   UserGroupIcon,
   Cancel01Icon,
   Tick02Icon,
-  CalendarIcon,
+  Add01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { AddStudentDialog } from "@/components/dialogs/add-student-dialog";
 
 interface Student {
   id: string;
@@ -67,7 +67,7 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const { school, user } = useAuth();
+  const { user } = useAuth();
 
   const classId = params.id as string;
   const isEditMode = searchParams.get("edit") === "true";
@@ -80,6 +80,7 @@ export default function ClassDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -119,6 +120,7 @@ export default function ClassDetailPage() {
   useEffect(() => {
     fetchClass();
     fetchTeachers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
   // Handle save
@@ -482,11 +484,23 @@ export default function ClassDetailPage() {
                   <div className="p-3 rounded-xl bg-blue-50">
                     <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-blue-600" />
                   </div>
-                  <h2 className="text-xl font-bold">Students</h2>
+                  <div>
+                    <h2 className="text-xl font-bold">Students</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {classData.students.length} student{classData.students.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="outline" className="text-lg px-3 py-1">
-                  {classData.students.length}
-                </Badge>
+                {canEdit && (
+                  <Button
+                    onClick={() => setShowAddStudentDialog(true)}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={16} />
+                    Add Student
+                  </Button>
+                )}
               </div>
 
               {classData.students.length === 0 ? (
@@ -494,10 +508,20 @@ export default function ClassDetailPage() {
                   <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
                     <HugeiconsIcon icon={UserGroupIcon} size={48} className="text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground">No students in this class yet</p>
+                  <p className="text-muted-foreground mb-4">No students in this class yet</p>
+                  {canEdit && (
+                    <Button
+                      onClick={() => setShowAddStudentDialog(true)}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <HugeiconsIcon icon={Add01Icon} size={16} />
+                      Add First Student
+                    </Button>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                   {classData.students.map((student, index) => (
                     <motion.div
                       key={student.id}
@@ -548,6 +572,17 @@ export default function ClassDetailPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Add Student Dialog */}
+      <AddStudentDialog
+        open={showAddStudentDialog}
+        onOpenChange={setShowAddStudentDialog}
+        preSelectedClassId={classId}
+        onSuccess={() => {
+          // Refresh class data to show the new student
+          fetchClass();
+        }}
+      />
 
       {/* Delete Confirmation Dialog - Only shown if user has edit permissions */}
       {canEdit && (

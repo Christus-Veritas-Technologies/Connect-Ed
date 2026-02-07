@@ -27,10 +27,12 @@ import {
   CheckmarkCircle02Icon,
   InformationCircleIcon,
   Clock01Icon,
+  CheckmarkBadge03Icon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { useDashboardStats, useNotifications } from "@/lib/hooks";
+import { useDashboardStats, useNotifications, useMarkNotificationAsRead, useMarkAllNotificationsAsRead } from "@/lib/hooks";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +57,7 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
 import { exportDataAsCSV } from "@/lib/export-utils";
+import { toast } from "sonner";
 
 const quotaIcons = {
   email: Mail01Icon,
@@ -74,6 +77,31 @@ export function AdminDashboard() {
 
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notificationsData?.unreadCount || 0;
+
+  const markAsReadMutation = useMarkNotificationAsRead();
+  const markAllAsReadMutation = useMarkAllNotificationsAsRead();
+
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsReadMutation.mutate(notificationId, {
+      onSuccess: () => {
+        toast.success("Notification marked as read");
+      },
+      onError: () => {
+        toast.error("Failed to mark notification as read");
+      },
+    });
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsReadMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("All notifications marked as read");
+      },
+      onError: () => {
+        toast.error("Failed to mark all notifications as read");
+      },
+    });
+  };
 
   if (isLoading || !stats) {
     return (
@@ -430,8 +458,8 @@ export function AdminDashboard() {
 
       {/* Notifications Sheet */}
       <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-        <SheetContent side="right" className="w-full sm:w-96 flex flex-col">
-          <SheetHeader>
+        <SheetContent side="right" className="w-full sm:w-96 flex flex-col p-0">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b">
             <SheetTitle className="flex items-center gap-2">
               <HugeiconsIcon icon={Notification01Icon} size={24} />
               Notifications
@@ -439,9 +467,21 @@ export function AdminDashboard() {
             <SheetDescription>
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
             </SheetDescription>
+            {unreadCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAllAsRead}
+                disabled={markAllAsReadMutation.isPending}
+                className="mt-3 w-full gap-2"
+              >
+                <HugeiconsIcon icon={CheckmarkBadge03Icon} size={16} />
+                Mark all as read
+              </Button>
+            )}
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-2 py-4">
+          <div className="flex-1 overflow-y-auto space-y-2 py-4 px-6">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="p-4 rounded-full bg-muted mb-4">
@@ -458,13 +498,29 @@ export function AdminDashboard() {
                   INFO: InformationCircleIcon,
                 };
                 const colorMap = {
-                  SUCCESS: "bg-green-100 text-green-700",
-                  WARNING: "bg-orange-100 text-orange-700",
-                  ERROR: "bg-red-100 text-red-700",
-                  INFO: "bg-blue-100 text-blue-700",
+                  SUCCESS: {
+                    bg: "bg-green-100 dark:bg-green-950",
+                    text: "text-green-700 dark:text-green-400",
+                    border: "border-green-200 dark:border-green-900",
+                  },
+                  WARNING: {
+                    bg: "bg-orange-100 dark:bg-orange-950",
+                    text: "text-orange-700 dark:text-orange-400",
+                    border: "border-orange-200 dark:border-orange-900",
+                  },
+                  ERROR: {
+                    bg: "bg-red-100 dark:bg-red-950",
+                    text: "text-red-700 dark:text-red-400",
+                    border: "border-red-200 dark:border-red-900",
+                  },
+                  INFO: {
+                    bg: "bg-blue-100 dark:bg-blue-950",
+                    text: "text-blue-700 dark:text-blue-400",
+                    border: "border-blue-200 dark:border-blue-900",
+                  },
                 };
                 const NotifIcon = iconMap[notification.type as keyof typeof iconMap] || InformationCircleIcon;
-                const colorClass = colorMap[notification.type as keyof typeof colorMap] || "bg-blue-100 text-blue-700";
+                const colors = colorMap[notification.type as keyof typeof colorMap] || colorMap.INFO;
 
                 return (
                   <motion.div
@@ -475,31 +531,49 @@ export function AdminDashboard() {
                     className={`p-4 rounded-lg border transition-all ${
                       notification.isRead
                         ? "bg-muted/30 border-muted"
-                        : "bg-card border-brand/20 shadow-sm"
+                        : `bg-card ${colors.border} shadow-sm`
                     }`}
                   >
                     <div className="flex gap-3">
-                      <div className={`p-2 rounded-lg ${colorClass} flex-shrink-0`}>
+                      <div className={`p-2 rounded-lg ${colors.bg} ${colors.text} flex-shrink-0`}>
                         <HugeiconsIcon icon={NotifIcon} size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-sm">{notification.title}</p>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className={`text-sm ${notification.isRead ? "font-normal" : "font-semibold"}`}>
+                            {notification.title}
+                          </p>
                           {!notification.isRead && (
                             <div className="size-2 rounded-full bg-brand flex-shrink-0 mt-1" />
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        <p className={`text-sm mt-1 line-clamp-2 ${
+                          notification.isRead ? "text-muted-foreground" : "text-foreground"
+                        }`}>
                           {notification.message}
                         </p>
-                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                          <HugeiconsIcon icon={Clock01Icon} size={14} />
-                          {new Date(notification.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <HugeiconsIcon icon={Clock01Icon} size={14} />
+                            {new Date(notification.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                          {!notification.isRead && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              disabled={markAsReadMutation.isPending}
+                              className="h-7 text-xs gap-1"
+                            >
+                              <HugeiconsIcon icon={CheckmarkBadge03Icon} size={14} />
+                              Mark as read
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>

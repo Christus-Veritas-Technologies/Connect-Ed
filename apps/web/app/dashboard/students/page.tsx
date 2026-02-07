@@ -8,7 +8,6 @@ import {
   Search01Icon,
   Add01Icon,
   ViewIcon,
-  PencilEdit01Icon,
   UserCheck01Icon,
   UserRemove01Icon,
   FilterIcon,
@@ -17,7 +16,6 @@ import {
   FileDownloadIcon,
   FileExportIcon,
   PauseIcon,
-  Cancel01Icon,
   GridIcon,
   ListViewIcon,
   TableIcon,
@@ -25,16 +23,11 @@ import {
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useStudents, useCreateStudent, useDeleteStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
-import { useClasses } from "@/lib/hooks/use-classes";
-import { useAuth } from "@/lib/auth-context";
-import { ApiError } from "@/lib/api";
+import { useStudents, useDeleteStudent, useMarkNotificationsByUrl } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -70,12 +63,12 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 import { AddParentDialog } from "@/components/dialogs/add-parent-dialog";
+import { AddStudentDialog } from "@/components/dialogs/add-student-dialog";
 import { toast } from "sonner";
 
 export default function StudentsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { school } = useAuth();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -86,20 +79,9 @@ export default function StudentsPage() {
   );
   const [showParentModal, setShowParentModal] = useState(false);
   const [newlyCreatedStudentId, setNewlyCreatedStudentId] = useState<string | undefined>();
-  const [classSearch, setClassSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("table");
-  const [createAccount, setCreateAccount] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<typeof students[0] | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    dateOfBirth: "",
-    gender: "",
-    email: "",
-    phone: "",
-    classId: "",
-  });
 
   // Debounce search
   useEffect(() => {
@@ -116,15 +98,13 @@ export default function StudentsPage() {
     limit: 10,
     search: debouncedSearch || undefined,
   });
-  const { data: classesData, isLoading: loadingClasses } = useClasses();
-  const createMutation = useCreateStudent();
   const deleteMutation = useDeleteStudent();
   const markNotificationsByUrl = useMarkNotificationsByUrl();
 
   // Mark notifications as read when page loads
   useEffect(() => {
     markNotificationsByUrl.mutate("/dashboard/students");
-  }, []);
+  }, [markNotificationsByUrl]);
 
   const students = data?.students || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -144,92 +124,6 @@ export default function StudentsPage() {
     : statusFilter === "absent"
     ? [] // TODO: Update when backend supports status field
     : students.filter((s) => !s.isActive);
-
-  // Filter and group classes by level
-  type ClassWithLevel = {
-    id: string;
-    name: string;
-    level?: string | null;
-    _count?: { students: number };
-  };
-
-  const allClasses = classesData?.classes || [];
-  const filteredClasses = classSearch
-    ? allClasses.filter((c: ClassWithLevel) =>
-        c.name.toLowerCase().includes(classSearch.toLowerCase())
-      )
-    : allClasses;
-
-  const primaryClasses = filteredClasses.filter(
-    (c: ClassWithLevel) => c.level?.toLowerCase() === "primary"
-  );
-  const secondaryClasses = filteredClasses.filter(
-    (c: ClassWithLevel) => c.level?.toLowerCase() === "secondary"
-  );
-  const otherClasses = filteredClasses.filter(
-    (c: ClassWithLevel) =>
-      !c.level ||
-      (c.level.toLowerCase() !== "primary" &&
-        c.level.toLowerCase() !== "secondary")
-  );
-
-  // Generate Student ID
-  const generateStudentId = () => {
-    const schoolPrefix = (school?.name || "SCH")
-      .substring(0, 3)
-      .toUpperCase()
-      .replace(/[^A-Z]/g, "X");
-    const year = new Date().getFullYear();
-    const uuid = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${schoolPrefix}-${year}-${uuid}`;
-  };
-
-  // Form handlers
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const studentId = generateStudentId();
-    const payload = {
-      ...formData,
-      admissionNumber: studentId,
-    };
-
-    createMutation.mutate(payload, {
-      onSuccess: (data) => {
-        setFormData({
-          firstName: "",
-          lastName: "",
-          dateOfBirth: "",
-          gender: "",
-          email: "",
-          phone: "",
-          classId: "",
-        });
-        setClassSearch("");
-        setCreateAccount(false);
-        setShowAddModal(false);
-        
-        // Show success toast
-        toast.success("Student created successfully!", {
-          description: `${data.student.firstName} ${data.student.lastName} has been added.`,
-        });
-        
-        // Open parent dialog with newly created student pre-selected
-        setNewlyCreatedStudentId(data.student.id);
-        setShowParentModal(true);
-      },
-      onError: () => {
-        toast.error("Failed to create student", {
-          description: "Please try again or contact support.",
-        });
-      },
-    });
-  };
-
-  const formError =
-    createMutation.error instanceof ApiError
-      ? createMutation.error.message
-      : createMutation.error?.message;
 
   // Export handlers
   const handleExportCSV = () => {
@@ -300,7 +194,7 @@ export default function StudentsPage() {
         setSelectedStudent(null);
       },
       onError: (error) => {
-        const err = error instanceof ApiError ? error.message : "Failed to delete student";
+        const err = error instanceof Error ? error.message : "Failed to delete student";
         toast.error(err);
       },
     });
@@ -500,7 +394,7 @@ export default function StudentsPage() {
         transition={{ delay: 0.55 }}
         className="flex justify-start"
       >
-        <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
+        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "cards" | "table" | "list")}>
           <TabsList>
             <TabsTrigger value="cards" className="gap-2">
               <HugeiconsIcon icon={GridIcon} size={18} />
@@ -815,387 +709,14 @@ export default function StudentsPage() {
       </motion.div>
 
       {/* Add Student Dialog */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="text-xl font-bold">
-              Add New Student
-            </DialogTitle>
-          </DialogHeader>
-
-          {formError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Alert variant="destructive">
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
-          {loadingClasses ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-            </div>
-          ) : (
-            <form onSubmit={handleAddStudent} className="space-y-6">
-              {/* Personal Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                  Personal Information
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">
-                      First Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
-                      className="rounded-lg"
-                      placeholder="John"
-                      required
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">
-                      Last Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
-                      className="rounded-lg"
-                      placeholder="Doe"
-                      required
-                    />
-                  </motion.div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">Date of Birth</Label>
-                    <Input
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dateOfBirth: e.target.value })
-                      }
-                      className="rounded-lg"
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">Gender</Label>
-                    <Select
-                      value={formData.gender}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, gender: value })
-                      }
-                    >
-                      <SelectTrigger className="rounded-lg">
-                        <SelectValue placeholder="Select gender..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MALE">Male</SelectItem>
-                        <SelectItem value="FEMALE">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                  Contact Information
-                </h3>
-
-                {/* Create Account Switch */}
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                >
-                  <div className="flex-1">
-                    <Label className="text-sm font-medium cursor-pointer">
-                      Create Account
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Enable for students who need login access (email required)
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createAccount}
-                      onChange={(e) => setCreateAccount(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-                  </label>
-                </motion.div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">
-                      Email {createAccount && <span className="text-destructive">*</span>}
-                    </Label>
-                    <Input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="rounded-lg"
-                      placeholder="john.doe@example.com"
-                      required={createAccount}
-                    />
-                    {createAccount && !formData.email && (
-                      <p className="text-xs text-destructive">Email is required for account creation</p>
-                    )}
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="space-y-2"
-                  >
-                    <Label className="text-sm font-medium">Phone</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        value="+263"
-                        disabled
-                        className="w-20 rounded-lg"
-                      />
-                      <Input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
-                        className="rounded-lg flex-1"
-                        placeholder="712345678"
-                        maxLength={9}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Enter 9-digit phone number (must start with 7)
-                    </p>
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Academic Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                  Academic Information
-                </h3>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="space-y-2"
-                >
-                  <Label className="text-sm font-medium">
-                    Class <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      placeholder="Search and select class..."
-                      value={classSearch}
-                      onChange={(e) => setClassSearch(e.target.value)}
-                      className="rounded-lg"
-                    />
-                    {classSearch && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[300px] overflow-y-auto">
-                        {primaryClasses.length > 0 && (
-                          <>
-                            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
-                              PRIMARY
-                            </div>
-                            {primaryClasses.map((cls) => (
-                              <button
-                                key={cls.id}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, classId: cls.id });
-                                  setClassSearch("");
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between group"
-                              >
-                                <span className="text-sm">
-                                  {cls.name}
-                                  {cls._count?.students !== undefined && (
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      ({cls._count.students} students)
-                                    </span>
-                                  )}
-                                </span>
-                                {formData.classId === cls.id && (
-                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
-                                )}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {secondaryClasses.length > 0 && (
-                          <>
-                            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
-                              SECONDARY
-                            </div>
-                            {secondaryClasses.map((cls) => (
-                              <button
-                                key={cls.id}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, classId: cls.id });
-                                  setClassSearch("");
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between"
-                              >
-                                <span className="text-sm">
-                                  {cls.name}
-                                  {cls._count?.students !== undefined && (
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      ({cls._count.students} students)
-                                    </span>
-                                  )}
-                                </span>
-                                {formData.classId === cls.id && (
-                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
-                                )}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {otherClasses.length > 0 && (
-                          <>
-                            {(primaryClasses.length > 0 || secondaryClasses.length > 0) && (
-                              <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
-                                OTHER
-                              </div>
-                            )}
-                            {otherClasses.map((cls) => (
-                              <button
-                                key={cls.id}
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, classId: cls.id });
-                                  setClassSearch("");
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between"
-                              >
-                                <span className="text-sm">
-                                  {cls.name}
-                                  {cls._count?.students !== undefined && (
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      ({cls._count.students} students)
-                                    </span>
-                                  )}
-                                </span>
-                                {formData.classId === cls.id && (
-                                  <div className="w-2 h-2 rounded-full bg-brand"></div>
-                                )}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {primaryClasses.length === 0 &&
-                          secondaryClasses.length === 0 &&
-                          otherClasses.length === 0 && (
-                          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                            No classes match
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {formData.classId && !classSearch && (
-                      <div className="mt-2 p-2 bg-brand/10 border border-brand/30 rounded text-sm text-brand font-medium">
-                        Selected: {allClasses.find(c => c.id === formData.classId)?.name}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Student ID will be auto-generated upon creation
-                  </p>
-                </motion.div>
-              </div>
-
-              {/* Action Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="flex gap-3 pt-4 border-t"
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 gap-2 rounded-lg"
-                  onClick={() => setShowAddModal(false)}
-                  disabled={createMutation.isPending}
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={18} />
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 gap-2 rounded-lg"
-                  disabled={createMutation.isPending}
-                >
-                  {createMutation.isPending ? (
-                    <>
-                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <HugeiconsIcon icon={Add01Icon} size={18} />
-                      Add Student
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AddStudentDialog
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onSuccess={(studentId) => {
+          setNewlyCreatedStudentId(studentId);
+          setShowParentModal(true);
+        }}
+      />
 
       {/* Add Parent Dialog */}
       <AddParentDialog
@@ -1225,7 +746,7 @@ export default function StudentsPage() {
         }}
       />
 
-      {/* Delete Student Confirmation Modal */}}
+      {/* Delete Student Confirmation Modal */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
