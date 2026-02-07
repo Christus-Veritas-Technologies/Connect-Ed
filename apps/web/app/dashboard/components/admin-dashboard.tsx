@@ -29,9 +29,12 @@ import {
   Clock01Icon,
   CheckmarkBadge03Icon,
   Delete02Icon,
+  Calendar03Icon,
+  SunCloudAngledRain01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDashboardStats, useNotifications, useMarkNotificationAsRead, useMarkAllNotificationsAsRead } from "@/lib/hooks";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import {
   ChartContainer,
@@ -68,11 +88,19 @@ const quotaIcons = {
 const PIE_COLORS = ["#22c55e", "#f59e0b", "#ef4444"];
 
 export function AdminDashboard() {
-  const { user, school } = useAuth();
+  const { user, school, checkAuth } = useAuth();
+  const queryClient = useQueryClient();
   const { data: stats, isLoading } = useDashboardStats();
   const { data: notificationsData } = useNotifications();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isEndPeriodDialogOpen, setIsEndPeriodDialogOpen] = useState(false);
+  const [isStartTermDialogOpen, setIsStartTermDialogOpen] = useState(false);
+  const [isPeriodLoading, setIsPeriodLoading] = useState(false);
+  const [newTermNumber, setNewTermNumber] = useState("");
+  const [newTermMonth, setNewTermMonth] = useState("");
+  const [newTermDay, setNewTermDay] = useState("");
+  const [newTermYear, setNewTermYear] = useState(new Date().getFullYear().toString());
   const feeStatusChartRef = useRef<HTMLDivElement>(null);
 
   const notifications = notificationsData?.notifications || [];
@@ -101,6 +129,59 @@ export function AdminDashboard() {
         toast.error("Failed to mark all notifications as read");
       },
     });
+  };
+
+  const isTermPeriod = school?.currentPeriodType === "TERM";
+
+  const handleEndPeriod = async () => {
+    setIsPeriodLoading(true);
+    try {
+      await api.post("/settings/period/end");
+      await checkAuth();
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setIsEndPeriodDialogOpen(false);
+      toast.success(
+        isTermPeriod
+          ? `Term ${school?.currentTermNumber} ended — holiday period started`
+          : "Holiday ended"
+      );
+      // If we just ended term 3, prompt to schedule next term
+      if (isTermPeriod && school?.currentTermNumber === 3) {
+        setNewTermNumber("1");
+        setNewTermYear((new Date().getFullYear() + 1).toString());
+        setNewTermMonth("");
+        setNewTermDay("");
+        setIsStartTermDialogOpen(true);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to end period");
+    } finally {
+      setIsPeriodLoading(false);
+    }
+  };
+
+  const handleStartTerm = async () => {
+    if (!newTermNumber || !newTermMonth || !newTermDay || !newTermYear) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setIsPeriodLoading(true);
+    try {
+      await api.post("/settings/period/start-term", {
+        termNumber: parseInt(newTermNumber),
+        month: parseInt(newTermMonth),
+        day: parseInt(newTermDay),
+        year: parseInt(newTermYear),
+      });
+      await checkAuth();
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      setIsStartTermDialogOpen(false);
+      toast.success(`Term ${newTermNumber} started`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to start term");
+    } finally {
+      setIsPeriodLoading(false);
+    }
   };
 
   if (isLoading || !stats) {
@@ -195,11 +276,45 @@ export function AdminDashboard() {
           <h1 className="text-2xl font-bold">
             Welcome back, {user?.name?.split(" ")[0]}
           </h1>
-          <p className="text-muted-foreground">
-            Here's what's happening at {school?.name || "your school"} today
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted-foreground">
+              Here's what's happening at {school?.name || "your school"} today
+            </p>
+            {school?.currentTermNumber && school?.currentTermYear && (
+              <Badge variant="outline" className="gap-1.5">
+                <HugeiconsIcon icon={isTermPeriod ? Calendar03Icon : SunCloudAngledRain01Icon} size={14} />
+                {isTermPeriod
+                  ? `Term ${school.currentTermNumber}, ${school.currentTermYear}`
+                  : `Holiday`}
+              </Badge>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Period Management Button */}
+          {school?.currentTermNumber && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (isTermPeriod) {
+                  setIsEndPeriodDialogOpen(true);
+                } else {
+                  // Holiday — open start term dialog
+                  setNewTermNumber(
+                    String(Math.min((school?.currentTermNumber || 0) + 1, 3))
+                  );
+                  setNewTermYear(new Date().getFullYear().toString());
+                  setNewTermMonth("");
+                  setNewTermDay("");
+                  setIsStartTermDialogOpen(true);
+                }
+              }}
+              className="gap-2"
+            >
+              <HugeiconsIcon icon={isTermPeriod ? Calendar03Icon : SunCloudAngledRain01Icon} size={16} />
+              {isTermPeriod ? `End Term ${school.currentTermNumber}` : "End Holiday"}
+            </Button>
+          )}
           <Button 
             variant="secondary" 
             size="icon"
@@ -584,6 +699,107 @@ export function AdminDashboard() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* End Period Confirmation Dialog */}
+      <Dialog open={isEndPeriodDialogOpen} onOpenChange={setIsEndPeriodDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isTermPeriod
+                ? `End Term ${school?.currentTermNumber}?`
+                : "End Holiday?"}
+            </DialogTitle>
+            <DialogDescription>
+              {isTermPeriod
+                ? `This will end the current school term and start a holiday period. Students and staff will see the updated status.`
+                : `This will end the current holiday. You'll be asked to configure the next term.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEndPeriodDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEndPeriod} disabled={isPeriodLoading}>
+              {isPeriodLoading ? "Processing..." : isTermPeriod ? "End Term" : "End Holiday"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Start New Term Dialog */}
+      <Dialog open={isStartTermDialogOpen} onOpenChange={setIsStartTermDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start New Term</DialogTitle>
+            <DialogDescription>
+              Configure the next school term. This will end the current holiday and begin the new term.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Term Number</Label>
+              <Select value={newTermNumber} onValueChange={setNewTermNumber}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Term 1</SelectItem>
+                  <SelectItem value="2">Term 2</SelectItem>
+                  <SelectItem value="3">Term 3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Month</Label>
+                <Select value={newTermMonth} onValueChange={setNewTermMonth}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[
+                      "January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December",
+                    ].map((m, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Day</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={newTermDay}
+                  onChange={(e) => setNewTermDay(e.target.value)}
+                  placeholder="Day"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Input
+                  type="number"
+                  value={newTermYear}
+                  onChange={(e) => setNewTermYear(e.target.value)}
+                  placeholder="Year"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStartTermDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleStartTerm} disabled={isPeriodLoading}>
+              {isPeriodLoading ? "Starting..." : "Start Term"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import {
   UserGroupIcon,
   School01Icon,
   ArrowRight01Icon,
+  Calendar03Icon,
+  SunCloudAngledRain01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -79,9 +81,19 @@ export function TeacherDashboard() {
         <h1 className="text-2xl font-bold">
           Welcome, {user?.name?.split(" ")[0]}
         </h1>
-        <p className="text-muted-foreground">
-          {school?.name} • Teacher Dashboard
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-muted-foreground">
+            {school?.name} • Teacher Dashboard
+          </p>
+          {school?.currentTermNumber && school?.currentTermYear && (
+            <Badge variant="outline" className="gap-1.5">
+              <HugeiconsIcon icon={school.currentPeriodType === "TERM" ? Calendar03Icon : SunCloudAngledRain01Icon} size={14} />
+              {school.currentPeriodType === "TERM"
+                ? `Term ${school.currentTermNumber}, ${school.currentTermYear}`
+                : "Holiday"}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Overview Cards */}
