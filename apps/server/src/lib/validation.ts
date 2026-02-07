@@ -72,6 +72,7 @@ export const createStudentSchema = z.object({
   parentId: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
+  subjectIds: z.array(z.string()).optional(),
 });
 
 export const updateStudentSchema = createStudentSchema.partial();

@@ -167,31 +167,49 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     // Create student
     console.log(`[POST /students] Inserting student: ${data.firstName} ${data.lastName}`);
-    const student = await db.student.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        admissionNumber: data.admissionNumber,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        gender: data.gender as any,
-        classId: data.classId || undefined,
-        parentId: data.parentId || undefined,
-        email: data.email || undefined,
-        phone: data.phone || undefined,
-        password: hashedPassword,
-        schoolId,
-      },
-      include: {
-        class: { 
-          select: { 
-            id: true, 
-            name: true,
-            classTeacherId: true,
-          } 
+    const result = await db.$transaction(async (tx) => {
+      // Create student
+      const student = await tx.student.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          admissionNumber: data.admissionNumber,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          gender: data.gender as any,
+          classId: data.classId || undefined,
+          parentId: data.parentId || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          password: hashedPassword,
+          schoolId,
         },
-        parent: { select: { id: true, name: true } },
-      },
+        include: {
+          class: { 
+            select: { 
+              id: true, 
+              name: true,
+              classTeacherId: true,
+            } 
+          },
+          parent: { select: { id: true, name: true } },
+        },
+      });
+
+      // Create student-subject relationships if subjects provided
+      if (data.subjectIds && data.subjectIds.length > 0) {
+        await tx.studentSubject.createMany({
+          data: data.subjectIds.map(subjectId => ({
+            studentId: student.id,
+            subjectId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return student;
     });
+
+    const student = result;
 
     // Send notifications
     const notifications = [];
