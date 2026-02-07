@@ -158,7 +158,7 @@ export default function FeesPage() {
         </div>
         <Button onClick={() => setShowAddModal(true)}>
           <HugeiconsIcon icon={Add01Icon} size={20} />
-          Create Fee
+          Create New Fee Record
         </Button>
       </div>
 
@@ -194,7 +194,7 @@ export default function FeesPage() {
               <p className="text-muted-foreground mb-4">No fees found</p>
               <Button onClick={() => setShowAddModal(true)}>
                 <HugeiconsIcon icon={Add01Icon} size={20} />
-                Create First Fee
+                Create New Fee Record
               </Button>
             </div>
           ) : (
@@ -259,7 +259,7 @@ export default function FeesPage() {
                               });
                             }}
                           >
-                            Record Payment
+                            Create New Fee Payment
                           </Button>
                         )}
                       </TableCell>
@@ -276,7 +276,7 @@ export default function FeesPage() {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Fee</DialogTitle>
+            <DialogTitle>Create New Fee Record</DialogTitle>
           </DialogHeader>
 
           {feeFormError && (
@@ -352,7 +352,7 @@ export default function FeesPage() {
                 {!createFeeMutation.isPending && (
                   <>
                     <HugeiconsIcon icon={Add01Icon} size={18} />
-                    Create Fee
+                    Create Fee Record
                   </>
                 )}
               </Button>
@@ -365,7 +365,7 @@ export default function FeesPage() {
       <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle>Create New Fee Payment</DialogTitle>
           </DialogHeader>
 
           {showPaymentModal && (
@@ -437,7 +437,7 @@ export default function FeesPage() {
                 Cancel
               </Button>
               <Button type="submit" className="flex-1" loading={recordPaymentMutation.isPending}>
-                {!recordPaymentMutation.isPending && "Record Payment"}
+                {!recordPaymentMutation.isPending && "Create Fee Payment"}
               </Button>
             </div>
           </form>
