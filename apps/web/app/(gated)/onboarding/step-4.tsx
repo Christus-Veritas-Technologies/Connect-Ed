@@ -1,229 +1,81 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Building01Icon, BookOpen01Icon, User02Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { useFormik } from "formik";
+import { Money01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { step4ValidationSchema } from "./schemas";
+import { FormField, FormActions } from "./components";
 import { useOnboarding } from "./onboarding-context";
-import { useAuth } from "@/lib/auth-context";
-import { api } from "@/lib/api";
 
 interface OnboardingStep4Props {
   onBack: () => void;
+  onNext: () => void;
 }
 
-export function OnboardingStep4({ onBack }: OnboardingStep4Props) {
-  const { data } = useOnboarding();
-  const { checkAuth } = useAuth();
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+export function OnboardingStep4({ onBack, onNext }: OnboardingStep4Props) {
+  const { updateStep4 } = useOnboarding();
 
-  const handleComplete = async () => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      // Calculate total students and teachers
-      const totalStudents = data.step3?.classes.reduce((sum, cls) => sum + (parseInt(cls.capacity) || 0), 0) || 0;
-      const totalTeachers = data.step2?.subjects.length || 1;
-
-      // Prepare payload
-      const payload = {
-        schoolName: data.step1?.schoolName || "",
-        address: data.step1?.address || "",
-        phone: data.step1?.isLandline 
-          ? `020${data.step1?.phoneNumber}` 
-          : `263${data.step1?.phoneNumber}`,
-        email: data.step1?.email || "",
-        curriculum: {
-          cambridge: data.step2?.curriculum.cambridge || false,
-          zimsec: data.step2?.curriculum.zimsec || false,
-        },
-        educationLevels: {
-          primary: data.step2?.educationLevels.primary || false,
-          secondary: data.step2?.educationLevels.secondary || false,
-        },
-        subjects: data.step2?.subjects || [],
-        classes: data.step3?.classes || [],
-        teacherCount: totalTeachers,
-        studentCount: totalStudents,
-      };
-
-      console.log("[Step 4] Onboarding context data:", data);
-      console.log("[Step 4] Payload being sent to backend:", payload);
-
-      await api.post("/onboarding", payload);
-      
-      // Refresh auth to get updated school data
-      await checkAuth();
-      
-      // Redirect to dashboard
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      console.error("Onboarding error:", err);
-      const error = err instanceof Error ? err.message : "Failed to complete onboarding. Please try again.";
-      setError(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const formik = useFormik({
+    initialValues: {
+      termlyFee: "",
+    },
+    validationSchema: step4ValidationSchema,
+    validateOnMount: true,
+    onSubmit: async (values) => {
+      try {
+        updateStep4({ termlyFee: String(values.termlyFee) });
+        onNext();
+      } catch {
+        // Handle error
+      }
+    },
+  });
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
+    <form onSubmit={formik.handleSubmit} className="space-y-6">
+      <FormField
+        error={formik.touched.termlyFee ? (formik.errors.termlyFee as string) : undefined}
+        delay={0.1}
       >
-        {/* School Details */}
-        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <div className="flex items-center gap-2 mb-4">
-            <HugeiconsIcon icon={Building01Icon} size={24} className="text-blue-600" />
-            <h3 className="font-semibold text-lg">School Information</h3>
+        <Label htmlFor="termlyFee" className="font-semibold">
+          Termly Fee Amount (USD)
+        </Label>
+        <p className="text-sm text-slate-600 mb-2">
+          This is the amount each student is expected to pay per term.
+        </p>
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-500">
+            <HugeiconsIcon icon={Money01Icon} size={18} />
+            <span className="font-medium">$</span>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-600">School Name:</span>
-              <span className="font-medium">{data.step1?.schoolName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Address:</span>
-              <span className="font-medium">{data.step1?.address}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Phone:</span>
-              <span className="font-medium">
-                {data.step1?.isLandline ? "(020)" : "263"} {data.step1?.phoneNumber}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Email:</span>
-              <span className="font-medium">{data.step1?.email}</span>
-            </div>
-          </div>
+          <Input
+            id="termlyFee"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="e.g., 500.00"
+            {...formik.getFieldProps("termlyFee")}
+            className={`pl-14 ${
+              formik.touched.termlyFee && formik.errors.termlyFee
+                ? "border-destructive"
+                : ""
+            }`}
+          />
         </div>
+        <p className="text-xs text-slate-500 mt-1">
+          You can change this later in your school settings.
+        </p>
+      </FormField>
 
-        {/* Curriculum & Subjects */}
-        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <div className="flex items-center gap-2 mb-4">
-            <HugeiconsIcon icon={BookOpen01Icon} size={24} className="text-purple-600" />
-            <h3 className="font-semibold text-lg">Curriculum & Subjects</h3>
-          </div>
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="text-slate-600">Curriculum:</span>
-              <span className="ml-2 font-medium">
-                {[
-                  data.step2?.curriculum.cambridge && "Cambridge",
-                  data.step2?.curriculum.zimsec && "ZIMSEC",
-                ].filter(Boolean).join(", ")}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-600">Education Levels:</span>
-              <span className="ml-2 font-medium">
-                {[
-                  data.step2?.educationLevels.primary && "Primary",
-                  data.step2?.educationLevels.secondary && "Secondary",
-                ].filter(Boolean).join(", ")}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-600 block mb-2">Subjects ({data.step2?.subjects.length}):</span>
-              <div className="space-y-1 ml-4">
-                {data.step2?.subjects.map((subject, index) => (
-                  <div key={index} className="font-medium">
-                    • {subject.name}
-                    {subject.level && ` (${subject.level})`}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Classes */}
-        <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <div className="flex items-center gap-2 mb-4">
-            <HugeiconsIcon icon={User02Icon} size={24} className="text-green-600" />
-            <h3 className="font-semibold text-lg">Classes</h3>
-          </div>
-          <div className="space-y-2 text-sm">
-            {data.step3?.classes.map((cls, index) => (
-              <div key={index} className="flex justify-between">
-                <span className="font-medium">
-                  {cls.name}
-                  {cls.level && <span className="text-slate-500 ml-2">({cls.level})</span>}
-                </span>
-                <span className="text-slate-600">Capacity: {cls.capacity} students</span>
-              </div>
-            ))}
-            <div className="pt-3 border-t border-slate-300 mt-3">
-              <div className="flex justify-between font-semibold">
-                <span>Total Capacity:</span>
-                <span>
-                  {data.step3?.classes.reduce((sum, cls) => sum + (parseInt(cls.capacity) || 0), 0)} students
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
-
-        {!error && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-6 bg-green-50 rounded-lg border border-green-200"
-          >
-            <div className="flex items-start gap-3">
-              <HugeiconsIcon icon={CheckmarkCircle02Icon} size={24} className="text-green-600 flex-shrink-0 mt-1" />
-              <div>
-                <p className="font-semibold text-green-900">Ready to go!</p>
-                <p className="text-sm text-green-700 mt-1">Review your information above and click Complete Onboarding to finish setup.</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-        className="flex gap-4"
-      >
-        <Button
-          type="button"
-          variant="outline"
-          className="w-1/4"
-          onClick={onBack}
-          disabled={isLoading}
-        >
-          Back
-        </Button>
-        <Button
-          type="button"
-          className="flex-1"
-          onClick={handleComplete}
-          disabled={isLoading}
-        >
-          {isLoading ? "Completing..." : "Complete Onboarding"}
-        </Button>
-      </motion.div>
-    </div>
+      <FormActions
+        onBack={onBack}
+        canContinue={formik.isValid}
+        isLoading={formik.isSubmitting}
+        showBack={true}
+        delay={0.2}
+      />
+    </form>
   );
 }

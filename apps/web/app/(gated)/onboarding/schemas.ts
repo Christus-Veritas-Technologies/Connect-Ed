@@ -94,4 +94,29 @@ export const step3ValidationSchema = yup.object().shape({
 });
 
 // Validation schema for Step 4 (placeholder)
-export const step4ValidationSchema = yup.object().shape({});
+export const step4ValidationSchema = yup.object().shape({
+  termlyFee: yup
+    .number()
+    .required("Termly fee is required")
+    .positive("Termly fee must be a positive amount")
+    .min(1, "Termly fee must be at least $1"),
+});
+
+export const step5ValidationSchema = yup.object().shape({
+  termNumber: yup
+    .string()
+    .required("Please select the current term"),
+  termStartMonth: yup
+    .string()
+    .required("Please select the start month"),
+  termStartDay: yup
+    .number()
+    .required("Start day is required")
+    .min(1, "Day must be between 1 and 31")
+    .max(31, "Day must be between 1 and 31"),
+  year: yup
+    .number()
+    .required("Year is required"),
+});
+
+export const step6ValidationSchema = yup.object().shape({});

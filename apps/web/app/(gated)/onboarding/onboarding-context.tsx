@@ -24,6 +24,15 @@ interface OnboardingData {
   step3?: {
     classes: Array<{ name: string; capacity: string; level?: string }>;
   };
+  step4?: {
+    termlyFee: string;
+  };
+  step5?: {
+    termNumber: number;
+    termStartMonth: number;
+    termStartDay: number;
+    year: number;
+  };
 }
 
 interface OnboardingContextType {
@@ -31,6 +40,8 @@ interface OnboardingContextType {
   updateStep1: (data: OnboardingData["step1"]) => void;
   updateStep2: (data: OnboardingData["step2"]) => void;
   updateStep3: (data: OnboardingData["step3"]) => void;
+  updateStep4: (data: OnboardingData["step4"]) => void;
+  updateStep5: (data: OnboardingData["step5"]) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -53,8 +64,18 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({ ...prev, step3: step3Data }));
   };
 
+  const updateStep4 = (step4Data: OnboardingData["step4"]) => {
+    console.log("[Onboarding Context] Saving step4:", step4Data);
+    setData((prev) => ({ ...prev, step4: step4Data }));
+  };
+
+  const updateStep5 = (step5Data: OnboardingData["step5"]) => {
+    console.log("[Onboarding Context] Saving step5:", step5Data);
+    setData((prev) => ({ ...prev, step5: step5Data }));
+  };
+
   return (
-    <OnboardingContext.Provider value={{ data, updateStep1, updateStep2, updateStep3 }}>
+    <OnboardingContext.Provider value={{ data, updateStep1, updateStep2, updateStep3, updateStep4, updateStep5 }}>
       {children}
     </OnboardingContext.Provider>
   );

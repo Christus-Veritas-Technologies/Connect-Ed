@@ -28,6 +28,12 @@ interface School {
   isActive: boolean;
   signupFeePaid: boolean;
   onboardingComplete: boolean;
+  termlyFee: number | null;
+  currentTermNumber: number | null;
+  currentTermYear: number | null;
+  termStartDate: string | null;
+  currentPeriodType: "TERM" | "HOLIDAY";
+  holidayStartDate: string | null;
 }
 
 type UserType = "STAFF" | "PARENT" | "STUDENT";
