@@ -124,6 +124,20 @@ export default function ClassesPage() {
     e.preventDefault();
     setFormError("");
 
+    // Validate required fields
+    if (!formData.name.trim()) {
+      setFormError("Class name is required");
+      return;
+    }
+    if (!formData.level) {
+      setFormError("Level is required");
+      return;
+    }
+    if (!formData.classTeacherId) {
+      setFormError("Class teacher is required");
+      return;
+    }
+
     createMutation.mutate(formData, {
       onSuccess: () => {
         toast.success("Class created successfully!");
@@ -649,7 +663,7 @@ export default function ClassesPage() {
             </div>
 
             <div>
-              <Label>Level (optional)</Label>
+              <Label>Level <span className="text-destructive">*</span></Label>
               <Select
                 value={formData.level}
                 onValueChange={(value) => setFormData({ ...formData, level: value })}
@@ -665,7 +679,7 @@ export default function ClassesPage() {
             </div>
 
             <div>
-              <Label>Class Teacher (optional)</Label>
+              <Label>Class Teacher <span className="text-destructive">*</span></Label>
               <Select
                 value={formData.classTeacherId}
                 onValueChange={(value) => setFormData({ ...formData, classTeacherId: value })}

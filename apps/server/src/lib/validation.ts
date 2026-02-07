@@ -104,7 +104,8 @@ export const createExpenseSchema = z.object({
 // Class schemas
 export const createClassSchema = z.object({
   name: z.string().min(1, "Class name is required"),
-  classTeacherId: z.string().optional(),
+  level: z.enum(["primary", "secondary"], { message: "Level must be either 'primary' or 'secondary'" }),
+  classTeacherId: z.string().min(1, "Class teacher is required"),
 });
 
 // User schemas (for creating teachers/receptionists)
