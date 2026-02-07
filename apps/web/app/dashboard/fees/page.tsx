@@ -410,6 +410,57 @@ export default function FeesPage() {
         </CardContent>
       </Card>
 
+      {/* Students Owing Table */}
+      {feeStats && feeStats.studentsOwing.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <HugeiconsIcon icon={AlertCircleIcon} size={20} className="text-red-500" />
+              Students Owing
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {feeStats.studentsOwing.length} student{feeStats.studentsOwing.length !== 1 ? "s" : ""} with outstanding fees
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Admission No.</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead className="text-right">Amount Owed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {feeStats.studentsOwing.map((student, index) => (
+                  <motion.tr
+                    key={student.studentId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="group"
+                  >
+                    <TableCell>
+                      <p className="font-semibold">
+                        {student.firstName} {student.lastName}
+                      </p>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">
+                      {student.admissionNumber}
+                    </TableCell>
+                    <TableCell>{student.className}</TableCell>
+                    <TableCell className="text-right font-bold text-red-600">
+                      ${student.totalOwed.toLocaleString()}
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Add Fee Dialog */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-md">
