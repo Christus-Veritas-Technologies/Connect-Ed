@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { db, FeeStatus, PaymentMethod } from "@repo/db";
+import { db, FeeStatus, PaymentMethod, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { createFeeSchema, recordPaymentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
@@ -261,13 +261,25 @@ fees.post("/", zValidator("json", createFeeSchema), async (c) => {
 fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const userId = c.get("userId");
     const feeId = c.req.param("id");
     const data = c.req.valid("json");
 
-    // Get fee
+    // Get fee with student and parent info for notifications
     const fee = await db.fee.findFirst({
       where: { id: feeId, schoolId },
-      include: { payments: true },
+      include: {
+        payments: true,
+        student: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            admissionNumber: true,
+            parentId: true,
+          },
+        },
+      },
     });
 
     if (!fee) {
@@ -297,6 +309,8 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           paymentMethod: data.paymentMethod as PaymentMethod,
           reference: data.reference,
           notes: data.notes,
+          schoolId,
+          receivedById: userId,
         },
       });
 
@@ -309,6 +323,81 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
       });
 
       return payment;
+    });
+
+    // Send notifications for the fee payment
+    const studentName = fee.student
+      ? `${fee.student.firstName} ${fee.student.lastName}`
+      : "Unknown Student";
+    const amountFormatted = Number(data.amount).toLocaleString();
+    const notifications: Promise<unknown>[] = [];
+
+    // 1. Notify all admins about the fee payment
+    const admins = await db.user.findMany({
+      where: { schoolId, role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+
+    for (const admin of admins) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.PAYMENT_SUCCESS,
+            priority: NotificationPriority.MEDIUM,
+            title: "Fee Payment Received",
+            message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
+            actionUrl: `/dashboard/fees`,
+            schoolId,
+            userId: admin.id,
+          },
+        })
+      );
+    }
+
+    // 2. Notify the student's parent (if linked)
+    if (fee.student?.parentId) {
+      const parent = await db.parent.findUnique({
+        where: { id: fee.student.parentId },
+        select: { id: true, name: true },
+      });
+
+      if (parent) {
+        notifications.push(
+          db.notification.create({
+            data: {
+              type: NotificationType.PAYMENT_SUCCESS,
+              priority: NotificationPriority.HIGH,
+              title: "Fee Payment Recorded",
+              message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+              actionUrl: `/dashboard/fees`,
+              schoolId,
+              metadata: { parentId: parent.id, studentId: fee.student.id },
+            },
+          })
+        );
+      }
+    }
+
+    // 3. Notify the student (school-level notification with student metadata)
+    if (fee.student) {
+      notifications.push(
+        db.notification.create({
+          data: {
+            type: NotificationType.PAYMENT_SUCCESS,
+            priority: NotificationPriority.MEDIUM,
+            title: "Fee Payment Recorded",
+            message: `A payment of ₦${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+            actionUrl: `/dashboard/fees`,
+            schoolId,
+            metadata: { studentId: fee.student.id },
+          },
+        })
+      );
+    }
+
+    // Execute all notifications (non-blocking, don't fail the payment if notifications fail)
+    Promise.all(notifications).catch((err) => {
+      console.error("[POST /fees/:id/payments] Notification error:", err);
     });
 
     return successResponse(c, { payment, newStatus }, 201);
