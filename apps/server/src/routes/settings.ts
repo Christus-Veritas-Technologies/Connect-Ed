@@ -4,6 +4,8 @@ import { db, Role, SchoolPeriodType } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { updateSchoolSchema, startTermSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { createNotification } from "./notifications";
+import { sendEmail, generatePeriodChangeEmail } from "../lib/email";
 
 const settings = new Hono();
 
@@ -132,13 +134,69 @@ settings.post("/period/end", async (c) => {
       return errors.badRequest(c, "School is not currently in a term period");
     }
 
-    await db.school.update({
+    // Update school period
+    const updatedSchool = await db.school.update({
       where: { id: schoolId },
       data: {
         currentPeriodType: SchoolPeriodType.HOLIDAY,
         holidayStartDate: new Date(),
       },
+      select: {
+        name: true,
+        currentTermNumber: true,
+        currentTermYear: true,
+      },
     });
+
+    // Get all active users for notifications and emails
+    const users = await db.user.findMany({
+      where: {
+        schoolId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    // Create notification and send email to each user
+    const notificationPromises = users.map(async (user) => {
+      // Create in-app notification
+      await createNotification({
+        schoolId,
+        userId: user.id,
+        title: "Holiday Period Started",
+        message: `Term ${school.currentTermNumber} has ended. We're now in the holiday period. Enjoy the break!`,
+        type: "SYSTEM_ALERT",
+        priority: "MEDIUM",
+        metadata: {
+          termNumber: school.currentTermNumber,
+          termYear: school.currentTermYear,
+          periodType: "HOLIDAY",
+        },
+      });
+
+      // Send email notification
+      await sendEmail({
+        to: user.email,
+        subject: `Holiday Period - ${updatedSchool.name}`,
+        html: generatePeriodChangeEmail({
+          name: user.name,
+          schoolName: updatedSchool.name,
+          action: "ended",
+          termNumber: school.currentTermNumber!,
+          termYear: school.currentTermYear!,
+          newPeriod: "holiday",
+        }),
+        schoolId,
+        type: "NOREPLY",
+      });
+    });
+
+    await Promise.all(notificationPromises);
 
     return successResponse(c, {
       message: `Term ${school.currentTermNumber} of ${school.currentTermYear} has ended. Holiday period has started.`,
@@ -169,7 +227,8 @@ settings.post("/period/start-term", zValidator("json", startTermSchema), async (
       return errors.badRequest(c, "School is not currently in a holiday period");
     }
 
-    await db.school.update({
+    // Update school period
+    const updatedSchool = await db.school.update({
       where: { id: schoolId },
       data: {
         currentPeriodType: SchoolPeriodType.TERM,
@@ -178,7 +237,60 @@ settings.post("/period/start-term", zValidator("json", startTermSchema), async (
         termStartDate: new Date(data.year, data.month - 1, data.day),
         holidayStartDate: null,
       },
+      select: {
+        name: true,
+      },
     });
+
+    // Get all active users for notifications and emails
+    const users = await db.user.findMany({
+      where: {
+        schoolId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    // Create notification and send email to each user
+    const notificationPromises = users.map(async (user) => {
+      // Create in-app notification
+      await createNotification({
+        schoolId,
+        userId: user.id,
+        title: `Term ${data.termNumber} Started`,
+        message: `Welcome back! Term ${data.termNumber} of ${data.year} has officially begun. Let's have a great term!`,
+        type: "SYSTEM_ALERT",
+        priority: "HIGH",
+        metadata: {
+          termNumber: data.termNumber,
+          termYear: data.year,
+          periodType: "TERM",
+        },
+      });
+
+      // Send email notification
+      await sendEmail({
+        to: user.email,
+        subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
+        html: generatePeriodChangeEmail({
+          name: user.name,
+          schoolName: updatedSchool.name,
+          action: "started",
+          termNumber: data.termNumber,
+          termYear: data.year,
+          newPeriod: "term",
+        }),
+        schoolId,
+        type: "NOREPLY",
+      });
+    });
+
+    await Promise.all(notificationPromises);
 
     return successResponse(c, {
       message: `Term ${data.termNumber} of ${data.year} has started.`,

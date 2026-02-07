@@ -370,3 +370,187 @@ export function generateWelcomeEmailWithCredentials(params: {
   `;
 }
 
+// Generate period change email (term start/end, holiday start)
+export function generatePeriodChangeEmail(params: {
+  name: string;
+  schoolName: string;
+  action: "started" | "ended";
+  termNumber: number;
+  termYear: number;
+  newPeriod: "term" | "holiday";
+}): string {
+  const isTermStart = params.newPeriod === "term" && params.action === "started";
+  const isTermEnd = params.newPeriod === "holiday" && params.action === "ended";
+
+  const emoji = isTermStart ? "🎓" : "🌴";
+  const color = isTermStart ? "#3b82f6" : "#f59e0b";
+  const title = isTermStart
+    ? `Term ${params.termNumber} Has Started!`
+    : `Term ${params.termNumber} Has Ended - Holiday Time!`;
+  const message = isTermStart
+    ? `Welcome back! Term ${params.termNumber} of ${params.termYear} has officially begun. We're excited to have everyone back and ready for a productive term ahead.`
+    : `Term ${params.termNumber} of ${params.termYear} has come to an end. It's time to relax and recharge during the holiday period. See you next term!`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${title}</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+            background: #f3f4f6;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, ${color} 0%, ${isTermStart ? "#1e40af" : "#ea580c"} 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .emoji {
+            font-size: 60px;
+            margin-bottom: 20px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 20px;
+          }
+          .message {
+            background: #f0f9ff;
+            border-left: 4px solid ${color};
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+          }
+          .info-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #1f2937;
+            font-weight: 500;
+          }
+          .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+          }
+          .footer p {
+            margin: 5px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div style="padding: 20px;">
+          <div class="container">
+            <div class="header">
+              <div class="emoji">${emoji}</div>
+              <h1>${title}</h1>
+            </div>
+            <div class="content">
+              <div class="greeting">Hello ${params.name},</div>
+              
+              <div class="message">
+                <p style="margin: 0; color: #1e40af; font-size: 16px;">${message}</p>
+              </div>
+
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">School:</span>
+                  <span class="info-value">${params.schoolName}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Term:</span>
+                  <span class="info-value">Term ${params.termNumber}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Year:</span>
+                  <span class="info-value">${params.termYear}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Period Type:</span>
+                  <span class="info-value">${isTermStart ? "School Term" : "Holiday"}</span>
+                </div>
+              </div>
+
+              ${
+                isTermStart
+                  ? `
+              <p style="margin-top: 20px; color: #6b7280;">
+                <strong>Important Reminders:</strong><br>
+                • Review your class schedule on the Connect-Ed portal<br>
+                • Check for any pending fees or outstanding items<br>
+                • Ensure all learning materials are ready<br>
+                • Contact your teachers if you have any questions
+              </p>
+              `
+                  : `
+              <p style="margin-top: 20px; color: #6b7280;">
+                <strong>Holiday Reminders:</strong><br>
+                • Stay safe and healthy during the break<br>
+                • Check the portal for any holiday assignments<br>
+                • We'll notify you when the next term begins<br>
+                • Have a wonderful holiday!
+              </p>
+              `
+              }
+
+              <p style="margin-top: 30px; color: #6b7280;">
+                You can view more details and stay updated by logging into your Connect-Ed portal.
+              </p>
+            </div>
+            <div class="footer">
+              <p><strong>${params.schoolName}</strong></p>
+              <p>Connect-Ed School Management System</p>
+              <p style="margin-top: 15px; font-size: 12px;">
+                This is an automated notification. Please do not reply to this email.
+              </p>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
