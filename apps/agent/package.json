@@ -8,18 +8,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/db": "workspace:*",
-    "@mastra/core": "^0.10.2",
     "@ai-sdk/openai": "^1.2.0",
-    "ai": "^4.3.0",
+    "@mastra/core": "0.10.15",
+    "@mastra/memory": "^1.1.0",
+    "@repo/db": "workspace:*",
     "bcryptjs": "^2.4.3",
     "hono": "^4.11.9",
+    "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.26.1",
-    "qrcode-terminal": "^0.12.0"
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/qrcode-terminal": "^0.12.0",
+    "typescript": "^5.9.3"
   }
 }
