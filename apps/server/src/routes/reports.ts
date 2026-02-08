@@ -10,112 +10,349 @@ const reports = new Hono();
 // Apply auth middleware to all routes
 reports.use("*", requireAuth);
 
-// GET /reports/financial - Get financial report
+// GET /reports/financial - Get comprehensive financial report
 reports.get("/financial", async (c) => {
   try {
     const schoolId = c.get("schoolId");
-    const period = c.req.query("period") || "month"; // month, quarter, year
+    const period = c.req.query("period") || "this_month";
+    const customDateFrom = c.req.query("dateFrom");
+    const customDateTo = c.req.query("dateTo");
 
     // Calculate date range based on period
     const now = new Date();
     let startDate: Date;
+    let endDate: Date = now;
 
     switch (period) {
-      case "quarter":
-        startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+      case "this_week":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        startDate.setHours(0, 0, 0, 0);
         break;
-      case "year":
+      case "this_month":
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "this_term":
+        // Assuming 3 terms per year (4 months each)
+        const currentMonth = now.getMonth();
+        const termStartMonth = Math.floor(currentMonth / 4) * 4;
+        startDate = new Date(now.getFullYear(), termStartMonth, 1);
+        break;
+      case "this_year":
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
-      default: // month
+      case "custom":
+        if (customDateFrom) startDate = new Date(customDateFrom);
+        else startDate = new Date(now.getFullYear(), 0, 1);
+        if (customDateTo) endDate = new Date(customDateTo);
+        break;
+      default:
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    // Get fee data
-    const [fees, expenses, monthlyBreakdown] = await Promise.all([
+    // Get comprehensive fee data
+    const [allFees, paidFees, pendingFees, overdueFees, expenses] = await Promise.all([
       db.fee.aggregate({
-        where: {
-          schoolId,
-          createdAt: { gte: startDate },
-        },
-        _sum: { amount: true, paidAmount: true },
-        _count: true,
-      }),
-
-      db.expense.aggregate({
-        where: {
-          schoolId,
-          date: { gte: startDate },
-        },
+        where: { schoolId, createdAt: { gte: startDate, lte: endDate } },
         _sum: { amount: true },
         _count: true,
       }),
-
-      // Monthly breakdown for charts
-      db.$queryRaw<{ month: string; fees: number; payments: number; expenses: number }[]>`
-        SELECT 
-          TO_CHAR(date_trunc('month', f."createdAt"), 'YYYY-MM') as month,
-          COALESCE(SUM(f.amount), 0)::float as fees,
-          COALESCE(SUM(f."paidAmount"), 0)::float as payments,
-          0::float as expenses
-        FROM "Fee" f
-        WHERE f."schoolId" = ${schoolId}
-          AND f."createdAt" >= ${startDate}
-        GROUP BY date_trunc('month', f."createdAt")
-        ORDER BY month
-      `,
+      db.fee.aggregate({
+        where: { schoolId, status: FeeStatus.PAID, createdAt: { gte: startDate, lte: endDate } },
+        _sum: { paidAmount: true },
+        _count: true,
+      }),
+      db.fee.aggregate({
+        where: { schoolId, status: { in: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID] }, createdAt: { gte: startDate, lte: endDate } },
+        _sum: { amount: true, paidAmount: true },
+        _count: true,
+      }),
+      db.fee.aggregate({
+        where: { schoolId, status: { not: FeeStatus.PAID }, dueDate: { lt: now }, createdAt: { gte: startDate, lte: endDate } },
+        _sum: { amount: true, paidAmount: true },
+        _count: true,
+      }),
+      db.expense.aggregate({
+        where: { schoolId, date: { gte: startDate, lte: endDate } },
+        _sum: { amount: true },
+        _count: true,
+      }),
     ]);
 
-    // Get overdue fees
-    const overdueFees = await db.fee.aggregate({
-      where: {
-        schoolId,
-        status: { not: FeeStatus.PAID },
-        dueDate: { lt: now },
-      },
+    // Get student payment statistics
+    const [totalStudents, studentsWhoPaid, studentsWithPending, studentsWithOverdue] = await Promise.all([
+      db.student.count({ where: { schoolId } }),
+      db.student.count({
+        where: {
+          schoolId,
+          fees: {
+            some: {
+              status: FeeStatus.PAID,
+              createdAt: { gte: startDate, lte: endDate },
+            },
+          },
+        },
+      }),
+      db.student.count({
+        where: {
+          schoolId,
+          fees: {
+            some: {
+              status: { in: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID] },
+              createdAt: { gte: startDate, lte: endDate },
+            },
+          },
+        },
+      }),
+      db.student.count({
+        where: {
+          schoolId,
+          fees: {
+            some: {
+              status: { not: FeeStatus.PAID },
+              dueDate: { lt: now },
+              createdAt: { gte: startDate, lte: endDate },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Get fees by status breakdown
+    const feesByStatus = await db.fee.groupBy({
+      by: ["status"],
+      where: { schoolId, createdAt: { gte: startDate, lte: endDate } },
       _sum: { amount: true, paidAmount: true },
       _count: true,
     });
 
     // Get top expense categories
-    const topCategories = await db.expense.groupBy({
+    const topExpenseCategories = await db.expense.groupBy({
       by: ["category"],
-      where: {
-        schoolId,
-        date: { gte: startDate },
-      },
+      where: { schoolId, date: { gte: startDate, lte: endDate } },
       _sum: { amount: true },
+      _count: true,
       orderBy: { _sum: { amount: "desc" } },
       take: 5,
     });
 
-    const totalFees = fees._sum.amount || 0;
-    const totalCollected = fees._sum.paidAmount || 0;
+    // Get payments by period (monthly breakdown)
+    const paymentsByPeriod = await db.$queryRaw<{ period: string; amount: number; count: number }[]>`
+      SELECT 
+        TO_CHAR(date_trunc('month', "createdAt"), 'Mon YYYY') as period,
+        COALESCE(SUM("paidAmount"), 0)::float as amount,
+        COUNT(*)::int as count
+      FROM "Fee"
+      WHERE "schoolId" = ${schoolId}
+        AND "createdAt" >= ${startDate}
+        AND "createdAt" <= ${endDate}
+        AND status = 'PAID'
+      GROUP BY date_trunc('month', "createdAt")
+      ORDER BY date_trunc('month', "createdAt")
+    `;
+
+    const totalFeesExpected = allFees._sum.amount || 0;
+    const totalFeesCollected = paidFees._sum.paidAmount || 0;
+    const totalFeesPending = (pendingFees._sum.amount || 0) - (pendingFees._sum.paidAmount || 0);
+    const totalFeesOverdue = (overdueFees._sum.amount || 0) - (overdueFees._sum.paidAmount || 0);
     const totalExpenses = expenses._sum.amount || 0;
-    const overdueAmount = (overdueFees._sum.amount || 0) - (overdueFees._sum.paidAmount || 0);
+    const netIncome = totalFeesCollected - totalExpenses;
+    const collectionRate = totalFeesExpected > 0 ? Math.round((totalFeesCollected / totalFeesExpected) * 100) : 0;
 
     return successResponse(c, {
-      summary: {
-        totalFees,
-        totalCollected,
-        totalPending: totalFees - totalCollected,
-        collectionRate: totalFees > 0 ? Math.round((totalCollected / totalFees) * 100) : 0,
-        totalExpenses,
-        netIncome: totalCollected - totalExpenses,
-        overdueAmount,
-        overdueCount: overdueFees._count,
-      },
-      monthlyBreakdown,
-      topExpenseCategories: topCategories.map((c) => ({
+      totalFeesExpected,
+      totalFeesCollected,
+      totalFeesPending,
+      totalFeesOverdue,
+      totalExpenses,
+      netIncome,
+      collectionRate,
+      studentsWhoPaid,
+      studentsWithPending,
+      studentsWithOverdue,
+      totalStudents,
+      paymentsByPeriod,
+      feesByStatus: feesByStatus.map((s) => ({
+        status: s.status,
+        count: s._count,
+        amount: s._sum.amount || 0,
+        paidAmount: s._sum.paidAmount || 0,
+      })),
+      topExpenseCategories: topExpenseCategories.map((c) => ({
         category: c.category,
         amount: c._sum.amount || 0,
+        count: c._count,
       })),
       period,
       startDate: startDate.toISOString(),
-      endDate: now.toISOString(),
+      endDate: endDate.toISOString(),
     });
   } catch (error) {
     console.error("Financial report error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// GET /reports/managerial - Get comprehensive managerial report
+reports.get("/managerial", async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const period = c.req.query("period") || "this_month";
+    const customDateFrom = c.req.query("dateFrom");
+    const customDateTo = c.req.query("dateTo");
+
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+
+    switch (period) {
+      case "this_week":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "this_month":
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "this_term":
+        const currentMonth = now.getMonth();
+        const termStartMonth = Math.floor(currentMonth / 4) * 4;
+        startDate = new Date(now.getFullYear(), termStartMonth, 1);
+        break;
+      case "this_year":
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      case "custom":
+        if (customDateFrom) startDate = new Date(customDateFrom);
+        else startDate = new Date(now.getFullYear(), 0, 1);
+        if (customDateTo) endDate = new Date(customDateTo);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    // Get teacher and student statistics
+    const [totalTeachers, totalStudents, totalParents, activeTeachers, activeStudents] = await Promise.all([
+      db.user.count({ where: { schoolId, role: "TEACHER" } }),
+      db.student.count({ where: { schoolId } }),
+      db.user.count({ where: { schoolId, role: "PARENT" } }),
+      db.user.count({ where: { schoolId, role: "TEACHER", createdAt: { gte: startDate, lte: endDate } } }),
+      db.student.count({ where: { schoolId, createdAt: { gte: startDate, lte: endDate } } }),
+    ]);
+
+    // Get class distribution
+    const classDistribution = await db.class.findMany({
+      where: { schoolId },
+      select: {
+        id: true,
+        name: true,
+        level: true,
+        _count: { select: { students: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    // Get teacher workload
+    const teacherWorkload = await db.user.findMany({
+      where: { schoolId, role: "TEACHER" },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        _count: {
+          select: {
+            classesTeaching: true,
+          },
+        },
+      },
+      orderBy: { lastName: "asc" },
+    });
+
+    // Calculate students per teacher for workload
+    const teacherWorkloadWithStudents = await Promise.all(
+      teacherWorkload.map(async (teacher) => {
+        const totalStudents = await db.student.count({
+          where: {
+            schoolId,
+            class: {
+              classTeacherId: teacher.id,
+            },
+          },
+        });
+        return {
+          id: teacher.id,
+          name: `${teacher.firstName} ${teacher.lastName}`,
+          classesAssigned: teacher._count.classesTeaching,
+          studentsTotal: totalStudents,
+        };
+      })
+    );
+
+    // Get gender distribution
+    const genderDistribution = await db.student.groupBy({
+      by: ["gender"],
+      where: { schoolId },
+      _count: true,
+    });
+
+    const studentsByGender = {
+      male: genderDistribution.find((g) => g.gender === "MALE")?._count || 0,
+      female: genderDistribution.find((g) => g.gender === "FEMALE")?._count || 0,
+      other: genderDistribution.find((g) => g.gender === "OTHER")?._count || 0,
+    };
+
+    // Get recent enrollments
+    const recentEnrollments = await db.student.findMany({
+      where: { schoolId, createdAt: { gte: startDate, lte: endDate } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        createdAt: true,
+        class: {
+          select: {
+            name: true,
+            level: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+
+    // Calculate student-teacher ratio
+    const studentTeacherRatio = totalTeachers > 0 ? Math.round((totalStudents / totalTeachers) * 10) / 10 : 0;
+
+    return successResponse(c, {
+      totalTeachers,
+      totalStudents,
+      totalParents,
+      activeTeachers,
+      activeStudents,
+      studentTeacherRatio,
+      classDistribution: classDistribution.map((c) => ({
+        id: c.id,
+        name: c.name,
+        level: c.level,
+        studentCount: c._count.students,
+      })),
+      teacherWorkload: teacherWorkloadWithStudents,
+      studentsByGender,
+      recentEnrollments: recentEnrollments.map((s) => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        dateOfBirth: s.dateOfBirth?.toISOString() || null,
+        enrollmentDate: s.createdAt.toISOString(),
+        className: s.class?.name || "Unassigned",
+        level: s.class?.level || null,
+      })),
+      period,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+  } catch (error) {
+    console.error("Managerial report error:", error);
     return errors.internalError(c);
   }
 });

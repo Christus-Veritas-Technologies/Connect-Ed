@@ -91,9 +91,9 @@ export default function TeachersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
-    phone: "",
     classId: "",
   });
   const [classSearch, setClassSearch] = useState("");
@@ -136,7 +136,7 @@ export default function TeachersPage() {
       },
       {
         onSuccess: () => {
-          setFormData({ name: "", email: "", phone: "", classId: "" });
+          setFormData({ firstName: "", lastName: "", email: "", classId: "" });
           setClassSearch("");
           setShowAddModal(false);
           toast.success("Teacher added successfully!", {
@@ -696,16 +696,29 @@ export default function TeachersPage() {
           )}
 
           <form onSubmit={handleAddTeacher} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Full Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Mr. John Smith"
-                required
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  placeholder="John"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  placeholder="Smith"
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -721,32 +734,6 @@ export default function TeachersPage() {
               />
               <p className="text-xs text-muted-foreground">
                 Login credentials will be sent via email
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Phone Number <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value="+263"
-                  disabled
-                  className="w-20"
-                />
-                <Input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="712345678"
-                  maxLength={9}
-                  required
-                  className="flex-1"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter 9-digit phone number (must start with 7)
               </p>
             </div>
 
@@ -768,7 +755,7 @@ export default function TeachersPage() {
                         cls.name.toLowerCase().includes(classSearch.toLowerCase())
                       )
                       .map((cls) => {
-                        const isTaken = cls.teacherId && cls.teacherId !== "";
+                        const isTaken = !!(cls.classTeacher && cls.classTeacher.id);
                         return (
                           <button
                             key={cls.id}
@@ -790,7 +777,7 @@ export default function TeachersPage() {
                               {cls.name}
                               {isTaken && (
                                 <Badge className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-300">
-                                  TAKEN
+                                  Already taken
                                 </Badge>
                               )}
                             </span>

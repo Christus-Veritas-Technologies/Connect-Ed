@@ -29,7 +29,8 @@ export function AddTeacherDialog({
   onSuccess,
 }: AddTeacherDialogProps) {
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
   });
 
@@ -47,7 +48,8 @@ export function AddTeacherDialog({
       {
         onSuccess: (data) => {
           setFormData({
-            name: "",
+            firstName: "",
+            lastName: "",
             email: "",
           });
           onOpenChange(false);
@@ -94,15 +96,15 @@ export function AddTeacherDialog({
               className="space-y-2"
             >
               <Label className="text-sm font-medium">
-                Full Name <span className="text-destructive">*</span>
+                First Name <span className="text-destructive">*</span>
               </Label>
               <Input
-                value={formData.name}
+                value={formData.firstName}
                 onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
+                  setFormData({ ...formData, firstName: e.target.value })
                 }
                 className="rounded-lg"
-                placeholder="Jane Smith"
+                placeholder="Jane"
                 required
               />
             </motion.div>
@@ -110,7 +112,27 @@ export function AddTeacherDialog({
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.15 }}
+              className="space-y-2"
+            >
+              <Label className="text-sm font-medium">
+                Last Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={formData.lastName}
+                onChange={(e) =>
+                  setFormData({ ...formData, lastName: e.target.value })
+                }
+                className="rounded-lg"
+                placeholder="Smith"
+                required
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25 }}
               className="space-y-2"
             >
               <Label className="text-sm font-medium">

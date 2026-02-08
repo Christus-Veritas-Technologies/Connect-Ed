@@ -20,8 +20,10 @@ interface TeacherListResponse {
 interface CreateTeacherInput {
   email: string;
   password: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: "TEACHER";
+  classId?: string;
 }
 
 // Query Keys
