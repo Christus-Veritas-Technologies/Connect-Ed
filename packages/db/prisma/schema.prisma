@@ -147,6 +147,8 @@ model School {
   parentRequests ParentRequest[]
   onboardingProgress OnboardingProgress?
   announcements  Announcement[]
+  grades         Grade[]
+  exams          Exam[]
 
   @@map("schools")
 }
@@ -199,6 +201,9 @@ model User {
   createdAnnouncements Announcement[]        @relation("AnnouncementCreator")
   announcementComments AnnouncementComment[] @relation("AnnouncementComments")
 
+  // Exams
+  createdExams Exam[] @relation("ExamTeacher")
+
   @@index([schoolId])
   @@index([email])
   @@map("users")
@@ -241,6 +246,7 @@ model Student {
   parentRequests ParentRequest[]
   subjects       StudentSubject[]
   announcementComments AnnouncementComment[] @relation("StudentAnnouncementComments")
+  examResults          ExamResult[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -337,6 +343,7 @@ model Class {
   students Student[]
   subjects SubjectClass[]
   teachers TeacherClass[]
+  exams    Exam[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -362,6 +369,8 @@ model Subject {
   students StudentSubject[]
   teacherClasses  TeacherClass[]  @relation("TeacherClassSubject")
   teacherSubjects TeacherSubject[] @relation("TeacherSubjectLink")
+  grades          Grade[]
+  exams           Exam[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -471,6 +480,9 @@ model OnboardingProgress {
   currentTermYear   Int?
   termStartMonth    Int?
   termStartDay      Int?
+
+  // Grades info (step 6 - grades per subject)
+  gradesData Json? // Array of { subjectName, grades: [{ name, minMark, maxMark, isPass }] }
 
   // Progress tracking
   currentStep Int @default(0)
@@ -682,6 +694,93 @@ model Notification {
   @@index([type])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================
+// GRADES, EXAMS & RESULTS
+// ============================================
+
+enum ExamPaper {
+  PAPER_1
+  PAPER_2
+  PAPER_3
+  PAPER_4
+  PAPER_5
+}
+
+model Grade {
+  id      String  @id @default(cuid())
+  name    String  // e.g. A, B, C, D, F
+  minMark Int     // minimum mark (%) for this grade
+  maxMark Int     // maximum mark (%) for this grade
+  isPass  Boolean @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([schoolId])
+  @@map("grades")
+}
+
+model Exam {
+  id    String    @id @default(cuid())
+  name  String    // e.g. "Mid-Term Exam", "Final Exam"
+  paper ExamPaper // Paper 1-5
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   User @relation("ExamTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  results ExamResult[]
+
+  @@index([subjectId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([schoolId])
+  @@map("exams")
+}
+
+model ExamResult {
+  id   String @id @default(cuid())
+  mark Int    // percentage 0-100
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  examId String
+  exam   Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@map("exam_results")
 }
 
 // ============================================
