@@ -284,8 +284,8 @@ export default function TeacherDetailPage() {
           transition={{ delay: 0.5 }}
           className="lg:col-span-1"
         >
-          <Card className="shadow-lg border-2">
-            <CardContent className="p-6">
+          <Card className="shadow-lg border-2 h-fit">
+            <CardContent className="p-6 h-fit">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-indigo-50">
                   <HugeiconsIcon icon={TeacherIcon} size={24} className="text-indigo-600" />
@@ -350,7 +350,7 @@ export default function TeacherDetailPage() {
           className="lg:col-span-2 space-y-6"
         >
           {/* Classes */}
-          <Card className="shadow-lg border-2">
+          <Card className="shadow-lg border-2 h-fit">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -409,7 +409,7 @@ export default function TeacherDetailPage() {
           </Card>
 
           {/* Students */}
-          <Card className="shadow-lg border-2">
+          <Card className="shadow-lg border-2 h-fit">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
