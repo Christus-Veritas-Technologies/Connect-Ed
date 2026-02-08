@@ -1,2 +1,9 @@
 # deps
 node_modules/
+
+# build
+dist/
+
+# whatsapp session data
+.wwebjs_auth/
+.wwebjs_cache/
