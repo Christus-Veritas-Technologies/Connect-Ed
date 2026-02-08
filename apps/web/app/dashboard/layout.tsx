@@ -13,6 +13,7 @@ import {
   Settings02Icon,
   Logout01Icon,
   Notification01Icon,
+  BookOpen01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -52,6 +53,15 @@ const navSections = [
       { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
       { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN", "TEACHER"], plans: ["GROWTH", "ENTERPRISE"] },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { href: "/dashboard/exams", label: "Exams", icon: BookOpen01Icon, roles: ["ADMIN", "TEACHER"] },
+      { href: "/dashboard/student-reports", label: "Student Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "TEACHER"] },
+      { href: "/dashboard/my-report", label: "My Report", icon: ChartHistogramIcon, roles: ["STUDENT"] },
+      { href: "/dashboard/my-child-report", label: "My Child's Report", icon: ChartHistogramIcon, roles: ["PARENT"] },
     ],
   },
   {
