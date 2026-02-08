@@ -59,6 +59,16 @@ export const onboardingSchema = z.object({
   currentTermYear: z.number().int().min(2020).max(2100).optional(),
   termStartMonth: z.number().int().min(1).max(12).optional(),
   termStartDay: z.number().int().min(1).max(31).optional(),
+  // Grades per subject (step 6 of onboarding)
+  grades: z.array(z.object({
+    subjectName: z.string().min(1),
+    grades: z.array(z.object({
+      name: z.string().min(1, "Grade name is required"),
+      minMark: z.number().int().min(0).max(100),
+      maxMark: z.number().int().min(0).max(100),
+      isPass: z.boolean(),
+    })).min(1, "At least one grade is required per subject"),
+  })).optional(),
 });
 
 // Student schemas
@@ -146,6 +156,32 @@ export const startTermSchema = z.object({
   day: z.number().int().min(1).max(31),
 });
 
+// Grade schemas
+export const createGradeSchema = z.object({
+  name: z.string().min(1, "Grade name is required"),
+  minMark: z.number().int().min(0).max(100),
+  maxMark: z.number().int().min(0).max(100),
+  isPass: z.boolean(),
+  subjectId: z.string().min(1, "Subject is required"),
+});
+
+export const updateGradeSchema = createGradeSchema.partial();
+
+// Exam schemas
+export const createExamSchema = z.object({
+  name: z.string().min(1, "Exam name is required"),
+  paper: z.enum(["PAPER_1", "PAPER_2", "PAPER_3", "PAPER_4", "PAPER_5"]),
+  subjectId: z.string().min(1, "Subject is required"),
+  classId: z.string().min(1, "Class is required"),
+});
+
+export const enterExamResultsSchema = z.object({
+  results: z.array(z.object({
+    studentId: z.string().min(1),
+    mark: z.number().int().min(0).max(100),
+  })).min(1, "At least one result is required"),
+});
+
 // Type exports
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -161,3 +197,6 @@ export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 export type UpdateSchoolInput = z.infer<typeof updateSchoolSchema>;
 export type SendRemindersInput = z.infer<typeof sendRemindersSchema>;
 export type StartTermInput = z.infer<typeof startTermSchema>;
+export type CreateGradeInput = z.infer<typeof createGradeSchema>;
+export type CreateExamInput = z.infer<typeof createExamSchema>;
+export type EnterExamResultsInput = z.infer<typeof enterExamResultsSchema>;

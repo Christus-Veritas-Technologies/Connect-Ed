@@ -114,10 +114,36 @@ onboarding.post("/", async (c) => {
       );
       console.log(`[POST /onboarding] Created ${createdClasses.length} classes`);
 
+      // Create grades per subject if provided
+      let createdGrades: any[] = [];
+      if (data.grades && data.grades.length > 0) {
+        console.log(`[POST /onboarding] Creating grades for ${data.grades.length} subjects...`);
+        for (const subjectGrades of data.grades) {
+          const subject = createdSubjects.find(s => s.name === subjectGrades.subjectName);
+          if (subject) {
+            for (const grade of subjectGrades.grades) {
+              const created = await tx.grade.create({
+                data: {
+                  name: grade.name,
+                  minMark: grade.minMark,
+                  maxMark: grade.maxMark,
+                  isPass: grade.isPass,
+                  subjectId: subject.id,
+                  schoolId,
+                },
+              });
+              createdGrades.push(created);
+            }
+          }
+        }
+        console.log(`[POST /onboarding] Created ${createdGrades.length} grade definitions`);
+      }
+
       return {
         school: updatedSchool,
         subjects: createdSubjects,
         classes: createdClasses,
+        grades: createdGrades,
       };
     });
 
@@ -132,6 +158,7 @@ onboarding.post("/", async (c) => {
       },
       subjects: result.subjects,
       classes: result.classes,
+      grades: result.grades,
     });
   } catch (error) {
     console.error(`[POST /onboarding] ❌ Error during onboarding:`);

@@ -20,6 +20,8 @@ import payments from "./routes/payments";
 import messages from "./routes/messages";
 import webhooks from "./routes/webhooks";
 import notifications from "./routes/notifications";
+import exams from "./routes/exams";
+import studentReports from "./routes/student-reports";
 
 const app = new Hono();
 
@@ -68,6 +70,8 @@ app.route("/payments", payments);
 app.route("/messages", messages);
 app.route("/webhooks", webhooks);
 app.route("/notifications", notifications);
+app.route("/exams", exams);
+app.route("/student-reports", studentReports);
 
 // Error handling
 app.onError((err, c) => {
