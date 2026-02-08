@@ -21,6 +21,13 @@ classes.get("/", async (c) => {
       where: { schoolId },
       include: {
         classTeacher: { select: { id: true, name: true, email: true } },
+        teachers: {
+          select: {
+            id: true,
+            teacher: { select: { id: true, name: true, email: true } },
+            subject: { select: { id: true, name: true } },
+          },
+        },
         _count: { select: { students: true } },
       },
       orderBy: { name: "asc" },
@@ -102,6 +109,13 @@ classes.get("/:id", async (c) => {
       where: { id, schoolId },
       include: {
         classTeacher: { select: { id: true, name: true, email: true } },
+        teachers: {
+          select: {
+            id: true,
+            teacher: { select: { id: true, name: true, email: true } },
+            subject: { select: { id: true, name: true } },
+          },
+        },
         students: {
           select: {
             id: true,

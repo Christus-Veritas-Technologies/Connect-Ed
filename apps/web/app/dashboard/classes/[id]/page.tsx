@@ -53,6 +53,11 @@ interface ClassDetail {
   level?: string | null;
   isActive: boolean;
   classTeacher?: { id: string; name: string; email: string } | null;
+  teachers: {
+    id: string;
+    teacher: { id: string; name: string; email: string };
+    subject: { id: string; name: string } | null;
+  }[];
   students: Student[];
   createdAt: string;
 }
@@ -437,9 +442,10 @@ export default function ClassDetailPage() {
                 )}
               </div>
 
-              {/* Teacher Card */}
+              {/* Class Teacher Card */}
               {classData.classTeacher && !isEditing && (
                 <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-brand/10 to-purple-50 border-2 border-brand/20">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Class Teacher</p>
                   <div className="flex items-center gap-3">
                     <div className="size-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
                       <span className="text-lg font-bold text-white">
@@ -463,6 +469,38 @@ export default function ClassDetailPage() {
                     >
                       View
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Subject Teachers */}
+              {!isEditing && classData.teachers && classData.teachers.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-xs font-medium text-muted-foreground mb-3">Subject Teachers</p>
+                  <div className="space-y-2">
+                    {classData.teachers.map((ta) => (
+                      <div
+                        key={ta.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:border-brand/30 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/dashboard/teachers/${ta.teacher.id}`)}
+                      >
+                        <div className="size-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-sm">
+                          <span className="text-xs font-bold text-white">
+                            {ta.teacher.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{ta.teacher.name}</p>
+                          {ta.subject && (
+                            <p className="text-xs text-muted-foreground">{ta.subject.name}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

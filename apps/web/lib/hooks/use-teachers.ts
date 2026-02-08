@@ -4,12 +4,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 
 // Types
-interface Teacher {
+export interface TeacherClassAssignment {
+  id: string;
+  class: { id: string; name: string; level?: string | null; _count?: { students: number } };
+  subject: { id: string; name: string } | null;
+}
+
+export interface TeacherSubjectAssignment {
+  id: string;
+  subject: { id: string; name: string; level?: string | null };
+}
+
+export interface Teacher {
   id: string;
   email: string;
   name: string;
+  level?: string | null;
   isActive: boolean;
-  classes?: { id: string; name: string }[];
+  classesTeaching: TeacherClassAssignment[];
+  teacherSubjects: TeacherSubjectAssignment[];
   createdAt: string;
 }
 
@@ -19,11 +32,21 @@ interface TeacherListResponse {
 
 interface CreateTeacherInput {
   email: string;
-  password: string;
   firstName: string;
   lastName: string;
-  role: "TEACHER";
-  classId?: string;
+  level?: string;
+  classIds?: string[];
+  subjectIds?: string[];
+}
+
+interface UpdateTeacherInput {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  level?: string | null;
+  isActive?: boolean;
+  classIds?: string[];
+  subjectIds?: string[];
 }
 
 // Query Keys
@@ -55,8 +78,8 @@ export function useCreateTeacher() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Omit<CreateTeacherInput, "role">) =>
-      api.post<{ teacher: Teacher }>("/teachers", { ...data, role: "TEACHER" }),
+    mutationFn: (data: CreateTeacherInput) =>
+      api.post<{ teacher: Teacher }>("/teachers", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.lists() });
     },
@@ -67,7 +90,7 @@ export function useUpdateTeacher() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name?: string; isActive?: boolean } }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateTeacherInput }) =>
       api.patch<{ teacher: Teacher }>(`/teachers/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.lists() });

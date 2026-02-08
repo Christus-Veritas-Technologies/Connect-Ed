@@ -172,8 +172,17 @@ model User {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  // Teacher level (primary, secondary, or both)
+  level String? // "primary", "secondary"
+
   // As class teacher
   classes Class[] @relation("ClassTeacher")
+
+  // Classes this teacher teaches (subject assignments)
+  classesTeaching TeacherClass[]
+
+  // Subjects this teacher can teach
+  teacherSubjects TeacherSubject[]
 
   // Recorded payments/expenses
   recordedPayments FeePayment[] @relation("ReceivedBy")
@@ -318,6 +327,7 @@ model Class {
 
   students Student[]
   subjects SubjectClass[]
+  teachers TeacherClass[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -341,6 +351,8 @@ model Subject {
 
   classes  SubjectClass[]
   students StudentSubject[]
+  teacherClasses  TeacherClass[]  @relation("TeacherClassSubject")
+  teacherSubjects TeacherSubject[] @relation("TeacherSubjectLink")
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -376,6 +388,50 @@ model StudentSubject {
   @@index([studentId])
   @@index([subjectId])
   @@map("student_subjects")
+}
+
+// Teacher-Class assignment (which classes a teacher teaches and optionally which subject)
+model TeacherClass {
+  id String @id @default(cuid())
+
+  teacherId String
+  teacher   User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // Optional: the subject this teacher teaches in this class
+  // If null, the teacher teaches all subjects (e.g., primary class teacher)
+  subjectId String?
+  subject   Subject? @relation("TeacherClassSubject", fields: [subjectId], references: [id], onDelete: SetNull)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, classId, subjectId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subjectId])
+  @@map("teacher_classes")
+}
+
+// Subjects a teacher is qualified to teach
+model TeacherSubject {
+  id String @id @default(cuid())
+
+  teacherId String
+  teacher   User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation("TeacherSubjectLink", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, subjectId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@map("teacher_subjects")
 }
 
 model OnboardingProgress {

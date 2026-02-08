@@ -10,10 +10,6 @@ import {
   ViewIcon,
   UserCheck01Icon,
   FilterIcon,
-  ArrowUp01Icon,
-  ArrowDown01Icon,
-  FileDownloadIcon,
-  FileExportIcon,
   Cancel01Icon,
   GridIcon,
   ListViewIcon,
@@ -26,6 +22,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useMarkNotificationsByUrl, useTeachers, useCreateTeacher, useDeleteTeacher } from "@/lib/hooks";
 import { useClasses } from "@/lib/hooks/use-classes";
+import { useSubjects } from "@/lib/hooks/use-subjects";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -55,12 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
 import {
   Popover,
   PopoverContent,
@@ -73,8 +65,17 @@ interface Teacher {
   id: string;
   name: string;
   email: string;
+  level?: string | null;
   isActive: boolean;
-  classes?: Array<{ id: string; name: string }>;
+  classesTeaching: Array<{
+    id: string;
+    class: { id: string; name: string; level?: string | null };
+    subject: { id: string; name: string } | null;
+  }>;
+  teacherSubjects: Array<{
+    id: string;
+    subject: { id: string; name: string; level?: string | null };
+  }>;
   createdAt: string;
 }
 
@@ -94,7 +95,9 @@ export default function TeachersPage() {
     firstName: "",
     lastName: "",
     email: "",
-    classId: "",
+    level: "" as string,
+    classIds: [] as string[],
+    subjectIds: [] as string[],
   });
   const [classSearch, setClassSearch] = useState("");
 
@@ -103,11 +106,18 @@ export default function TeachersPage() {
   // TanStack Query hooks
   const { data: teachersData, isLoading } = useTeachers();
   const { data: classesData } = useClasses();
+  const { data: subjectsData } = useSubjects();
   const createMutation = useCreateTeacher();
   const deleteMutation = useDeleteTeacher();
   
   const teachers = teachersData?.teachers || [];
   const classes = classesData?.classes || [];
+  const allSubjects = subjectsData?.subjects || [];
+
+  // Filter subjects by selected level
+  const filteredSubjects = formData.level
+    ? allSubjects.filter((s) => s.level === formData.level || !s.level)
+    : [];
 
   // Mark notifications as read when page loads
   useEffect(() => {
@@ -125,18 +135,19 @@ export default function TeachersPage() {
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-
-    // Generate a random password
-    const generatedPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + "@1";
     
     createMutation.mutate(
       {
-        ...formData,
-        password: generatedPassword,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        level: formData.level || undefined,
+        classIds: formData.classIds.length > 0 ? formData.classIds : undefined,
+        subjectIds: formData.subjectIds.length > 0 ? formData.subjectIds : undefined,
       },
       {
         onSuccess: () => {
-          setFormData({ firstName: "", lastName: "", email: "", classId: "" });
+          setFormData({ firstName: "", lastName: "", email: "", level: "", classIds: [], subjectIds: [] });
           setClassSearch("");
           setShowAddModal(false);
           toast.success("Teacher added successfully!", {
@@ -202,8 +213,8 @@ export default function TeachersPage() {
   // Calculate stats
   const activeTeachers = teachers.filter((t) => t.isActive).length;
   const onLeaveTeachers = teachers.filter((t) => !t.isActive).length;
-  const teachersWithClasses = teachers.filter((t) => t.classes && t.classes.length > 0).length;
-  const teachersWithoutClasses = teachers.filter((t) => !t.classes || t.classes.length === 0).length;
+  const teachersWithClasses = teachers.filter((t) => t.classesTeaching && t.classesTeaching.length > 0).length;
+  const teachersWithoutClasses = teachers.filter((t) => !t.classesTeaching || t.classesTeaching.length === 0).length;
 
   // Check if plan supports teachers
   if (school?.plan === "LITE") {
@@ -471,8 +482,8 @@ export default function TeachersPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm">
-                            {teacher.classes && teacher.classes.length > 0
-                              ? teacher.classes.map(c => c.name).join(", ")
+                            {teacher.classesTeaching && teacher.classesTeaching.length > 0
+                              ? teacher.classesTeaching.map(tc => tc.class.name).join(", ")
                               : "—"}
                           </span>
                         </TableCell>
@@ -572,8 +583,8 @@ export default function TeachersPage() {
                                 <HugeiconsIcon icon={BookmarkAdd01Icon} size={16} className="text-brand" />
                                 <span className="text-muted-foreground">Classes:</span>
                                 <span className="font-semibold text-brand">
-                                  {teacher.classes && teacher.classes.length > 0
-                                    ? teacher.classes.map(c => c.name).join(", ")
+                                  {teacher.classesTeaching && teacher.classesTeaching.length > 0
+                                    ? teacher.classesTeaching.map(tc => tc.class.name).join(", ")
                                     : "None"}
                                 </span>
                               </div>
@@ -634,8 +645,8 @@ export default function TeachersPage() {
                             <span className="truncate">{teacher.email}</span>
                             <span>•</span>
                             <span>
-                              {teacher.classes && teacher.classes.length > 0
-                                ? teacher.classes.map(c => c.name).join(", ")
+                              {teacher.classesTeaching && teacher.classesTeaching.length > 0
+                                ? teacher.classesTeaching.map(tc => tc.class.name).join(", ")
                                 : "No classes"}
                             </span>
                           </div>
@@ -679,7 +690,7 @@ export default function TeachersPage() {
 
       {/* Add Teacher Dialog */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-xl font-bold">Add New Teacher</DialogTitle>
           </DialogHeader>
@@ -737,51 +748,120 @@ export default function TeachersPage() {
               </p>
             </div>
 
+            {/* Level Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Assign Class (Optional)
+                Teaching Level
+              </Label>
+              <Select
+                value={formData.level}
+                onValueChange={(value) => setFormData({ ...formData, level: value, subjectIds: [] })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select level..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="primary">Primary</SelectItem>
+                  <SelectItem value="secondary">Secondary</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subjects - only shown when level is selected */}
+            {formData.level && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Subjects</Label>
+                <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
+                  {filteredSubjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No subjects found for this level
+                    </p>
+                  ) : (
+                    filteredSubjects.map((subject) => {
+                      const isSelected = formData.subjectIds.includes(subject.id);
+                      return (
+                        <button
+                          key={subject.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              subjectIds: isSelected
+                                ? formData.subjectIds.filter((id) => id !== subject.id)
+                                : [...formData.subjectIds, subject.id],
+                            });
+                          }}
+                          className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${
+                            isSelected
+                              ? "bg-brand/10 text-brand border border-brand/30"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <span>{subject.name}</span>
+                          {isSelected && (
+                            <Badge variant="secondary" className="text-xs">Selected</Badge>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {formData.subjectIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {formData.subjectIds.length} subject{formData.subjectIds.length !== 1 ? "s" : ""} selected
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Classes - multi-select */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Assign Classes
               </Label>
               <div className="relative">
                 <Input
-                  placeholder="Search and select class..."
+                  placeholder="Search classes..."
                   value={classSearch}
                   onChange={(e) => setClassSearch(e.target.value)}
                   className="rounded-lg"
                 />
                 {classSearch && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[300px] overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto">
                     {classes
                       .filter((cls) =>
                         cls.name.toLowerCase().includes(classSearch.toLowerCase())
                       )
                       .map((cls) => {
-                        const isTaken = !!(cls.classTeacher && cls.classTeacher.id);
+                        const isSelected = formData.classIds.includes(cls.id);
                         return (
                           <button
                             key={cls.id}
                             type="button"
                             onClick={() => {
-                              if (!isTaken) {
-                                setFormData({ ...formData, classId: cls.id });
-                                setClassSearch("");
-                              }
+                              setFormData({
+                                ...formData,
+                                classIds: isSelected
+                                  ? formData.classIds.filter((id) => id !== cls.id)
+                                  : [...formData.classIds, cls.id],
+                              });
+                              setClassSearch("");
                             }}
-                            disabled={isTaken}
-                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between group ${
-                              isTaken
-                                ? "opacity-50 cursor-not-allowed"
+                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${
+                              isSelected
+                                ? "bg-brand/10"
                                 : "hover:bg-muted cursor-pointer"
                             }`}
                           >
                             <span className="text-sm">
                               {cls.name}
-                              {isTaken && (
-                                <Badge className="ml-2 bg-yellow-100 text-yellow-800 border-yellow-300">
-                                  Already taken
+                              {cls.level && (
+                                <Badge variant="outline" className="ml-2 text-xs capitalize">
+                                  {cls.level}
                                 </Badge>
                               )}
                             </span>
-                            {formData.classId === cls.id && (
+                            {isSelected && (
                               <div className="w-2 h-2 rounded-full bg-brand"></div>
                             )}
                           </button>
@@ -796,15 +876,28 @@ export default function TeachersPage() {
                     )}
                   </div>
                 )}
-                {formData.classId && !classSearch && (
-                  <div className="mt-2 p-2 bg-brand/10 border border-brand/30 rounded text-sm text-brand font-medium">
-                    Selected: {classes.find(c => c.id === formData.classId)?.name}
-                  </div>
-                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Classes with existing class teachers are marked as TAKEN
-              </p>
+              {formData.classIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.classIds.map((classId) => {
+                    const cls = classes.find((c) => c.id === classId);
+                    return cls ? (
+                      <Badge
+                        key={classId}
+                        variant="secondary"
+                        className="gap-1 cursor-pointer hover:bg-destructive/10"
+                        onClick={() => setFormData({
+                          ...formData,
+                          classIds: formData.classIds.filter((id) => id !== classId),
+                        })}
+                      >
+                        {cls.name}
+                        <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">
