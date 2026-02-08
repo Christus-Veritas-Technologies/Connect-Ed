@@ -146,6 +146,7 @@ model School {
   notifications  Notification[]
   parentRequests ParentRequest[]
   onboardingProgress OnboardingProgress?
+  announcements  Announcement[]
 
   @@map("schools")
 }
@@ -194,6 +195,10 @@ model User {
   // Notifications
   notifications Notification[]
 
+  // Announcements
+  createdAnnouncements Announcement[]        @relation("AnnouncementCreator")
+  announcementComments AnnouncementComment[] @relation("AnnouncementComments")
+
   @@index([schoolId])
   @@index([email])
   @@map("users")
@@ -235,6 +240,7 @@ model Student {
   fees           Fee[]
   parentRequests ParentRequest[]
   subjects       StudentSubject[]
+  announcementComments AnnouncementComment[] @relation("StudentAnnouncementComments")
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -266,6 +272,9 @@ model Parent {
   sentRequests     ParentRequest[] @relation("RequestingParent")
   // Parent requests received by this parent (as the existing parent)
   receivedRequests ParentRequest[] @relation("ExistingParent")
+  
+  // Announcement comments
+  announcementComments AnnouncementComment[] @relation("ParentAnnouncementComments")
 
   @@index([schoolId])
   @@map("parents")
@@ -673,4 +682,62 @@ model Notification {
   @@index([type])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
+
+enum AnnouncementLength {
+  ONE_DAY
+  ONE_WEEK
+  ONE_MONTH
+}
+
+model Announcement {
+  id         String             @id @default(cuid())
+  heading    String             @db.VarChar(32)
+  subheading String             @db.Text
+  length     AnnouncementLength
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  comments AnnouncementComment[]
+
+  @@index([schoolId])
+  @@index([createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementComment {
+  id      String @id @default(cuid())
+  content String @db.Text
+
+  // Commenter info — one of these will be set
+  userId    String?
+  user      User?    @relation("AnnouncementComments", fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Parent?  @relation("ParentAnnouncementComments", fields: [parentId], references: [id], onDelete: Cascade)
+  studentId String?
+  student   Student? @relation("StudentAnnouncementComments", fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@index([createdAt])
+  @@map("announcement_comments")
 }

@@ -7,12 +7,12 @@ import {
   Home03Icon,
   UserGroupIcon,
   Money01Icon,
-  Invoice03Icon,
   School01Icon,
   TeacherIcon,
   ChartHistogramIcon,
   Settings02Icon,
   Logout01Icon,
+  Notification01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -43,6 +43,7 @@ const navSections = [
     label: "Main",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
+      { href: "/dashboard/announcements", label: "Announcements", icon: Notification01Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
     ],
   },
   {
@@ -57,7 +58,6 @@ const navSections = [
     label: "Finance",
     items: [
       { href: "/dashboard/fees", label: "Fees", icon: Money01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
-      { href: "/dashboard/expenses", label: "Expenses", icon: Invoice03Icon, roles: ["ADMIN", "RECEPTIONIST"] },
       { href: "/dashboard/reports", label: "Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "RECEPTIONIST"] },
     ],
   },

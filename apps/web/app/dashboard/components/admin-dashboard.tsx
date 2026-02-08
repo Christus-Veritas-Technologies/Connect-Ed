@@ -21,7 +21,6 @@ import {
   ChevronDown,
   UserAdd01Icon,
   FileAddIcon,
-  ShoppingBag01Icon,
   Notification01Icon,
   AlertTriangle,
   CheckmarkCircle02Icon,
@@ -357,9 +356,9 @@ export function AdminDashboard() {
                 <span>Add New Payment</span>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/expenses/new" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={ShoppingBag01Icon} size={16} />
-                  <span>Record Expense</span>
+                <Link href="/dashboard/announcements" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={Notification01Icon} size={16} />
+                  <span>Create Announcement</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

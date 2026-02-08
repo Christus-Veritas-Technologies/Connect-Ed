@@ -5,7 +5,7 @@ export * from "./use-auth";
 export * from "./use-students";
 export * from "./use-parents";
 export * from "./use-fees";
-export * from "./use-expenses";
+export * from "./use-announcements";
 export * from "./use-classes";
 export * from "./use-teachers";
 export * from "./use-subjects";
