@@ -15,6 +15,7 @@ import { OnboardingStep3 } from "./step-3";
 import { OnboardingStep4 } from "./step-4";
 import { OnboardingStep5 } from "./step-5";
 import { OnboardingStep6 } from "./step-6";
+import { OnboardingStep7 } from "./step-7";
 
 const STEPS = [
   { number: 1, title: "School Details", description: "Let's get to know your school" },
@@ -22,7 +23,8 @@ const STEPS = [
   { number: 3, title: "Students", description: "Student body information" },
   { number: 4, title: "Termly Fees", description: "Set your fee structure" },
   { number: 5, title: "Current Term", description: "Configure your academic calendar" },
-  { number: 6, title: "Review", description: "Confirm your information" },
+  { number: 6, title: "Grading", description: "Define grading scales per subject" },
+  { number: 7, title: "Review", description: "Confirm your information" },
 ];
 
 function OnboardingContent() {
@@ -168,7 +170,10 @@ function OnboardingContent() {
           {currentStep === 4 && (
             <OnboardingStep5 onBack={handleBack} onNext={handleNext} />
           )}
-          {currentStep === 5 && <OnboardingStep6 onBack={handleBack} />}
+          {currentStep === 5 && (
+            <OnboardingStep7 onBack={handleBack} onNext={handleNext} />
+          )}
+          {currentStep === 6 && <OnboardingStep6 onBack={handleBack} />}
         </motion.div>
       </div>
     </div>

@@ -12,7 +12,7 @@ onboardingProgress.use("*", requireAuth);
 
 // Schema for progress updates
 const progressSchema = z.object({
-  currentStep: z.number().int().min(0).max(5),
+  currentStep: z.number().int().min(0).max(6),
   schoolName: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -29,6 +29,7 @@ const progressSchema = z.object({
   currentTermYear: z.number().int().optional(),
   termStartMonth: z.number().int().optional(),
   termStartDay: z.number().int().optional(),
+  gradesData: z.any().optional(), // JSON data - grades per subject
   completedSteps: z.array(z.number()).optional(),
 });
 

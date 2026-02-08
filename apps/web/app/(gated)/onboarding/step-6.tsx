@@ -10,6 +10,7 @@ import {
   Money01Icon,
   Calendar01Icon,
   CheckmarkCircle02Icon,
+  CheckmarkBadge03Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
         currentTermYear: data.step5?.year,
         termStartMonth: data.step5?.termStartMonth,
         termStartDay: data.step5?.termStartDay,
+        grades: data.step6 || [],
       };
 
       console.log("[Step 6] Onboarding context data:", data);
@@ -222,6 +224,26 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
             </div>
           </div>
         </div>
+
+        {/* Grading System */}
+        {data.step6 && data.step6.length > 0 && (
+          <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-2 mb-4">
+              <HugeiconsIcon icon={CheckmarkBadge03Icon} size={24} className="text-indigo-600" />
+              <h3 className="font-semibold text-lg">Grading System</h3>
+            </div>
+            <div className="space-y-3 text-sm">
+              {data.step6.map((sg, i) => (
+                <div key={i}>
+                  <span className="font-medium">{sg.subjectName}:</span>
+                  <span className="ml-2 text-slate-600">
+                    {sg.grades.map((g) => `${g.name} (${g.minMark}-${g.maxMark}%)`).join(", ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <motion.div

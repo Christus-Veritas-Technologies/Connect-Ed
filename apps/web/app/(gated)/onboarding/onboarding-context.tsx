@@ -35,6 +35,10 @@ interface OnboardingData {
     termStartDay: number;
     year: number;
   };
+  step6?: Array<{
+    subjectName: string;
+    grades: Array<{ name: string; minMark: number; maxMark: number; isPass: boolean }>;
+  }>;
 }
 
 interface OnboardingContextType {
@@ -46,6 +50,7 @@ interface OnboardingContextType {
   updateStep3: (data: OnboardingData["step3"]) => void;
   updateStep4: (data: OnboardingData["step4"]) => void;
   updateStep5: (data: OnboardingData["step5"]) => void;
+  updateStep6: (data: OnboardingData["step6"]) => void;
   clearProgress: () => void;
   isLoading: boolean;
 }
@@ -119,6 +124,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
               termStartDay: progress.termStartDay || 1,
               year: progress.currentTermYear || new Date().getFullYear(),
             };
+          }
+
+          if (progress.gradesData) {
+            loadedData.step6 = progress.gradesData;
           }
 
           setData(loadedData);
@@ -201,6 +210,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         payload.termStartDay = stepData.step5.termStartDay;
       }
 
+      if (stepData.step6) {
+        payload.gradesData = stepData.step6;
+      }
+
       await api.post("/onboarding-progress", payload);
       console.log("[Onboarding Context] ✓ Progress saved to DB");
     } catch (error) {
@@ -243,6 +256,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     saveProgress({ ...data, step5: step5Data }, 5);
   };
 
+  const updateStep6 = (step6Data: OnboardingData["step6"]) => {
+    console.log("[Onboarding Context] Saving step6 (grades):", step6Data);
+    const newData = { ...data, step6: step6Data };
+    setData(newData);
+    saveProgress({ ...data, step6: step6Data }, 6);
+  };
+
   const clearProgress = async () => {
     try {
       await api.delete("/onboarding-progress");
@@ -265,6 +285,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         updateStep3,
         updateStep4,
         updateStep5,
+        updateStep6,
         clearProgress,
         isLoading,
       }}
