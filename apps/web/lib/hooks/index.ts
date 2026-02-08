@@ -14,3 +14,4 @@ export * from "./use-dashboard";
 export * from "./use-exams";
 export * from "./use-student-reports";
 export * from "./use-notifications";
+export * from "./use-receptionists";

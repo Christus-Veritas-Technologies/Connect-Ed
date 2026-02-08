@@ -22,6 +22,7 @@ import webhooks from "./routes/webhooks";
 import notifications from "./routes/notifications";
 import exams from "./routes/exams";
 import studentReports from "./routes/student-reports";
+import receptionists from "./routes/receptionists";
 
 const app = new Hono();
 
@@ -72,6 +73,7 @@ app.route("/webhooks", webhooks);
 app.route("/notifications", notifications);
 app.route("/exams", exams);
 app.route("/student-reports", studentReports);
+app.route("/receptionists", receptionists);
 
 // Error handling
 app.onError((err, c) => {
