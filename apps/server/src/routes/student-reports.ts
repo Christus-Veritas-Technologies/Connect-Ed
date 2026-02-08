@@ -1,147 +1,10 @@
 import { Hono } from "hono";
 import { db } from "@repo/db";
 import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
-import { successResponse, errors } from "../lib/response";
+import { successResponse, errors, errorResponse } from "../lib/response";
+import { computeStudentReport, sendReportToParent, sendReportsToParentsBulk } from "../lib/report-dispatch";
 
 const studentReports = new Hono();
-
-// Helper: compute a student's academic report
-async function computeStudentReport(studentId: string, schoolId: string) {
-  const student = await db.student.findFirst({
-    where: { id: studentId, schoolId },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      admissionNumber: true,
-      class: { select: { id: true, name: true } },
-    },
-  });
-
-  if (!student) return null;
-
-  // Get all exam results for this student
-  const results = await db.examResult.findMany({
-    where: { studentId, exam: { schoolId } },
-    include: {
-      exam: {
-        include: {
-          subject: { select: { id: true, name: true, code: true } },
-          class: { select: { id: true, name: true } },
-        },
-      },
-    },
-  });
-
-  // Get all grades for the school
-  const allGrades = await db.grade.findMany({
-    where: { schoolId },
-  });
-
-  // Group results by subject
-  const subjectMap = new Map<string, {
-    subjectId: string;
-    subjectName: string;
-    subjectCode: string | null;
-    exams: Array<{
-      examId: string;
-      examName: string;
-      paper: string;
-      mark: number;
-      gradeName: string;
-      isPass: boolean;
-    }>;
-  }>();
-
-  for (const result of results) {
-    const subId = result.exam.subjectId;
-    if (!subjectMap.has(subId)) {
-      subjectMap.set(subId, {
-        subjectId: subId,
-        subjectName: result.exam.subject.name,
-        subjectCode: result.exam.subject.code,
-        exams: [],
-      });
-    }
-
-    const subjectGrades = allGrades.filter((g) => g.subjectId === subId);
-    const grade = subjectGrades.find((g) => result.mark >= g.minMark && result.mark <= g.maxMark);
-
-    subjectMap.get(subId)!.exams.push({
-      examId: result.examId,
-      examName: result.exam.name,
-      paper: result.exam.paper,
-      mark: result.mark,
-      gradeName: grade?.name || "N/A",
-      isPass: grade?.isPass ?? false,
-    });
-  }
-
-  const subjects = Array.from(subjectMap.values());
-
-  // Calculate per-subject averages
-  const subjectReports = subjects.map((s) => {
-    const avgMark = s.exams.length > 0
-      ? Math.round(s.exams.reduce((sum, e) => sum + e.mark, 0) / s.exams.length)
-      : 0;
-    const passCount = s.exams.filter((e) => e.isPass).length;
-    const subjectGrades = allGrades.filter((g) => g.subjectId === s.subjectId);
-    const avgGrade = subjectGrades.find((g) => avgMark >= g.minMark && avgMark <= g.maxMark);
-
-    return {
-      ...s,
-      averageMark: avgMark,
-      averageGrade: avgGrade?.name || "N/A",
-      averageIsPass: avgGrade?.isPass ?? false,
-      examsTaken: s.exams.length,
-      examsPassed: passCount,
-      passRate: s.exams.length > 0 ? Math.round((passCount / s.exams.length) * 100) : 0,
-    };
-  });
-
-  // Overall stats
-  const totalExams = results.length;
-  const totalSubjects = subjects.length;
-  const allMarks = results.map((r) => r.mark);
-  const overallAverage = allMarks.length > 0
-    ? Math.round(allMarks.reduce((a, b) => a + b, 0) / allMarks.length)
-    : 0;
-
-  const totalPassed = results.filter((r) => {
-    const subjectGrades = allGrades.filter((g) => g.subjectId === r.exam.subjectId);
-    const passGrades = subjectGrades.filter((g) => g.isPass);
-    return passGrades.some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
-  }).length;
-
-  const overallPassRate = totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
-
-  // Identify weakest and strongest subjects
-  const sortedSubjects = [...subjectReports].sort((a, b) => a.averageMark - b.averageMark);
-  const weakestSubject = sortedSubjects.length > 0 ? sortedSubjects[0] : null;
-  const strongestSubject = sortedSubjects.length > 0 ? sortedSubjects[sortedSubjects.length - 1] : null;
-
-  return {
-    student: {
-      id: student.id,
-      name: `${student.firstName} ${student.lastName}`,
-      admissionNumber: student.admissionNumber,
-      className: student.class?.name || "Unassigned",
-    },
-    subjects: subjectReports,
-    overall: {
-      averageMark: overallAverage,
-      totalSubjects,
-      totalExams,
-      passRate: overallPassRate,
-      totalPassed,
-      totalFailed: totalExams - totalPassed,
-    },
-    insights: {
-      weakestSubject: weakestSubject ? { name: weakestSubject.subjectName, averageMark: weakestSubject.averageMark } : null,
-      strongestSubject: strongestSubject ? { name: strongestSubject.subjectName, averageMark: strongestSubject.averageMark } : null,
-    },
-  };
-}
 
 // ============================================
 // STAFF ROUTES (Admin / Teacher)
@@ -271,6 +134,72 @@ studentReports.get("/student/my-report", requireStudentAuth, async (c) => {
     return successResponse(c, { report });
   } catch (error) {
     console.error("Student get report error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// ============================================
+// SEND REPORT TO PARENT (Manual trigger)
+// ============================================
+
+// POST /student-reports/:studentId/send-to-parent - Send a single student's report to their parent
+studentReports.post("/:studentId/send-to-parent", requireAuth, async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    const studentId = c.req.param("studentId");
+
+    if (role !== "ADMIN" && role !== "TEACHER") {
+      return errors.forbidden(c);
+    }
+
+    const result = await sendReportToParent(studentId, schoolId);
+
+    if (result.error) {
+      return successResponse(c, {
+        message: `Report dispatch completed with note: ${result.error}`,
+        result,
+      });
+    }
+
+    return successResponse(c, {
+      message: `Report for ${result.studentName} sent to ${result.parentName}`,
+      result,
+    });
+  } catch (error) {
+    console.error("Send report to parent error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /student-reports/bulk/send-to-parents - Send reports for multiple students to their parents
+studentReports.post("/bulk/send-to-parents", requireAuth, async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const role = c.get("role");
+
+    if (role !== "ADMIN") {
+      return errors.forbidden(c);
+    }
+
+    const body = await c.req.json();
+    const studentIds: string[] = body.studentIds;
+
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return errorResponse(c, "BAD_REQUEST", "studentIds array is required", 400);
+    }
+
+    const results = await sendReportsToParentsBulk(studentIds, schoolId);
+
+    const sent = results.filter((r) => r.emailSent || r.whatsappSent).length;
+    const failed = results.filter((r) => r.error).length;
+
+    return successResponse(c, {
+      message: `Dispatched ${sent} report(s), ${failed} failed or skipped`,
+      results,
+    });
+  } catch (error) {
+    console.error("Bulk send reports error:", error);
     return errors.internalError(c);
   }
 });

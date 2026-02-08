@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { db } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { createExamSchema, enterExamResultsSchema, createGradeSchema } from "../lib/validation";
-import { successResponse, errors } from "../lib/response";
+import { successResponse, errors, errorResponse } from "../lib/response";
+import { sendReportToParent } from "../lib/report-dispatch";
 
 const exams = new Hono();
 
@@ -98,7 +99,7 @@ exams.post("/grades/bulk", async (c) => {
     };
 
     if (!subjectId || !grades || grades.length === 0) {
-      return errors.badRequest(c, "subjectId and grades array required");
+      return errorResponse(c, "BAD_REQUEST", "subjectId and grades array required", 400);
     }
 
     // Delete existing grades for this subject then recreate
@@ -344,6 +345,19 @@ exams.post("/:id/results", async (c) => {
         })
       )
     );
+
+    // Auto-send updated reports to parents (fire-and-forget, don't block the response)
+    const studentIds = [...new Set(data.results.map((r) => r.studentId))];
+    Promise.allSettled(
+      studentIds.map((sid) => sendReportToParent(sid, schoolId))
+    ).then((dispatches) => {
+      const sent = dispatches.filter(
+        (d) => d.status === "fulfilled" && (d.value.emailSent || d.value.whatsappSent)
+      ).length;
+      console.log(`📨 Auto-dispatched ${sent}/${studentIds.length} report(s) to parents after exam results entry`);
+    }).catch((err) => {
+      console.error("Auto report dispatch error:", err);
+    });
 
     return successResponse(c, { results });
   } catch (error) {

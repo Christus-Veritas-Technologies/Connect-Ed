@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 // Types
@@ -64,20 +64,16 @@ const reportKeys = {
 export function useStudentReports() {
   return useQuery({
     queryKey: reportKeys.all,
-    queryFn: async () => {
-      const res = await api.get("/student-reports");
-      return res.data as { reports: StudentReportData[]; schoolInsights: SchoolInsights };
-    },
+    queryFn: () =>
+      api.get<{ reports: StudentReportData[]; schoolInsights: SchoolInsights }>("/student-reports"),
   });
 }
 
 export function useStudentReport(studentId: string) {
   return useQuery({
     queryKey: reportKeys.detail(studentId),
-    queryFn: async () => {
-      const res = await api.get(`/student-reports/${studentId}`);
-      return res.data as { report: StudentReportData };
-    },
+    queryFn: () =>
+      api.get<{ report: StudentReportData }>(`/student-reports/${studentId}`),
     enabled: !!studentId,
   });
 }
@@ -86,10 +82,8 @@ export function useStudentReport(studentId: string) {
 export function useParentChildrenReports() {
   return useQuery({
     queryKey: reportKeys.parent,
-    queryFn: async () => {
-      const res = await api.get("/student-reports/parent/my-children");
-      return res.data as { reports: StudentReportData[] };
-    },
+    queryFn: () =>
+      api.get<{ reports: StudentReportData[] }>("/student-reports/parent/my-children"),
   });
 }
 
@@ -97,9 +91,41 @@ export function useParentChildrenReports() {
 export function useMyReport() {
   return useQuery({
     queryKey: reportKeys.student,
-    queryFn: async () => {
-      const res = await api.get("/student-reports/student/my-report");
-      return res.data as { report: StudentReportData };
-    },
+    queryFn: () =>
+      api.get<{ report: StudentReportData }>("/student-reports/student/my-report"),
+  });
+}
+
+// ============================================
+// Send report to parent hooks
+// ============================================
+
+export interface DispatchResult {
+  studentId: string;
+  studentName: string;
+  parentName: string | null;
+  emailSent: boolean;
+  whatsappSent: boolean;
+  error?: string;
+}
+
+// Send a single student's report to their parent
+export function useSendReportToParent() {
+  return useMutation({
+    mutationFn: (studentId: string) =>
+      api.post<{ message: string; result: DispatchResult }>(
+        `/student-reports/${studentId}/send-to-parent`
+      ),
+  });
+}
+
+// Bulk send reports to parents (admin only)
+export function useBulkSendReportsToParents() {
+  return useMutation({
+    mutationFn: (studentIds: string[]) =>
+      api.post<{ message: string; results: DispatchResult[]; sent: number; failed: number }>(
+        "/student-reports/bulk/send-to-parents",
+        { studentIds }
+      ),
   });
 }

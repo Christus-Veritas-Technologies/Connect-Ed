@@ -6,6 +6,7 @@ import { updateSchoolSchema, startTermSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { createNotification } from "./notifications";
 import { sendEmail, generatePeriodChangeEmail } from "../lib/email";
+import { sendAllReportsToParents } from "../lib/report-dispatch";
 
 const settings = new Hono();
 
@@ -198,8 +199,18 @@ settings.post("/period/end", async (c) => {
 
     await Promise.all(notificationPromises);
 
+    // Send all student academic reports to parents (end-of-term dispatch)
+    // Fire-and-forget — don't block the response
+    sendAllReportsToParents(schoolId).then((dispatches) => {
+      const sent = dispatches.filter((d) => d.emailSent || d.whatsappSent).length;
+      const total = dispatches.length;
+      console.log(`📨 End-of-term report dispatch: ${sent}/${total} report(s) sent to parents for school ${schoolId}`);
+    }).catch((err) => {
+      console.error("End-of-term report dispatch error:", err);
+    });
+
     return successResponse(c, {
-      message: `Term ${school.currentTermNumber} of ${school.currentTermYear} has ended. Holiday period has started.`,
+      message: `Term ${school.currentTermNumber} of ${school.currentTermYear} has ended. Holiday period has started. Academic reports are being sent to parents.`,
       periodType: "HOLIDAY",
     });
   } catch (error) {

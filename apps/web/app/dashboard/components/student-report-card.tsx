@@ -9,6 +9,7 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   FileDownloadIcon,
+  SentIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { StudentReportData } from "@/lib/hooks/use-student-reports";
+import { useSendReportToParent } from "@/lib/hooks/use-student-reports";
 import { exportToPDF } from "@/lib/export-utils";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
 
 export function ReportOverviewCards({ report }: { report: StudentReportData }) {
   const stats = [
@@ -264,12 +268,54 @@ export function ExportReportButton({ report }: { report: StudentReportData }) {
   );
 }
 
+export function SendReportToParentButton({ studentId }: { studentId: string }) {
+  const sendMutation = useSendReportToParent();
+
+  const handleSend = () => {
+    sendMutation.mutate(studentId, {
+      onSuccess: (data) => {
+        const r = data.result;
+        const channels = [];
+        if (r.emailSent) channels.push("email");
+        if (r.whatsappSent) channels.push("WhatsApp");
+
+        if (channels.length > 0) {
+          toast.success(`Report sent to ${r.parentName} via ${channels.join(" & ")}`);
+        } else if (r.error) {
+          toast.warning(r.error);
+        } else {
+          toast.info("Report dispatched — parent may not have contact info on file");
+        }
+      },
+      onError: (err) => {
+        const msg = err instanceof ApiError ? err.message : "Failed to send report";
+        toast.error(msg);
+      },
+    });
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-2"
+      onClick={handleSend}
+      disabled={sendMutation.isPending}
+    >
+      <HugeiconsIcon icon={SentIcon} size={16} />
+      {sendMutation.isPending ? "Sending..." : "Send to Parent"}
+    </Button>
+  );
+}
+
 export function StudentReportFull({
   report,
   showStudentHeader = true,
+  showSendButton = false,
 }: {
   report: StudentReportData;
   showStudentHeader?: boolean;
+  showSendButton?: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -281,7 +327,10 @@ export function StudentReportFull({
               {report.student.admissionNumber} • {report.student.className}
             </p>
           </div>
-          <ExportReportButton report={report} />
+          <div className="flex items-center gap-2">
+            {showSendButton && <SendReportToParentButton studentId={report.student.id} />}
+            <ExportReportButton report={report} />
+          </div>
         </div>
       )}
       <ReportOverviewCards report={report} />

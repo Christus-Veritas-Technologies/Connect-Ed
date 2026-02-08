@@ -7,10 +7,13 @@ import {
   Search01Icon,
   ArrowRight01Icon,
   ArrowLeft02Icon,
+  SentIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
-import { useStudentReports } from "@/lib/hooks/use-student-reports";
+import { useStudentReports, useBulkSendReportsToParents } from "@/lib/hooks/use-student-reports";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
 
 import {
   StudentReportFull,
@@ -38,11 +41,28 @@ export default function StudentReportsPage() {
 
   const selectedReport = reports.find((r) => r.student.id === selectedStudent);
 
+  const bulkSend = useBulkSendReportsToParents();
+
   const isTeacher = user?.role === "TEACHER";
+  const isAdmin = user?.role === "ADMIN";
   const title = isTeacher ? "My Students' Reports" : "Student Reports";
   const subtitle = isTeacher
     ? "View academic reports for students in your classes"
     : "View academic performance reports for all students";
+
+  const handleBulkSend = () => {
+    const studentIds = reports.map((r) => r.student.id);
+    if (studentIds.length === 0) return;
+    bulkSend.mutate(studentIds, {
+      onSuccess: (data) => {
+        toast.success(`Reports sent: ${data.sent} successful, ${data.failed} failed`);
+      },
+      onError: (err) => {
+        const msg = err instanceof ApiError ? err.message : "Failed to send reports";
+        toast.error(msg);
+      },
+    });
+  };
 
   // Detail view
   if (selectedReport) {
@@ -56,7 +76,7 @@ export default function StudentReportsPage() {
           <HugeiconsIcon icon={ArrowLeft02Icon} size={18} />
           Back to all reports
         </Button>
-        <StudentReportFull report={selectedReport} />
+        <StudentReportFull report={selectedReport} showSendButton />
       </div>
     );
   }
@@ -64,12 +84,26 @@ export default function StudentReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
-          {title}
-        </h1>
-        <p className="text-muted-foreground">{subtitle}</p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
+            {title}
+          </h1>
+          <p className="text-muted-foreground">{subtitle}</p>
+        </div>
+        {isAdmin && reports.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleBulkSend}
+            disabled={bulkSend.isPending}
+          >
+            <HugeiconsIcon icon={SentIcon} size={16} />
+            {bulkSend.isPending ? "Sending..." : "Send All to Parents"}
+          </Button>
+        )}
       </div>
 
       {/* School Insights (Admin Only) */}

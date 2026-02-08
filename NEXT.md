@@ -1,35 +1,35 @@
-On the fees page, make sure the text on the buttons is "create new fee payment" and "create new fee record" instead of just "create fee". This makes it clearer to users that they are creating a payment or a record, not just a fee.
-Make a commit for these changes
+I created a new app called agent, this is and will be the whatsapp AI agent, it's structure like this:
+(1) Whatsapp - For whatsapp, we'll be using wwebjs, when sending messages ourselves, e.g initiating conversatio s with parents by sending a report to them, make sure you leave gaps for rate limiting, e.g wait 60 seconds before sending what needs to be sent, setu a queue system so that w don't get banned since the library is unoffocial
+(2) AI - Create an AI Agent with mastra and OpenAI, the Agent will gve access to tools that fetch relevant data throughout the app e.g whne speaking toa sbtduent (or teacher), it asks them for their emaila d apsword, it calls a function that verifies this dat(bevause ot cnm't do it itself since e.g the password is hashed, so it can't tell if what we have and what's  in the db agree) and then continues aethe convo, if the password is corrcet, now guve the agent their real name and data, they can now talk about their grades, trouble areas etc, give it ABSOLUTE SUPERPOWERS for each user
+- Give the agent memort, able to remember previous emssages in the chat
+- Give it tools as mentioned above
+- Give it guardrails for replying to relevant info only
+- Give it the user's data uin each message, what's available via wweb.js and what we receive from the backend at the start of the convo when we request their email and password
+- Don't allow it to perform CUD operations (don't give it these tools)
 
-Then still on the fees page, add unique cards that contain data for:
-(1) Fees paid this term
-(2) Unpaid fees for this term
-(3) Total fees paid this year
-(4) Total unpaid fees this year
-Make commit for this
+Afyer you're done, create an endpoint that we can call with a phone number and message content to send a message, add newline and whatsapp formatting to the messages, here's a bit of info on whatsapp message formatting:
+"
+WhatsApp allows text formatting to add emphasis using simple symbols. Key formatting options include bolding with asterisks (*text*), italics with underscores (_text_), strikethrough with tildes (~text~), and monospace with backticks (```text```). Newer options (2024) include bulleted/numbered lists, block quotes, and inline code. 
+Formatting Options & Syntax
+Bold: Place an asterisk (*) on both sides of the text (e.g., *hello*).
+Italic: Place an underscore (_) on both sides of the text (e.g., _hello_).
+Strikethrough: Place a tilde (~) on both sides of the text (e.g., ~hello~).
+Monospace: Place three backticks (```) on both sides of the text (e.g., ```hello```).
+Bulleted List: Start the line with an asterisk (*) or hyphen (-) followed by a space (e.g., * item).
+Numbered List: Start the line with a number, a period, and a space (e.g., 1. item).
+Block Quote: Place an angle bracket (>) and a space before the text (e.g., > text).
+Inline Code: Place a backtick (`) on both sides of the text (e.g., `text`). 
+Tips
+Combining Formats: You can combine them, such as *_bold and italic_*.
+Context Menu: On mobile, you can highlight text and select formatting options (Bold, Italic, etc.) from the menu.
+New Lines: Use Shift + Enter for a new line without sending the message.
+Remove Formatting: Simply delete the special symbols surrounding the text. 
+"
 
-Then still on the fees page, add a filter option to filter fee records by term and year. This will allow users to easily view fees for specific time periods. Make commit for this
+Use this wheh send messaes, make sure that for stuff like sending reports, we use tenmplates rather than suing OpenAI (that will incur costs), matter of fact, add optimisations in certain places so we favir temlates above OpenAI for saving
 
-Then add a table for "students owing" that lists students with unpaid fees, along with the amount owed. This will help users quickly identify which students have outstanding fees. Make commit for this
+And then for each whatsapp message, make sure it increases the school's "whatsapp message" quotta for their currentplan use the db package in the agent app (this is why we used this turborepo archutecture, ruse of code across multipe apps)
 
-Add export options inside the students owing table and one at the top of the page to export all fee records. This will allow users to easily download and analyze fee data. Make commit for this
+And then register the new agent app in the sturborepo structure jsut like we did for the wbe app so that turborepo recognizes it and we can use the db package and others
 
-Finally, add filters for the time period at the top, allowign the user to select "this week", "this month", "this term", "this year", or a custom date range. This will provide more flexibility in viewing fee data for different time periods. Make commit for this
-
-And then when creating a new fee payment, allow the receptionist or admin (these are the people who can create fee payments) to tie the payment to a student, and then subtract that from their termly fee owing . Then send a notification to the admin, the parent and the student for the new fee payment. Make commits for these changes
-
------------------------------------------------------------------------
-
-And then in the onboarding, add 2 more steps:
-(1) Termly fees - the amount, in USD, that has to be paid by the students each term
-(2) Current term - this step asks the admin to enter the start date of the current term and the term number for the year (the year is a read-only input field with the current year in it, the user has to enter the start month and date), then apply this to the entire app, so on the dash, all users see "Welcome, {user.name} and below that: "Term {X}, {year}"
-Make commits for these changes
-
-And then on the dash for the admin, add 2 unique buttons (somewhere where they are visible but still with good UX):
-(1) End current term - when clicked, it shows a dialog asking the user `Are you sure you want to end Term {school.termNumber} {school.termYear}`, with "Confirm" and "Cancel". There are 3 terms in a year, so if term 3 ends, we ask the user when the next term will start
-
-
-Okay okay, jsut note this:
-- A date can either be a holiday period or a (school) term, okay ? 
-- Because term and holiday days are unpredictable, somehow allow the admin to denote the start of a holiday, a new term, with holiday start (end can be provided anytime by clicking on the "end {holiday / term})" button (make this the same button, with different logic depending on wyether the current period is a (school) term or a holiday)
-- Think deeply about the above change and apply it throughout the entire school
+Make commits at each step, let's go
