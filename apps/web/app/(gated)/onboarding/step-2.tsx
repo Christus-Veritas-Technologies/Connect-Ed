@@ -23,9 +23,10 @@ import { useOnboarding } from "./onboarding-context";
 interface OnboardingStep2Props {
   onBack: () => void;
   onNext: () => void;
+  onSkip?: () => void;
 }
 
-export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
+export function OnboardingStep2({ onBack, onNext, onSkip }: OnboardingStep2Props) {
   const { updateStep2 } = useOnboarding();
   
   const formik = useFormik({
@@ -303,6 +304,8 @@ export function OnboardingStep2({ onBack, onNext }: OnboardingStep2Props) {
         isLoading={formik.isSubmitting}
         showBack={true}
         delay={0.3}
+        onSkip={onSkip}
+        showSkip={!!onSkip}
       />
     </form>
   );

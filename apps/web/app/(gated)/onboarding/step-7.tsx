@@ -33,6 +33,7 @@ interface SubjectGrades {
 interface OnboardingStep7Props {
   onBack: () => void;
   onNext: () => void;
+  onSkip?: () => void;
 }
 
 const DEFAULT_GRADES: GradeEntry[] = [
@@ -43,7 +44,7 @@ const DEFAULT_GRADES: GradeEntry[] = [
   { name: "F", minMark: 0, maxMark: 29, isPass: false },
 ];
 
-export function OnboardingStep7({ onBack, onNext }: OnboardingStep7Props) {
+export function OnboardingStep7({ onBack, onNext, onSkip }: OnboardingStep7Props) {
   const { data, updateStep6 } = useOnboarding();
   const subjects = data.step2?.subjects || [];
 
@@ -247,6 +248,11 @@ export function OnboardingStep7({ onBack, onNext }: OnboardingStep7Props) {
         <Button type="button" variant="outline" className="w-1/4" onClick={onBack}>
           Back
         </Button>
+        {onSkip && (
+          <Button type="button" variant="ghost" onClick={onSkip}>
+            Skip
+          </Button>
+        )}
         <Button type="button" className="flex-1" onClick={handleSubmit}>
           Continue
         </Button>

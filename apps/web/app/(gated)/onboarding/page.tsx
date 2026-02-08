@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -16,6 +16,9 @@ import { OnboardingStep4 } from "./step-4";
 import { OnboardingStep5 } from "./step-5";
 import { OnboardingStep6 } from "./step-6";
 import { OnboardingStep7 } from "./step-7";
+import { TeacherOnboarding } from "./teacher-onboarding";
+import { ParentOnboarding } from "./parent-onboarding";
+import { StudentOnboarding } from "./student-onboarding";
 
 const STEPS = [
   { number: 1, title: "School Details", description: "Let's get to know your school" },
@@ -27,7 +30,7 @@ const STEPS = [
   { number: 7, title: "Review", description: "Confirm your information" },
 ];
 
-function OnboardingContent() {
+function AdminOnboardingContent() {
   const { school } = useAuth();
   const router = useRouter();
   const { currentStep, setCurrentStep, isLoading, clearProgress } = useOnboarding();
@@ -52,6 +55,10 @@ function OnboardingContent() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleSkip = (): void => {
+    handleNext();
   };
 
   if (isLoading) {
@@ -156,34 +163,42 @@ function OnboardingContent() {
             </p>
           </div>
 
-          {/* Step Components */}
-          {currentStep === 0 && <OnboardingStep1 onNext={handleNext} />}
+          {/* Step Components — all steps now support skip via handleSkip */}
+          {currentStep === 0 && <OnboardingStep1 onNext={handleNext} onSkip={handleSkip} />}
           {currentStep === 1 && (
-            <OnboardingStep2 onBack={handleBack} onNext={handleNext} />
+            <OnboardingStep2 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
           {currentStep === 2 && (
-            <OnboardingStep3 onBack={handleBack} onNext={handleNext} />
+            <OnboardingStep3 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
           {currentStep === 3 && (
-            <OnboardingStep4 onBack={handleBack} onNext={handleNext} />
+            <OnboardingStep4 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
           {currentStep === 4 && (
-            <OnboardingStep5 onBack={handleBack} onNext={handleNext} />
+            <OnboardingStep5 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
           {currentStep === 5 && (
-            <OnboardingStep7 onBack={handleBack} onNext={handleNext} />
+            <OnboardingStep7 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
           {currentStep === 6 && <OnboardingStep6 onBack={handleBack} />}
         </motion.div>
       </div>
     </div>
-    );
+  );
 }
 
 export default function OnboardingPage() {
+  const { user } = useAuth();
+
+  // Role-specific onboarding for non-admin users
+  if (user?.role === "TEACHER") return <TeacherOnboarding />;
+  if (user?.role === "PARENT") return <ParentOnboarding />;
+  if (user?.role === "STUDENT") return <StudentOnboarding />;
+
+  // Admin gets the full school setup onboarding
   return (
     <OnboardingProvider>
-      <OnboardingContent />
+      <AdminOnboardingContent />
     </OnboardingProvider>
   );
 }

@@ -20,9 +20,10 @@ import { useOnboarding } from "./onboarding-context";
 interface OnboardingStep3Props {
   onBack: () => void;
   onNext: () => void;
+  onSkip?: () => void;
 }
 
-export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
+export function OnboardingStep3({ onBack, onNext, onSkip }: OnboardingStep3Props) {
   const { data, updateStep3 } = useOnboarding();
   
   const hasBothLevels =
@@ -226,6 +227,8 @@ export function OnboardingStep3({ onBack, onNext }: OnboardingStep3Props) {
         isLoading={formik.isSubmitting}
         showBack={true}
         delay={0.3}
+        onSkip={onSkip}
+        showSkip={!!onSkip}
       />
     </form>
   );

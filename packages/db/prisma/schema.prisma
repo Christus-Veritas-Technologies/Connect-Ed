@@ -162,6 +162,7 @@ model User {
   role         Role
   isActive     Boolean @default(true)
   tokenVersion Int     @default(0) // For refresh token invalidation
+  onboardingComplete Boolean @default(true)
 
   // Password reset
   resetToken       String?
@@ -227,6 +228,7 @@ model Student {
   // Authentication (optional, for student portal access)
   password     String?
   tokenVersion Int     @default(0)
+  onboardingComplete Boolean @default(true)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -263,6 +265,7 @@ model Parent {
   phone        String?
   isActive     Boolean @default(true)
   tokenVersion Int     @default(0)
+  onboardingComplete Boolean @default(true)
 
   // Timestamps
   createdAt DateTime @default(now())

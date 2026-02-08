@@ -13,6 +13,7 @@ onboarding.use("*", requireAuth);
 // POST /onboarding - Complete onboarding
 onboarding.post("/", async (c) => {
   const schoolId = c.get("schoolId");
+  const userId = c.get("userId");
   console.log(`[POST /onboarding] Incoming request for school: ${schoolId}`);
 
   // Log raw incoming body (safely)
@@ -139,6 +140,12 @@ onboarding.post("/", async (c) => {
         console.log(`[POST /onboarding] Created ${createdGrades.length} grade definitions`);
       }
 
+      // Also mark the admin user's onboarding as complete
+      await tx.user.update({
+        where: { id: userId },
+        data: { onboardingComplete: true },
+      });
+
       return {
         school: updatedSchool,
         subjects: createdSubjects,
@@ -175,6 +182,47 @@ onboarding.post("/", async (c) => {
       console.error(`[POST /onboarding] Error stack:`, error.stack);
     }
 
+    return errors.internalError(c);
+  }
+});
+
+// POST /onboarding/user-complete - Mark current user's onboarding as complete (non-admin users)
+onboarding.post("/user-complete", async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("role");
+  const schoolId = c.get("schoolId");
+
+  try {
+    // For staff users (TEACHER, RECEPTIONIST)
+    if (role === "ADMIN" || role === "TEACHER" || role === "RECEPTIONIST") {
+      await db.user.update({
+        where: { id: userId },
+        data: { onboardingComplete: true },
+      });
+      return successResponse(c, { message: "Onboarding completed" });
+    }
+
+    // For parent users
+    if (role === "PARENT") {
+      await db.parent.update({
+        where: { id: userId },
+        data: { onboardingComplete: true },
+      });
+      return successResponse(c, { message: "Onboarding completed" });
+    }
+
+    // For student users
+    if (role === "STUDENT") {
+      await db.student.update({
+        where: { id: userId },
+        data: { onboardingComplete: true },
+      });
+      return successResponse(c, { message: "Onboarding completed" });
+    }
+
+    return errors.badRequest(c, "Unknown role");
+  } catch (error) {
+    console.error("User onboarding complete error:", error);
     return errors.internalError(c);
   }
 });

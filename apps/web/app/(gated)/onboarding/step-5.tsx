@@ -19,6 +19,7 @@ import { useOnboarding } from "./onboarding-context";
 interface OnboardingStep5Props {
   onBack: () => void;
   onNext: () => void;
+  onSkip?: () => void;
 }
 
 const MONTHS = [
@@ -26,7 +27,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export function OnboardingStep5({ onBack, onNext }: OnboardingStep5Props) {
+export function OnboardingStep5({ onBack, onNext, onSkip }: OnboardingStep5Props) {
   const { updateStep5 } = useOnboarding();
   const currentYear = new Date().getFullYear();
 
@@ -168,6 +169,8 @@ export function OnboardingStep5({ onBack, onNext }: OnboardingStep5Props) {
         isLoading={formik.isSubmitting}
         showBack={true}
         delay={0.25}
+        onSkip={onSkip}
+        showSkip={!!onSkip}
       />
     </form>
   );

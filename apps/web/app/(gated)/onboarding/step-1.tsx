@@ -12,9 +12,10 @@ import { FormField, FormActions } from "./components";
 
 interface OnboardingStep1Props {
   onNext: () => void;
+  onSkip?: () => void;
 }
 
-export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
+export function OnboardingStep1({ onNext, onSkip }: OnboardingStep1Props) {
   const { school } = useAuth();
   const { updateStep1 } = useOnboarding();
 
@@ -155,6 +156,8 @@ export function OnboardingStep1({ onNext }: OnboardingStep1Props) {
         isLoading={formik.isSubmitting}
         showBack={false}
         delay={0.3}
+        onSkip={onSkip}
+        showSkip={!!onSkip}
       />
     </form>
   );

@@ -31,20 +31,27 @@ export function AuthGuard({
       return;
     }
 
-    // If authenticated, check payment status
-    if (requirePayment && school && !school.signupFeePaid) {
+    // If authenticated, check payment status (admin only — invited users skip this)
+    if (requirePayment && school && !school.signupFeePaid && user?.role === "ADMIN") {
       router.push("/payment");
       return;
     }
 
-    // If payment is done, check onboarding
-    if (requireOnboarding && school && !school.onboardingComplete) {
+    // If payment is done, check school-level onboarding (admin only)
+    if (requireOnboarding && school && !school.onboardingComplete && user?.role === "ADMIN") {
+      router.push("/onboarding");
+      return;
+    }
+
+    // Check user-level onboarding (all roles except RECEPTIONIST)
+    if (requireOnboarding && user && !user.onboardingComplete && user.role !== "RECEPTIONIST") {
       router.push("/onboarding");
       return;
     }
   }, [
     isLoading,
     isAuthenticated,
+    user,
     school,
     requireAuth,
     requirePayment,
@@ -67,11 +74,15 @@ export function AuthGuard({
     return null;
   }
 
-  if (requirePayment && school && !school.signupFeePaid) {
+  if (requirePayment && school && !school.signupFeePaid && user?.role === "ADMIN") {
     return null;
   }
 
-  if (requireOnboarding && school && !school.onboardingComplete) {
+  if (requireOnboarding && school && !school.onboardingComplete && user?.role === "ADMIN") {
+    return null;
+  }
+
+  if (requireOnboarding && user && !user.onboardingComplete && user.role !== "RECEPTIONIST") {
     return null;
   }
 
@@ -107,24 +118,34 @@ export function GatedGuard({ children }: { children: ReactNode }) {
 
 // Guest guard - redirects authenticated users away from auth pages
 export function GuestGuard({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading, school } = useAuth();
+  const { isAuthenticated, isLoading, user, school } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     // Only redirect if we've finished loading AND user is authenticated
     if (isLoading) return;
 
-    if (isAuthenticated && school) {
-      // Redirect based on school status
-      if (!school.signupFeePaid) {
-        router.push("/payment");
-      } else if (!school.onboardingComplete) {
+    if (isAuthenticated && school && user) {
+      // Admin flow: payment → school onboarding → user onboarding → dashboard
+      if (user.role === "ADMIN") {
+        if (!school.signupFeePaid) {
+          router.push("/payment");
+        } else if (!school.onboardingComplete || !user.onboardingComplete) {
+          router.push("/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
+        return;
+      }
+
+      // Non-admin: check user-level onboarding (except RECEPTIONIST)
+      if (!user.onboardingComplete && user.role !== "RECEPTIONIST") {
         router.push("/onboarding");
       } else {
         router.push("/dashboard");
       }
     }
-  }, [isLoading, isAuthenticated, school, router]);
+  }, [isLoading, isAuthenticated, user, school, router]);
 
   // Don't render children if already authenticated
   if (isAuthenticated) {

@@ -200,6 +200,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
         email: data.email,
         phone: data.phone || undefined,
         password: hashedPassword,
+        onboardingComplete: false,
         schoolId,
       },
     });

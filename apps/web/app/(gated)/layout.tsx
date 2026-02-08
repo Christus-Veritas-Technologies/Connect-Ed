@@ -11,15 +11,18 @@ export default function GatedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { school } = useAuth();
+  const { user, school } = useAuth();
   const router = useRouter();
 
-  // Redirect to dashboard if already completed onboarding
+  // Redirect to dashboard if both school and user onboarding are complete
   useEffect(() => {
-    if (school?.isActive && school?.onboardingComplete) {
+    if (!user || !school) return;
+    const schoolDone = school.isActive && school.onboardingComplete;
+    const userDone = user.onboardingComplete || user.role === "RECEPTIONIST";
+    if (schoolDone && userDone) {
       router.push("/dashboard");
     }
-  }, [school, router]);
+  }, [user, school, router]);
 
   return (
     <GatedGuard>

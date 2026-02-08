@@ -157,6 +157,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           email: staffUser.email,
           name: staffUser.name,
           role: staffUser.role,
+          onboardingComplete: staffUser.onboardingComplete,
         },
         school: {
           id: staffUser.school.id,
@@ -226,6 +227,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           email: parent.email,
           name: parent.name,
           role: "PARENT",
+          onboardingComplete: parent.onboardingComplete,
           children: parent.children.map((s: any) => ({
             id: s.id,
             name: `${s.firstName} ${s.lastName}`,
@@ -303,6 +305,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           email: student.email,
           name: `${student.firstName} ${student.lastName}`,
           role: "STUDENT",
+          onboardingComplete: student.onboardingComplete,
           admissionNumber: student.admissionNumber,
           class: student.class?.name,
         },
@@ -383,6 +386,7 @@ auth.post("/refresh", async (c) => {
           email: staffUser.email,
           name: staffUser.name,
           role: staffUser.role,
+          onboardingComplete: staffUser.onboardingComplete,
         },
         school: {
           id: staffUser.school.id,
@@ -437,6 +441,7 @@ auth.post("/refresh", async (c) => {
           email: parent.email,
           name: parent.name,
           role: "PARENT",
+          onboardingComplete: parent.onboardingComplete,
           children: parent.children.map((s: any) => ({
             id: s.id,
             name: `${s.firstName} ${s.lastName}`,
@@ -496,6 +501,7 @@ auth.post("/refresh", async (c) => {
           email: student.email,
           name: `${student.firstName} ${student.lastName}`,
           role: "STUDENT",
+          onboardingComplete: student.onboardingComplete,
           admissionNumber: student.admissionNumber,
           class: student.class?.name,
         },

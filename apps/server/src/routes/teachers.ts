@@ -110,6 +110,7 @@ teachers.post("/", async (c) => {
           level: data.level || undefined,
           role: Role.TEACHER,
           schoolId,
+          onboardingComplete: false,
         },
       });
 

@@ -181,6 +181,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
           email: data.email || undefined,
           phone: data.phone || undefined,
           password: hashedPassword,
+          onboardingComplete: data.email ? false : true,
           schoolId,
         },
         include: {

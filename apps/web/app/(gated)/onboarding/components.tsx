@@ -67,17 +67,23 @@ export function FormField({ children, error, delay = 0 }: FormFieldProps) {
 
 interface FormActionsProps {
   onBack?: () => void;
+  onSkip?: () => void;
   canContinue?: boolean;
   isLoading?: boolean;
   showBack?: boolean;
+  showSkip?: boolean;
+  continueLabel?: string;
   delay?: number;
 }
 
 export function FormActions({
   onBack,
+  onSkip,
   canContinue = true,
   isLoading = false,
   showBack = true,
+  showSkip = false,
+  continueLabel,
   delay = 0,
 }: FormActionsProps) {
   return (
@@ -93,9 +99,20 @@ export function FormActions({
           variant="outline"
           className="w-1/4"
           onClick={onBack}
-          disabled={!canContinue || isLoading}
+          disabled={isLoading}
         >
           Back
+        </Button>
+      )}
+      {showSkip && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={onSkip}
+          disabled={isLoading}
+        >
+          Skip
         </Button>
       )}
       <Button
@@ -105,7 +122,7 @@ export function FormActions({
       >
         {!isLoading && (
           <>
-            Continue to Next Step
+            {continueLabel || "Continue to Next Step"}
             <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
           </>
         )}

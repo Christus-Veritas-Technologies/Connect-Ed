@@ -15,6 +15,7 @@ interface User {
   email: string;
   name: string;
   role: "ADMIN" | "RECEPTIONIST" | "TEACHER" | "PARENT" | "STUDENT";
+  onboardingComplete: boolean;
   // Additional fields for specific roles
   children?: Array<{ id: string; name: string; class?: string }>; // For parents
   admissionNumber?: string; // For students
