@@ -169,7 +169,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
   }
 
   body {
@@ -255,17 +255,4 @@
   background: var(--sidebar-primary);
   color: var(--sidebar-primary-foreground);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-/* 
-  ---break---
-*/
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
 }

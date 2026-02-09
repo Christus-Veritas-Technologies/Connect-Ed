@@ -7,16 +7,16 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
   {
     variants: {
       variant: {
-        default: "bg-brand/10 text-brand border border-brand/20",
-        secondary: "bg-secondary text-secondary-foreground border border-border",
-        success: "bg-success/10 text-success border border-success/20",
-        warning: "bg-warning/10 text-warning border border-warning/20",
-        destructive: "bg-destructive/10 text-destructive border border-destructive/20",
-        outline: "bg-transparent border-2 border-border text-foreground",
+        default: "bg-brand/10 text-brand",
+        secondary: "bg-secondary text-secondary-foreground",
+        success: "bg-emerald-50 text-emerald-700",
+        warning: "bg-amber-50 text-amber-700",
+        destructive: "bg-red-50 text-red-700",
+        outline: "bg-transparent border border-border text-foreground",
         brand: "bg-brand text-white",
       },
       size: {
