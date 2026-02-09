@@ -183,8 +183,8 @@ function AppSidebar({ pathname, user, school, logout }: {
             <Badge
               variant={
                 school.plan === "ENTERPRISE" ? "brand" :
-                school.plan === "GROWTH" ? "success" :
-                "warning"
+                  school.plan === "GROWTH" ? "success" :
+                    "warning"
               }
               size="sm"
             >
@@ -201,7 +201,7 @@ function AppSidebar({ pathname, user, school, logout }: {
           </div>
         </div>
       </SidebarFooter>
-      
+
       <SidebarRail />
     </Sidebar>
   );
