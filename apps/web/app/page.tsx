@@ -568,11 +568,10 @@ function PricingPreview() {
               custom={i}
               whileHover={{ y: -4 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className={`relative rounded-2xl border bg-card p-6 transition-colors duration-300 overflow-hidden ${
-                plan.popular
+              className={`relative rounded-2xl border bg-card p-6 transition-colors duration-300 overflow-hidden ${plan.popular
                   ? "border-brand ring-1 ring-brand/20"
                   : "border-border/60 hover:border-brand/30"
-              }`}
+                }`}
             >
               {/* Corner decoration on popular plan */}
               {plan.popular && (
