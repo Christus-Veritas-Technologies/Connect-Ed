@@ -2,7 +2,7 @@
   "name": "server",
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir=dist --target=bun",
     "start": "bun run dist/index.js",
     "typecheck": "tsc --noEmit"
