@@ -809,18 +809,16 @@ function QuotaItem({
           <span className="text-sm font-medium">{label}</span>
         </div>
         <span
-          className={`text-sm font-medium ${
-            isHigh ? "text-destructive" : "text-muted-foreground"
-          }`}
+          className={`text-sm font-medium ${isHigh ? "text-destructive" : "text-muted-foreground"
+            }`}
         >
           {used}/{total}
         </span>
       </div>
       <div className="h-2 w-full rounded-full bg-muted/50">
         <div
-          className={`h-full rounded-full transition-all ${
-            isHigh ? "bg-destructive" : "bg-primary"
-          }`}
+          className={`h-full rounded-full transition-all ${isHigh ? "bg-destructive" : "bg-primary"
+            }`}
           style={{ width: `${percentage}%` }}
         />
       </div>
