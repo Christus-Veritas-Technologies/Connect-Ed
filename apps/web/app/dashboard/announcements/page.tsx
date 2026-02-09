@@ -159,8 +159,8 @@ function CommentItem({ comment }: { comment: AnnouncementComment }) {
   );
 }
 
-/* ─── Announcement Post ─── */
-function AnnouncementPost({
+/* ─── Announcement Card ─── */
+function AnnouncementCard({
   announcement,
   isAdmin,
   onDelete,
@@ -390,7 +390,7 @@ export default function AnnouncementsPage() {
         onSuccess: () => {
           setShowCreateDialog(false);
           setFormData({ heading: "", subheading: "", length: "" });
-          toast.success("Announcement posted!");
+          toast.success("Announcement published!");
         },
         onError: (err) => {
           const msg =
@@ -446,7 +446,7 @@ export default function AnnouncementsPage() {
             onClick={() => setShowCreateDialog(true)}
           >
             <Plus className="size-4" />
-            New Post
+            New Announcement
           </Button>
         )}
       </div>
@@ -473,7 +473,7 @@ export default function AnnouncementsPage() {
       ) : (
         <div className="rounded-lg border bg-card overflow-hidden">
           {announcements.map((announcement) => (
-            <AnnouncementPost
+            <AnnouncementCard
               key={announcement.id}
               announcement={announcement}
               isAdmin={isAdmin}
@@ -563,10 +563,10 @@ export default function AnnouncementsPage() {
                 {createMutation.isPending ? (
                   <>
                     <Loader2 className="size-4 animate-spin mr-2" />
-                    Posting...
+                    Publishing...
                   </>
                 ) : (
-                  "Post Announcement"
+                  "Publish Announcement"
                 )}
               </Button>
             </div>
