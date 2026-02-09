@@ -11,9 +11,7 @@ import {
   SentIcon,
   BookOpen01Icon,
   TeacherIcon,
-  Settings02Icon,
   Notification01Icon,
-  Calendar01Icon,
   Shield01Icon,
   ArrowRight01Icon,
   ArrowDown01Icon,
@@ -63,6 +61,12 @@ function AnimatedSection({
   );
 }
 
+/* ─────────────── Shared pattern bg ─────────────── */
+
+/** Subtle dot-grid pattern applied to alternating sections */
+const patternBg =
+  "bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[24px_24px]";
+
 /* ─────────────── Data ─────────────── */
 
 const features = [
@@ -70,66 +74,66 @@ const features = [
     icon: UserGroupIcon,
     title: "Student Management",
     description:
-      "Enrol, track, and manage students with detailed profiles, class assignments, and admission records.",
+      "Maintain comprehensive student records — admissions, profiles, class assignments, and enrolment history in one place.",
   },
   {
     icon: Money01Icon,
-    title: "Fee Tracking & Payments",
+    title: "Fee Collection & Tracking",
     description:
-      "Record fees, send automated reminders via SMS, email, or WhatsApp, and accept online payments.",
+      "Automate fee schedules, send reminders via SMS, email, or WhatsApp, and accept secure online payments.",
   },
   {
     icon: ChartHistogramIcon,
-    title: "Financial Reports",
+    title: "Financial Reporting",
     description:
-      "Generate term-based revenue, expense, and balance reports with exportable PDF summaries.",
+      "Generate term-based revenue, expense, and balance reports with exportable PDF summaries for audits and board meetings.",
   },
   {
     icon: BookOpen01Icon,
-    title: "Exam & Report Cards",
+    title: "Exams & Report Cards",
     description:
-      "Create exam sessions, record marks, and generate printable student report cards instantly.",
+      "Configure grading scales, record marks per subject, and distribute polished report cards to parents instantly.",
   },
   {
     icon: SentIcon,
-    title: "Class Chats",
+    title: "Class Communication",
     description:
-      "Real-time messaging between teachers, parents, and students within class groups.",
+      "Real-time messaging between teachers, parents, and students within class-level channels — no external apps needed.",
   },
   {
     icon: Notification01Icon,
     title: "Announcements",
     description:
-      "Broadcast school-wide or role-specific announcements with comments and engagement tracking.",
+      "Publish school-wide or role-targeted announcements with read tracking and threaded comments.",
   },
 ];
 
 const roleUSPs = [
   {
-    role: "Admins",
+    role: "Administrators",
     icon: Shield01Icon,
     color: "from-blue-500 to-blue-600",
-    bg: "bg-blue-50",
-    textColor: "text-blue-700",
+    accent: "border-blue-200 dark:border-blue-800",
+    dotColor: "bg-blue-500",
     points: [
-      "Full oversight of students, teachers, and finances",
-      "Detailed revenue & expense reports with PDF export",
+      "Complete oversight of staff, students, and finances",
+      "Revenue & expense reports with PDF export",
       "School-wide announcements and notifications",
-      "Manage fee structures, terms, and holidays",
-      "Configure messaging quotas (email, SMS, WhatsApp)",
+      "Manage fee structures, academic terms, and holidays",
+      "Configure messaging quotas per channel",
     ],
   },
   {
     role: "Teachers",
     icon: TeacherIcon,
     color: "from-emerald-500 to-emerald-600",
-    bg: "bg-emerald-50",
-    textColor: "text-emerald-700",
+    accent: "border-emerald-200 dark:border-emerald-800",
+    dotColor: "bg-emerald-500",
     points: [
       "View and manage assigned class rosters",
       "Record exam marks and generate report cards",
-      "Chat with parents and students in class groups",
-      "Post and engage with school announcements",
+      "Communicate with parents in class channels",
+      "Engage with school announcements",
       "Track student attendance and performance",
     ],
   },
@@ -137,27 +141,27 @@ const roleUSPs = [
     role: "Parents",
     icon: User02Icon,
     color: "from-violet-500 to-violet-600",
-    bg: "bg-violet-50",
-    textColor: "text-violet-700",
+    accent: "border-violet-200 dark:border-violet-800",
+    dotColor: "bg-violet-500",
     points: [
       "View your child's academic report cards",
       "Track fee balances and make online payments",
-      "Chat directly with class teachers",
+      "Message class teachers directly",
       "Receive announcements and school updates",
-      "Stay informed with real-time notifications",
+      "Real-time notifications on academic progress",
     ],
   },
   {
     role: "Students",
     icon: School01Icon,
     color: "from-amber-500 to-amber-600",
-    bg: "bg-amber-50",
-    textColor: "text-amber-700",
+    accent: "border-amber-200 dark:border-amber-800",
+    dotColor: "bg-amber-500",
     points: [
-      "View your own academic report card",
-      "Participate in class group chats",
-      "Stay up to date with school announcements",
-      "Access class information and schedules",
+      "Access personal academic report cards",
+      "Participate in class channels",
+      "Stay informed with school announcements",
+      "View class schedules and subject information",
       "Engage with teachers and classmates",
     ],
   },
@@ -173,39 +177,42 @@ function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg"
+      className={`fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg ${patternBg}`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center">
-            <span className="text-sm font-bold text-white">CE</span>
+          <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
+            <span className="text-sm font-bold text-white tracking-tight">CE</span>
           </div>
-          <span className="text-lg font-semibold text-foreground">
-            Connect-Ed
-          </span>
+          <div className="flex flex-col leading-none">
+            <span className="text-base font-semibold text-foreground tracking-tight">
+              Connect-Ed
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium -mt-0.5 hidden sm:block">
+              School Management
+            </span>
+          </div>
         </Link>
 
+        {/* Nav links */}
         <div className="hidden md:flex items-center gap-8">
-          <a
-            href="#features"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Features
-          </a>
-          <a
-            href="#roles"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Who It's For
-          </a>
-          <a
-            href="#pricing"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Pricing
-          </a>
+          {[
+            { label: "Features", href: "#features" },
+            { label: "Solutions", href: "#roles" },
+            { label: "Pricing", href: "#pricing" },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
 
+        {/* CTA */}
         <div className="flex items-center gap-3">
           {isLoading ? (
             <div className="h-10 w-28 rounded-lg bg-muted animate-pulse" />
@@ -213,10 +220,7 @@ function Navbar() {
             <Button size="default" asChild>
               <Link href="/dashboard">
                 Dashboard
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  className="size-4 ml-1"
-                />
+                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
               </Link>
             </Button>
           ) : (
@@ -226,11 +230,8 @@ function Navbar() {
               </Button>
               <Button size="sm" asChild>
                 <Link href="/auth/signup">
-                  Get Started
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    className="size-3.5 ml-0.5"
-                  />
+                  Start Free Trial
+                  <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 ml-0.5" />
                 </Link>
               </Button>
             </>
@@ -247,7 +248,7 @@ function Hero() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
-    <section className="relative pt-32 pb-20 overflow-hidden">
+    <section className="relative pt-32 pb-24 overflow-hidden">
       {/* Gradient background orbs */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -right-40 size-125 rounded-full bg-brand/5 blur-3xl" />
@@ -256,9 +257,9 @@ function Hero() {
 
       <div className="mx-auto max-w-6xl px-6 text-center">
         <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
-          <Badge variant="secondary" size="lg" className="mb-6 border border-border/60">
-            <HugeiconsIcon icon={School01Icon} className="size-3.5" />
-            School Management for the 21st Century
+          <Badge variant="secondary" size="lg" className="mb-6 border border-border/60 gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Trusted by Schools Across Zimbabwe
           </Badge>
         </motion.div>
 
@@ -269,10 +270,10 @@ function Hero() {
           custom={1}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
         >
-          Give Your School
+          The Operating System
           <br />
           <span className="bg-linear-to-r from-brand to-mid bg-clip-text text-transparent">
-            Superpowers
+            for Modern Schools
           </span>
         </motion.h1>
 
@@ -283,9 +284,9 @@ function Hero() {
           custom={2}
           className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed"
         >
-          Connect-Ed brings admins, teachers, parents, and students together on
-          one platform — from fee tracking and report cards to real-time
-          messaging and school-wide announcements.
+          Connect-Ed unifies administration, finance, academics, and
+          communication into a single platform — so your team can focus on
+          what matters most: delivering quality education.
         </motion.p>
 
         <motion.div
@@ -308,12 +309,12 @@ function Hero() {
             <>
               <Button size="xl" asChild>
                 <Link href="/auth/signup">
-                  Get Started Free
+                  Start Free Trial
                   <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
                 </Link>
               </Button>
               <Button variant="outline" size="xl" asChild>
-                <Link href="/auth/login">Log in</Link>
+                <Link href="/auth/login">Log in to Your Account</Link>
               </Button>
             </>
           )}
@@ -332,7 +333,7 @@ function Hero() {
           </span>
           <span className="flex items-center gap-1.5">
             <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-4 text-emerald-500" />
-            Set up in minutes
+            Onboard in under 10 minutes
           </span>
         </motion.div>
 
@@ -343,8 +344,11 @@ function Hero() {
           transition={{ delay: 1.5 }}
           className="mt-16"
         >
-          <a href="#features" className="inline-flex flex-col items-center gap-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors">
-            <span className="text-xs">Scroll to explore</span>
+          <a
+            href="#features"
+            className="inline-flex flex-col items-center gap-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            <span className="text-xs">Explore the platform</span>
             <motion.div
               animate={{ y: [0, 6, 0] }}
               transition={{ repeat: Infinity, duration: 1.5 }}
@@ -362,26 +366,26 @@ function Hero() {
 
 function Features() {
   return (
-    <section id="features" className="py-24 bg-muted/30">
+    <section id="features" className={`py-24 ${patternBg} bg-muted/30`}>
       <div className="mx-auto max-w-6xl px-6">
         <AnimatedSection className="text-center mb-16">
           <motion.div variants={fadeUp}>
             <Badge variant="secondary" size="lg" className="mb-4 border border-border/60">
-              Features
+              Platform Capabilities
             </Badge>
           </motion.div>
           <motion.h2
             variants={fadeUp}
             className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
           >
-            Everything Your School Needs
+            Everything You Need to Run Your School
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="mx-auto mt-4 max-w-xl text-muted-foreground"
           >
-            A comprehensive suite of tools designed to simplify school
-            administration and empower every stakeholder.
+            A comprehensive toolkit that replaces spreadsheets, paper registers,
+            and disconnected apps with one unified system.
           </motion.p>
         </AnimatedSection>
 
@@ -391,17 +395,22 @@ function Features() {
               key={feature.title}
               variants={fadeUp}
               custom={i}
-              className="group rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
+              className="group relative rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:border-brand/30 hover:shadow-md overflow-hidden"
             >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand group-hover:bg-brand group-hover:text-white transition-colors duration-300">
-                <HugeiconsIcon icon={feature.icon} className="size-5" />
+              {/* Subtle corner accent */}
+              <div className="absolute top-0 right-0 size-20 bg-linear-to-bl from-brand/5 to-transparent rounded-bl-3xl pointer-events-none" />
+
+              <div className="relative">
+                <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/10 group-hover:bg-brand group-hover:text-white group-hover:ring-brand/20 transition-all duration-300">
+                  <HugeiconsIcon icon={feature.icon} className="size-5" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">
+                  {feature.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {feature.description}
+                </p>
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">
-                {feature.title}
-              </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {feature.description}
-              </p>
             </motion.div>
           ))}
         </AnimatedSection>
@@ -419,21 +428,21 @@ function RoleUSPs() {
         <AnimatedSection className="text-center mb-16">
           <motion.div variants={fadeUp}>
             <Badge variant="secondary" size="lg" className="mb-4 border border-border/60">
-              Who It's For
+              Role-Based Solutions
             </Badge>
           </motion.div>
           <motion.h2
             variants={fadeUp}
             className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
           >
-            Built for Everyone in Your School
+            A Tailored Experience for Every Stakeholder
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="mx-auto mt-4 max-w-xl text-muted-foreground"
           >
-            Every role gets a tailored experience — from top-level admin
-            oversight to student self-service.
+            Whether you manage the school, teach a class, or check your
+            child&apos;s report — Connect-Ed adapts to your role.
           </motion.p>
         </AnimatedSection>
 
@@ -443,11 +452,16 @@ function RoleUSPs() {
               key={item.role}
               variants={fadeUp}
               custom={i}
-              className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
+              className={`group relative rounded-2xl border bg-card p-6 transition-all duration-300 hover:shadow-md overflow-hidden ${item.accent}`}
             >
-              <div className="flex items-center gap-3 mb-5">
+              {/* Top gradient strip */}
+              <div
+                className={`absolute top-0 inset-x-0 h-1 bg-linear-to-r ${item.color} opacity-60 group-hover:opacity-100 transition-opacity`}
+              />
+
+              <div className="flex items-center gap-3 mb-5 mt-1">
                 <div
-                  className={`flex size-10 items-center justify-center rounded-xl bg-linear-to-br ${item.color} text-white`}
+                  className={`flex size-10 items-center justify-center rounded-xl bg-linear-to-br ${item.color} text-white shadow-sm`}
                 >
                   <HugeiconsIcon icon={item.icon} className="size-5" />
                 </div>
@@ -457,10 +471,12 @@ function RoleUSPs() {
               </div>
               <ul className="space-y-3">
                 {item.points.map((point) => (
-                  <li key={point} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <HugeiconsIcon
-                      icon={CheckmarkCircle02Icon}
-                      className={`size-4 mt-0.5 shrink-0 ${item.textColor}`}
+                  <li
+                    key={point}
+                    className="flex items-start gap-2.5 text-sm text-muted-foreground"
+                  >
+                    <span
+                      className={`size-1.5 rounded-full ${item.dotColor} mt-1.5 shrink-0`}
                     />
                     <span>{point}</span>
                   </li>
@@ -482,12 +498,12 @@ function PricingPreview() {
       name: "Lite",
       price: "$50",
       period: "/term",
-      description: "For small schools with up to 500 students",
+      description: "Small schools — up to 500 students",
       features: [
         "Student management",
         "Fee tracking & reminders",
         "Expense tracking",
-        "Detailed reports",
+        "Financial reports (PDF export)",
         "Email, WhatsApp & SMS messaging",
       ],
     },
@@ -495,13 +511,13 @@ function PricingPreview() {
       name: "Growth",
       price: "$90",
       period: "/term",
-      description: "For schools with 500–1,200 students",
+      description: "Mid-size schools — 500 to 1,200 students",
       popular: true,
       features: [
         "Everything in Lite",
         "Teacher portal & management",
         "Class management",
-        "Class group chats",
+        "Class communication channels",
         "Higher messaging quotas",
       ],
     },
@@ -509,19 +525,19 @@ function PricingPreview() {
       name: "Enterprise",
       price: "$150",
       period: "/term",
-      description: "For large schools with 2,000–3,000 students",
+      description: "Large institutions — 2,000 to 3,000 students",
       features: [
         "Everything in Growth",
-        "Student & Parent portals",
+        "Student & parent portals",
         "Online fee payments",
         "Exam & report card system",
-        "24/7 premium support",
+        "Dedicated priority support",
       ],
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 bg-muted/30">
+    <section id="pricing" className={`py-24 ${patternBg} bg-muted/30`}>
       <div className="mx-auto max-w-6xl px-6">
         <AnimatedSection className="text-center mb-16">
           <motion.div variants={fadeUp}>
@@ -533,14 +549,14 @@ function PricingPreview() {
             variants={fadeUp}
             className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
           >
-            Simple, Transparent Pricing
+            Transparent Pricing, No Surprises
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="mx-auto mt-4 max-w-xl text-muted-foreground"
           >
-            Choose a plan that fits your school. All plans include a one-time
-            setup fee.
+            Select a plan that matches your institution&apos;s size. All plans
+            include a one-time setup fee and full onboarding support.
           </motion.p>
         </AnimatedSection>
 
@@ -550,15 +566,26 @@ function PricingPreview() {
               key={plan.name}
               variants={fadeUp}
               custom={i}
-              className={`relative rounded-2xl border bg-card p-6 shadow-sm ${plan.popular ? "border-brand shadow-md ring-1 ring-brand/20" : "border-border/60"}`}
+              whileHover={{ y: -4 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className={`relative rounded-2xl border bg-card p-6 transition-colors duration-300 overflow-hidden ${
+                plan.popular
+                  ? "border-brand ring-1 ring-brand/20"
+                  : "border-border/60 hover:border-brand/30"
+              }`}
             >
+              {/* Corner decoration on popular plan */}
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge variant="brand" size="sm">
-                    Most Popular
-                  </Badge>
-                </div>
+                <>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge variant="brand" size="sm">
+                      Recommended
+                    </Badge>
+                  </div>
+                  <div className="absolute top-0 right-0 size-24 bg-linear-to-bl from-brand/5 to-transparent pointer-events-none" />
+                </>
               )}
+
               <h3 className="text-lg font-semibold text-foreground">
                 {plan.name}
               </h3>
@@ -575,7 +602,10 @@ function PricingPreview() {
               </div>
               <ul className="space-y-2.5 mb-6">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <li
+                    key={f}
+                    className="flex items-center gap-2 text-sm text-muted-foreground"
+                  >
                     <HugeiconsIcon
                       icon={CheckmarkCircle02Icon}
                       className="size-4 text-emerald-500 shrink-0"
@@ -589,7 +619,9 @@ function PricingPreview() {
                 className="w-full"
                 asChild
               >
-                <Link href="/auth/signup">Get Started</Link>
+                <Link href="/auth/signup">
+                  {plan.popular ? "Get Started" : "Choose Plan"}
+                </Link>
               </Button>
             </motion.div>
           ))}
@@ -615,13 +647,15 @@ function CTASection() {
             {/* Decorative circles */}
             <div className="absolute -top-20 -right-20 size-60 rounded-full bg-white/10 blur-2xl" />
             <div className="absolute -bottom-20 -left-20 size-60 rounded-full bg-white/10 blur-2xl" />
+            {/* Subtle dot pattern overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[20px_20px]" />
 
             <h2 className="relative text-3xl sm:text-4xl font-bold tracking-tight">
-              Ready to Transform Your School?
+              Ready to Modernise Your School?
             </h2>
             <p className="relative mx-auto mt-4 max-w-lg text-white/80">
-              Join the next generation of school management. Get started in
-              minutes — no credit card required.
+              Join institutions across Zimbabwe that have streamlined their
+              operations with Connect-Ed. Set up takes less than 10 minutes.
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
               {isLoading ? (
@@ -644,7 +678,7 @@ function CTASection() {
                   asChild
                 >
                   <Link href="/auth/signup">
-                    Get Started Free
+                    Start Your Free Trial
                     <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
                   </Link>
                 </Button>
@@ -661,32 +695,81 @@ function CTASection() {
 
 function Footer() {
   return (
-    <footer className="border-t border-border/40 py-12">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-linear-to-br from-brand to-mid flex items-center justify-center">
-              <span className="text-xs font-bold text-white">CE</span>
+    <footer className={`border-t border-border/40 ${patternBg} bg-muted/20`}>
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="grid gap-8 sm:grid-cols-3">
+          {/* Brand column */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
+                <span className="text-xs font-bold text-white tracking-tight">
+                  CE
+                </span>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-semibold text-foreground tracking-tight">
+                  Connect-Ed
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium -mt-0.5">
+                  School Management
+                </span>
+              </div>
             </div>
-            <span className="text-sm font-semibold text-foreground">
-              Connect-Ed
-            </span>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              The unified platform for school administration, finance,
+              academics, and communication.
+            </p>
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">
-              Features
-            </a>
-            <a href="#roles" className="hover:text-foreground transition-colors">
-              Who It's For
-            </a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">
-              Pricing
-            </a>
+          {/* Navigation column */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">Platform</h4>
+            <div className="flex flex-col gap-2">
+              {[
+                { label: "Features", href: "#features" },
+                { label: "Solutions", href: "#roles" },
+                { label: "Pricing", href: "#pricing" },
+              ].map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
           </div>
 
+          {/* Contact column */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">
+              Get Started
+            </h4>
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/auth/signup"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+              >
+                Create an Account
+              </Link>
+              <Link
+                href="/auth/login"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+              >
+                Log in
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-10 pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Connect-Ed. All rights reserved.
+            &copy; {new Date().getFullYear()} Connect-Ed. All rights reserved.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Built in Zimbabwe 🇿🇼
           </p>
         </div>
       </div>
