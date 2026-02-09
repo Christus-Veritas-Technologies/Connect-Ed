@@ -151,11 +151,10 @@ export default function StudentReportsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             {title}
           </h1>
-          <p className="text-muted-foreground">{subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         {isAdmin && reports.length > 0 && (
           <Button
@@ -177,20 +176,20 @@ export default function StudentReportsPage() {
           <Card className="border-brand/20">
             <CardContent className="pt-5 pb-4 space-y-1">
               <p className="text-xs text-muted-foreground">Total Students</p>
-              <p className="text-2xl font-bold">{insights.totalStudents}</p>
+              <p className="text-2xl font-semibold">{insights.totalStudents}</p>
             </CardContent>
           </Card>
           <Card className="border-blue-200">
             <CardContent className="pt-5 pb-4 space-y-2">
               <p className="text-xs text-muted-foreground">School Average</p>
-              <p className="text-2xl font-bold text-blue-600">{insights.schoolAverage}%</p>
+              <p className="text-2xl font-semibold text-blue-600">{insights.schoolAverage}%</p>
               <Progress value={insights.schoolAverage} className="h-1.5" />
             </CardContent>
           </Card>
           <Card className="border-green-200">
             <CardContent className="pt-5 pb-4 space-y-2">
               <p className="text-xs text-muted-foreground">School Pass Rate</p>
-              <p className="text-2xl font-bold text-green-600">{insights.schoolPassRate}%</p>
+              <p className="text-2xl font-semibold text-green-600">{insights.schoolPassRate}%</p>
               <Progress value={insights.schoolPassRate} className="h-1.5" />
             </CardContent>
           </Card>

@@ -30,11 +30,10 @@ export default function MyChildReportPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             My Child&apos;s Report
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Academic performance report for {singleReport.student.name}
           </p>
         </div>
@@ -64,11 +63,10 @@ export default function MyChildReportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
+        <h1 className="text-2xl font-semibold text-foreground">
           My Children&apos;s Reports
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           Academic performance reports for your children
         </p>
       </div>

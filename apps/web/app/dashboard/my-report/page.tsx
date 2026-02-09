@@ -20,11 +20,10 @@ export default function MyReportPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={ChartHistogramIcon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             My Academic Report
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Track your performance across all subjects
           </p>
         </div>

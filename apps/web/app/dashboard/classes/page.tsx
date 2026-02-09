@@ -220,7 +220,7 @@ export default function ClassesPage() {
         <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
           <HugeiconsIcon icon={BookmarkAdd01Icon} size={48} className="text-muted-foreground" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Class Management</h1>
+        <h1 className="text-2xl font-semibold mb-2">Class Management</h1>
         <p className="text-muted-foreground mb-6 max-w-md">
           Class management is available in Growth and Enterprise plans.
         </p>
@@ -240,11 +240,10 @@ export default function ClassesPage() {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={BookmarkAdd01Icon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             Classes
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage school classes and assign teachers
           </p>
         </div>
@@ -266,7 +265,7 @@ export default function ClassesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Classes</p>
-                  <p className="text-2xl font-bold mt-1 text-brand">{totalClasses}</p>
+                  <p className="text-2xl font-semibold mt-1 text-brand">{totalClasses}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-brand/10">
                   <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-brand" />
@@ -286,7 +285,7 @@ export default function ClassesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600">{activeClasses}</p>
+                  <p className="text-2xl font-semibold mt-1 text-green-600">{activeClasses}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-green-100">
                   <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-green-600" />
@@ -306,7 +305,7 @@ export default function ClassesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">With Teachers</p>
-                  <p className="text-2xl font-bold mt-1 text-blue-600">{classesWithTeachers}</p>
+                  <p className="text-2xl font-semibold mt-1 text-blue-600">{classesWithTeachers}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-blue-100">
                   <HugeiconsIcon icon={TeacherIcon} size={24} className="text-blue-600" />
@@ -326,7 +325,7 @@ export default function ClassesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-bold mt-1 text-purple-600">{totalStudents}</p>
+                  <p className="text-2xl font-semibold mt-1 text-purple-600">{totalStudents}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-purple-100">
                   <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-purple-600" />

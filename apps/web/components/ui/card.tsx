@@ -16,9 +16,9 @@ function Card({ className, hover = false, ...props }: CardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      whileHover={hover ? { 
-        y: -2, 
-        boxShadow: "0 12px 24px -8px rgba(0, 0, 0, 0.08)" 
+      whileHover={hover ? {
+        y: -2,
+        boxShadow: "0 12px 24px -8px rgba(0, 0, 0, 0.08)"
       } : undefined}
       className={cn(
         "bg-card text-card-foreground flex flex-col gap-5 rounded-xl border border-border/60 p-5 shadow-sm h-full w-full",

@@ -78,7 +78,7 @@ export function TeacherDashboard() {
     <div className="space-y-6">
       {/* Welcome Header */}
       <div>
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-2xl font-semibold text-foreground">
           Welcome, {user?.name?.split(" ")[0]}
         </h1>
         <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export function TeacherDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">My Classes</p>
-                  <p className="text-3xl font-bold">{data.classes.length}</p>
+                  <p className="text-3xl font-semibold">{data.classes.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gradient-to-br from-brand to-mid">
                   <HugeiconsIcon icon={School01Icon} className="size-5 text-white" />
@@ -127,7 +127,7 @@ export function TeacherDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="text-3xl font-bold">{totalStudents}</p>
+                  <p className="text-3xl font-semibold">{totalStudents}</p>
                   {totalCapacity > 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
                       {Math.round((totalStudents / totalCapacity) * 100)}% of capacity

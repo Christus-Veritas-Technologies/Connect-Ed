@@ -175,7 +175,7 @@ export default function ClassDetailPage() {
   if (!classData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
-        <h1 className="text-2xl font-bold mb-2">Class not found</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Class not found</h1>
         <Button onClick={() => router.push("/dashboard/classes")} className="mt-4">
           Back to Classes
         </Button>

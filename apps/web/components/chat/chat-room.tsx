@@ -68,9 +68,13 @@ export function ChatRoom({ classId, className }: ChatRoomProps) {
         classId,
         enabled: true,
         onSystemMessage: (msg) => {
-            setSystemMessages((prev) => [...prev.slice(-4), msg]);
-            // Auto-dismiss after 5s
-            setTimeout(() => setSystemMessages((prev) => prev.slice(1)), 5000);
+            // Filter out join/leave messages to prevent spam during reconnections
+            const shouldDisplay = !msg.includes("joined the chat") && !msg.includes("left the chat");
+            if (shouldDisplay) {
+                setSystemMessages((prev) => [...prev.slice(-4), msg]);
+                // Auto-dismiss after 5s
+                setTimeout(() => setSystemMessages((prev) => prev.slice(1)), 5000);
+            }
         },
     });
 

@@ -160,8 +160,8 @@ export default function FeesPage() {
     }
   };
 
-  const paymentFormError = recordPaymentMutation.error instanceof ApiError 
-    ? recordPaymentMutation.error.message 
+  const paymentFormError = recordPaymentMutation.error instanceof ApiError
+    ? recordPaymentMutation.error.message
     : recordPaymentMutation.error?.message;
 
   // Export all fee records as CSV
@@ -265,11 +265,10 @@ export default function FeesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={Money01Icon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             Fees
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Track student fees and payments
           </p>
         </div>
@@ -297,7 +296,7 @@ export default function FeesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Fees Paid This Term</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600">
+                  <p className="text-2xl font-semibold mt-1 text-green-600">
                     ${(feeStats?.feesPaidThisTerm || 0).toLocaleString()}
                   </p>
                   {feeStats && (
@@ -318,7 +317,7 @@ export default function FeesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Unpaid Fees This Term</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-600">
+                  <p className="text-2xl font-semibold mt-1 text-orange-600">
                     ${(feeStats?.unpaidFeesThisTerm || 0).toLocaleString()}
                   </p>
                   {feeStats && (
@@ -339,7 +338,7 @@ export default function FeesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Fees Paid This Year</p>
-                  <p className="text-2xl font-bold mt-1 text-blue-600">
+                  <p className="text-2xl font-semibold mt-1 text-blue-600">
                     ${(feeStats?.feesPaidThisYear || 0).toLocaleString()}
                   </p>
                   {feeStats && (
@@ -360,7 +359,7 @@ export default function FeesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Unpaid This Year</p>
-                  <p className="text-2xl font-bold mt-1 text-red-600">
+                  <p className="text-2xl font-semibold mt-1 text-red-600">
                     ${(feeStats?.unpaidFeesThisYear || 0).toLocaleString()}
                   </p>
                   {feeStats && (

@@ -113,7 +113,7 @@ export default function StudentDetailPage() {
   if (!student) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
-        <h1 className="text-2xl font-bold mb-2">Student not found</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Student not found</h1>
         <Button onClick={() => router.push("/dashboard/students")} className="mt-4">
           Back to Students
         </Button>
@@ -219,7 +219,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-green-100">Total Fees</p>
-              <p className="text-3xl font-bold mt-2">${totalFees.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">${totalFees.toFixed(2)}</p>
             </div>
           </div>
         </motion.div>
@@ -231,7 +231,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Paid</p>
-              <p className="text-3xl font-bold mt-2">${totalPaid.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">${totalPaid.toFixed(2)}</p>
             </div>
           </div>
         </motion.div>
@@ -243,7 +243,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-orange-100">Balance</p>
-              <p className="text-3xl font-bold mt-2">${balance.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">${balance.toFixed(2)}</p>
             </div>
           </div>
         </motion.div>

@@ -144,11 +144,10 @@ export default function ReceptionistsPage() {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={UserGroupIcon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             Receptionists
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage receptionist accounts for your school
           </p>
         </div>
@@ -170,7 +169,7 @@ export default function ReceptionistsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Receptionists</p>
-                  <p className="text-2xl font-bold mt-1">{receptionists.length}</p>
+                  <p className="text-2xl font-semibold mt-1">{receptionists.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-brand/10">
                   <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-brand" />
@@ -190,7 +189,7 @@ export default function ReceptionistsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600">{activeCount}</p>
+                  <p className="text-2xl font-semibold mt-1 text-green-600">{activeCount}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-green-100">
                   <HugeiconsIcon icon={UserCheck01Icon} size={24} className="text-green-600" />
@@ -210,7 +209,7 @@ export default function ReceptionistsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Inactive</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-600">{inactiveCount}</p>
+                  <p className="text-2xl font-semibold mt-1 text-orange-600">{inactiveCount}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-orange-100">
                   <HugeiconsIcon icon={Cancel01Icon} size={24} className="text-orange-600" />

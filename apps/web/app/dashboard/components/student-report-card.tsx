@@ -70,7 +70,7 @@ export function ReportOverviewCards({ report }: { report: StudentReportData }) {
           <Card>
             <CardContent className="pt-5 pb-4 space-y-2">
               <p className="text-xs text-muted-foreground font-medium">{stat.label}</p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+              <p className={`text-2xl font-semibold ${stat.color}`}>{stat.value}</p>
               {stat.progress !== undefined && (
                 <Progress value={stat.progress} className="h-1.5" />
               )}

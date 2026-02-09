@@ -150,8 +150,8 @@ function NotificationItem({
             )}
             <p
               className={`text-sm leading-snug ${!notification.isRead
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground"
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
                 }`}
             >
               {notification.title}
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`

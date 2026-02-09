@@ -107,12 +107,13 @@ export default function ReportsPage() {
   const [customDateTo, setCustomDateTo] = useState("");
   const [financialReport, setFinancialReport] = useState<FinancialReport | null>(null);
   const [managerialReport, setManagerialReport] = useState<ManagerialReport | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
+  const [isLoadingManagerial, setIsLoadingManagerial] = useState(false);
 
-  // Fetch reports based on active tab
+  // Fetch financial report
   useEffect(() => {
-    const fetchReports = async () => {
-      setIsLoading(true);
+    const fetchFinancialReport = async () => {
+      setIsLoadingFinancial(true);
       try {
         const params = new URLSearchParams();
         params.set("period", timePeriod);
@@ -121,23 +122,43 @@ export default function ReportsPage() {
           if (customDateTo) params.set("dateTo", customDateTo);
         }
 
-        if (activeTab === "financial") {
-          const data = await api.get(`/reports/financial?${params.toString()}`);
-          setFinancialReport(data);
-        } else {
-          const data = await api.get(`/reports/managerial?${params.toString()}`);
-          setManagerialReport(data);
-        }
+        const data = await api.get(`/reports/financial?${params.toString()}`);
+        setFinancialReport(data);
       } catch (error) {
-        console.error(`Failed to fetch ${activeTab} report:`, error);
-        toast.error(`Failed to load ${activeTab} report`);
+        console.error("Failed to fetch financial report:", error);
+        toast.error("Failed to load financial report");
       } finally {
-        setIsLoading(false);
+        setIsLoadingFinancial(false);
       }
     };
 
-    fetchReports();
-  }, [activeTab, timePeriod, customDateFrom, customDateTo]);
+    fetchFinancialReport();
+  }, [timePeriod, customDateFrom, customDateTo]);
+
+  // Fetch managerial report
+  useEffect(() => {
+    const fetchManagerialReport = async () => {
+      setIsLoadingManagerial(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("period", timePeriod);
+        if (timePeriod === "custom") {
+          if (customDateFrom) params.set("dateFrom", customDateFrom);
+          if (customDateTo) params.set("dateTo", customDateTo);
+        }
+
+        const data = await api.get(`/reports/managerial?${params.toString()}`);
+        setManagerialReport(data);
+      } catch (error) {
+        console.error("Failed to fetch managerial report:", error);
+        toast.error("Failed to load managerial report");
+      } finally {
+        setIsLoadingManagerial(false);
+      }
+    };
+
+    fetchManagerialReport();
+  }, [timePeriod, customDateFrom, customDateTo]);
 
   // Export Financial Report as CSV
   const handleExportFinancialCSV = () => {
@@ -246,14 +267,6 @@ export default function ReportsPage() {
     toast.success("Managerial report exported as PDF");
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
@@ -263,11 +276,10 @@ export default function ReportsPage() {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <BarChart3 size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             School Reports
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Comprehensive analytics and insights
           </p>
         </div>
@@ -355,7 +367,11 @@ export default function ReportsPage() {
         </TabsList>
         {/* Financial Report Tab */}
         <TabsContent value="financial" className="space-y-6">
-          {financialReport ? (
+          {isLoadingFinancial ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : financialReport ? (
             <>
               {/* Financial Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -365,7 +381,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Fees Collected</p>
-                          <p className="text-2xl font-bold text-green-600 mt-1">
+                          <p className="text-2xl font-semibold text-green-600 mt-1">
                             ${financialReport.totalFeesCollected.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -386,7 +402,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Pending Fees</p>
-                          <p className="text-2xl font-bold text-yellow-600 mt-1">
+                          <p className="text-2xl font-semibold text-yellow-600 mt-1">
                             ${financialReport.totalFeesPending.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -407,7 +423,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Overdue Fees</p>
-                          <p className="text-2xl font-bold text-red-600 mt-1">
+                          <p className="text-2xl font-semibold text-red-600 mt-1">
                             ${financialReport.totalFeesOverdue.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -428,7 +444,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Net Income</p>
-                          <p className={`text-2xl font-bold mt-1 ${financialReport.netIncome >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          <p className={`text-2xl font-semibold mt-1 ${financialReport.netIncome >= 0 ? "text-green-600" : "text-red-600"}`}>
                             ${financialReport.netIncome.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -527,19 +543,19 @@ export default function ReportsPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-3xl font-bold text-gray-900">{financialReport.totalStudents}</p>
+                      <p className="text-3xl font-semibold text-gray-900">{financialReport.totalStudents}</p>
                       <p className="text-sm text-muted-foreground mt-1">Total Students</p>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <p className="text-3xl font-bold text-green-600">{financialReport.studentsWhoPaid}</p>
+                      <p className="text-3xl font-semibold text-green-600">{financialReport.studentsWhoPaid}</p>
                       <p className="text-sm text-muted-foreground mt-1">Fully Paid</p>
                     </div>
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <p className="text-3xl font-bold text-yellow-600">{financialReport.studentsWithPending}</p>
+                      <p className="text-3xl font-semibold text-yellow-600">{financialReport.studentsWithPending}</p>
                       <p className="text-sm text-muted-foreground mt-1">Pending</p>
                     </div>
                     <div className="text-center p-4 bg-red-50 rounded-lg">
-                      <p className="text-3xl font-bold text-red-600">{financialReport.studentsWithOverdue}</p>
+                      <p className="text-3xl font-semibold text-red-600">{financialReport.studentsWithOverdue}</p>
                       <p className="text-sm text-muted-foreground mt-1">Overdue</p>
                     </div>
                   </div>
@@ -586,7 +602,11 @@ export default function ReportsPage() {
 
         {/* Managerial Report Tab */}
         <TabsContent value="managerial" className="space-y-6">
-          {managerialReport ? (
+          {isLoadingManagerial ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : managerialReport ? (
             <>
               {/* Managerial Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -596,7 +616,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Teachers</p>
-                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                          <p className="text-2xl font-semibold text-blue-600 mt-1">
                             {managerialReport.totalTeachers}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -617,7 +637,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Students</p>
-                          <p className="text-2xl font-bold text-green-600 mt-1">
+                          <p className="text-2xl font-semibold text-green-600 mt-1">
                             {managerialReport.totalStudents}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -638,7 +658,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Parents</p>
-                          <p className="text-2xl font-bold text-purple-600 mt-1">
+                          <p className="text-2xl font-semibold text-purple-600 mt-1">
                             {managerialReport.totalParents}
                           </p>
                         </div>
@@ -656,7 +676,7 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Student Ratio</p>
-                          <p className="text-2xl font-bold text-orange-600 mt-1">
+                          <p className="text-2xl font-semibold text-orange-600 mt-1">
                             {managerialReport.studentTeacherRatio}:1
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">Students per teacher</p>
@@ -735,15 +755,15 @@ export default function ReportsPage() {
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <p className="text-3xl font-bold text-blue-600">{managerialReport.studentsByGender.male}</p>
+                      <p className="text-3xl font-semibold text-blue-600">{managerialReport.studentsByGender.male}</p>
                       <p className="text-sm text-muted-foreground mt-1">Male</p>
                     </div>
                     <div className="text-center p-4 bg-pink-50 rounded-lg">
-                      <p className="text-3xl font-bold text-pink-600">{managerialReport.studentsByGender.female}</p>
+                      <p className="text-3xl font-semibold text-pink-600">{managerialReport.studentsByGender.female}</p>
                       <p className="text-sm text-muted-foreground mt-1">Female</p>
                     </div>
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-3xl font-bold text-gray-600">{managerialReport.studentsByGender.other}</p>
+                      <p className="text-3xl font-semibold text-gray-600">{managerialReport.studentsByGender.other}</p>
                       <p className="text-sm text-muted-foreground mt-1">Other</p>
                     </div>
                   </div>

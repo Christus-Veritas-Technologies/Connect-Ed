@@ -176,7 +176,7 @@ export function ParentDashboard() {
     <div className="space-y-6">
       {/* Welcome Header */}
       <div>
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-2xl font-semibold text-foreground">
           Welcome, {user?.name?.split(" ")[0]}
         </h1>
         <div className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export function ParentDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">My Children</p>
-                  <p className="text-3xl font-bold">{data.summary.totalChildren}</p>
+                  <p className="text-3xl font-semibold">{data.summary.totalChildren}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gradient-to-br from-brand to-mid">
                   <HugeiconsIcon icon={UserIcon} className="size-5 text-white" />
@@ -216,7 +216,7 @@ export function ParentDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Balance</p>
-                  <p className="text-3xl font-bold">${data.summary.totalBalance.toLocaleString()}</p>
+                  <p className="text-3xl font-semibold">${data.summary.totalBalance.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Outstanding fees</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gradient-to-br from-warning to-orange-600">
@@ -234,7 +234,7 @@ export function ParentDashboard() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Overdue</p>
-                    <p className="text-3xl font-bold text-destructive">
+                    <p className="text-3xl font-semibold text-destructive">
                       ${data.summary.totalOverdue.toLocaleString()}
                     </p>
                     <p className="text-xs text-destructive">Requires attention</p>

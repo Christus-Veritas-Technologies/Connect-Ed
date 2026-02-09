@@ -209,13 +209,10 @@ export default function StudentsPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-brand to-purple-600">
-              <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-white" />
-            </div>
+          <h1 className="text-2xl font-semibold text-foreground">
             Students
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage student records and enrollments
           </p>
         </div>
@@ -237,7 +234,7 @@ export default function StudentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-bold mt-1">{pagination.total}</p>
+                  <p className="text-2xl font-semibold mt-1">{pagination.total}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-brand/10">
                   <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-brand" />
@@ -257,7 +254,7 @@ export default function StudentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600">{activeStudents}</p>
+                  <p className="text-2xl font-semibold mt-1 text-green-600">{activeStudents}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-green-100">
                   <HugeiconsIcon icon={UserCheck01Icon} size={24} className="text-green-600" />
@@ -277,7 +274,7 @@ export default function StudentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Suspended</p>
-                  <p className="text-2xl font-bold mt-1 text-red-600">{suspendedStudents}</p>
+                  <p className="text-2xl font-semibold mt-1 text-red-600">{suspendedStudents}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-red-100">
                   <HugeiconsIcon icon={UserRemove01Icon} size={24} className="text-red-600" />
@@ -297,7 +294,7 @@ export default function StudentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Absent</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-600">{absentStudents}</p>
+                  <p className="text-2xl font-semibold mt-1 text-orange-600">{absentStudents}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-orange-100">
                   <HugeiconsIcon icon={PauseIcon} size={24} className="text-orange-600" />

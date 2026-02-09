@@ -144,7 +144,7 @@ export function StudentDashboard() {
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-semibold text-foreground">
             Welcome, {data.student.firstName}
           </h1>
           <div className="flex items-center gap-2">
@@ -259,20 +259,20 @@ export function StudentDashboard() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold">${data.summary.totalFees.toLocaleString()}</p>
+                <p className="text-2xl font-semibold">${data.summary.totalFees.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Total Fees</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-success/10">
-                <p className="text-2xl font-bold text-success">${data.summary.totalPaid.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-success">${data.summary.totalPaid.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Paid</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-warning/10">
-                <p className="text-2xl font-bold text-warning">${data.summary.balance.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-warning">${data.summary.balance.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Balance</p>
               </div>
               {data.summary.overdueFees > 0 && (
                 <div className="text-center p-4 rounded-lg bg-destructive/10">
-                  <p className="text-2xl font-bold text-destructive">${data.summary.overdueFees.toLocaleString()}</p>
+                  <p className="text-2xl font-semibold text-destructive">${data.summary.overdueFees.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Overdue</p>
                 </div>
               )}

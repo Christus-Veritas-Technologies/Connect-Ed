@@ -63,7 +63,7 @@ reports.get("/financial", async (c) => {
         _count: true,
       }),
       db.fee.aggregate({
-        where: { schoolId, status: { in: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID] }, createdAt: { gte: startDate, lte: endDate } },
+        where: { schoolId, status: { in: [FeeStatus.PENDING, FeeStatus.PARTIAL] }, createdAt: { gte: startDate, lte: endDate } },
         _sum: { amount: true, paidAmount: true },
         _count: true,
       }),
@@ -98,7 +98,7 @@ reports.get("/financial", async (c) => {
           schoolId,
           fees: {
             some: {
-              status: { in: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID] },
+              status: { in: [FeeStatus.PENDING, FeeStatus.PARTIAL] },
               createdAt: { gte: startDate, lte: endDate },
             },
           },

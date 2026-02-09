@@ -12,7 +12,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 
+        default:
           "bg-brand text-white shadow-sm hover:bg-brand-hover active:scale-[0.98]",
         destructive:
           "bg-destructive text-white shadow-sm hover:bg-destructive/90 active:scale-[0.98]",
@@ -22,7 +22,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.98]",
         ghost:
           "hover:bg-accent hover:text-accent-foreground",
-        link: 
+        link:
           "text-brand underline-offset-4 hover:underline",
         success:
           "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98]",
@@ -51,7 +51,7 @@ const MotionButton = motion.button
 
 interface ButtonProps
   extends Omit<HTMLMotionProps<"button">, "children">,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean
   children?: React.ReactNode
   loading?: boolean

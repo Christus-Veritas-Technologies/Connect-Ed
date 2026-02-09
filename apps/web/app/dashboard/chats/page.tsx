@@ -37,7 +37,7 @@ export default function ChatsPage() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Class Chats</h1>
+                <h1 className="text-2xl font-semibold text-foreground">Class Chats</h1>
                 <p className="text-gray-500 mt-1">
                     {user?.role === "ADMIN"
                         ? "View and manage all class chat rooms"

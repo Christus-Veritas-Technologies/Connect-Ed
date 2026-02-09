@@ -276,7 +276,7 @@ export function AdminDashboard() {
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-semibold text-foreground">
             Welcome back, {user?.name?.split(" ")[0]}
           </h1>
           <div className="flex items-center gap-2 mt-1">
@@ -861,7 +861,7 @@ function StatCard({
             </div>
             <div className="space-y-1">
               <p className={`text-sm ${isFeatured ? "text-white" : "text-muted-foreground"}`}>{label}</p>
-              <p className={`text-2xl font-bold ${isFeatured ? "text-white" : ""}`}>{value}</p>
+              <p className={`text-2xl font-semibold ${isFeatured ? "text-white" : ""}`}>{value}</p>
               <p className={`text-xs ${isFeatured ? "text-gray-200" : "text-muted-foreground"}`}>{subtext}</p>
               {trend !== undefined && (
                 <p className={`text-sm flex items-center gap-1 mt-2 ${

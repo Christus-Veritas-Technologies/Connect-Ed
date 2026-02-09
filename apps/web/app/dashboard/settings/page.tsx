@@ -194,8 +194,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Manage your school settings and preferences
         </p>
       </div>
@@ -685,7 +685,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold">
+                    <p className="text-2xl font-semibold">
                       ${planPricing?.monthlyEstimate}/mo
                     </p>
                     <p className="text-sm text-muted-foreground">

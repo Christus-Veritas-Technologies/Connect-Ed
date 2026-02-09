@@ -223,7 +223,7 @@ export default function TeachersPage() {
         <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
           <HugeiconsIcon icon={TeacherIcon} size={48} className="text-muted-foreground" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Teacher Management</h1>
+        <h1 className="text-2xl font-semibold mb-2">Teacher Management</h1>
         <p className="text-muted-foreground mb-6 max-w-md">
           Teacher management is available in Growth and Enterprise plans.
         </p>
@@ -243,11 +243,10 @@ export default function TeachersPage() {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={TeacherIcon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             Teachers
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage teacher accounts and class assignments
           </p>
         </div>
@@ -269,7 +268,7 @@ export default function TeachersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Teachers</p>
-                  <p className="text-2xl font-bold mt-1">{teachers.length}</p>
+                  <p className="text-2xl font-semibold mt-1">{teachers.length}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-brand/10">
                   <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-brand" />
@@ -289,7 +288,7 @@ export default function TeachersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600">{activeTeachers}</p>
+                  <p className="text-2xl font-semibold mt-1 text-green-600">{activeTeachers}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-green-100">
                   <HugeiconsIcon icon={UserCheck01Icon} size={24} className="text-green-600" />
@@ -309,7 +308,7 @@ export default function TeachersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">With Classes</p>
-                  <p className="text-2xl font-bold mt-1 text-blue-600">{teachersWithClasses}</p>
+                  <p className="text-2xl font-semibold mt-1 text-blue-600">{teachersWithClasses}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-blue-100">
                   <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-blue-600" />
@@ -329,7 +328,7 @@ export default function TeachersPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Without Classes</p>
-                  <p className="text-2xl font-bold mt-1 text-orange-600">{teachersWithoutClasses}</p>
+                  <p className="text-2xl font-semibold mt-1 text-orange-600">{teachersWithoutClasses}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-orange-100">
                   <HugeiconsIcon icon={Cancel01Icon} size={24} className="text-orange-600" />
@@ -789,8 +788,8 @@ export default function TeachersPage() {
                             });
                           }}
                           className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
-                              ? "bg-brand/10 text-brand border border-brand/30"
-                              : "hover:bg-muted"
+                            ? "bg-brand/10 text-brand border border-brand/30"
+                            : "hover:bg-muted"
                             }`}
                         >
                           <span>{subject.name}</span>
@@ -844,8 +843,8 @@ export default function TeachersPage() {
                               setClassSearch("");
                             }}
                             className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${isSelected
-                                ? "bg-brand/10"
-                                : "hover:bg-muted cursor-pointer"
+                              ? "bg-brand/10"
+                              : "hover:bg-muted cursor-pointer"
                               }`}
                           >
                             <span className="text-sm">

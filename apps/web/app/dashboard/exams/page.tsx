@@ -95,11 +95,10 @@ export default function ExamsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={BookOpen01Icon} size={28} className="text-brand" />
+          <h1 className="text-2xl font-semibold text-foreground">
             Exams
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Create exams and enter student grades
           </p>
         </div>
