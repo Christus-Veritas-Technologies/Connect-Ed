@@ -456,13 +456,12 @@ export default function StudentDetailPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.7 + index * 0.05 }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          fee.isPaid
+                        className={`p-4 rounded-xl border-2 transition-all ${fee.isPaid
                             ? "bg-green-50 border-green-200"
                             : isOverdue
-                            ? "bg-red-50 border-red-200"
-                            : "bg-orange-50 border-orange-200"
-                        }`}
+                              ? "bg-red-50 border-red-200"
+                              : "bg-orange-50 border-orange-200"
+                          }`}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">

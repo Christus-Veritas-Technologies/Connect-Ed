@@ -100,10 +100,10 @@ export default function TeacherDetailPage() {
   // Filter classes for search dropdown
   const filteredClasses = classSearch
     ? allClasses.filter(
-        (cls) =>
-          cls.name.toLowerCase().includes(classSearch.toLowerCase()) &&
-          !editForm.classIds.includes(cls.id)
-      )
+      (cls) =>
+        cls.name.toLowerCase().includes(classSearch.toLowerCase()) &&
+        !editForm.classIds.includes(cls.id)
+    )
     : [];
 
   const handleSave = () => {
@@ -429,11 +429,10 @@ export default function TeacherDetailPage() {
                                       : [...editForm.subjectIds, subject.id],
                                   });
                                 }}
-                                className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${
-                                  isSelected
+                                className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
                                     ? "bg-brand/10 text-brand border border-brand/30"
                                     : "hover:bg-muted"
-                                }`}
+                                  }`}
                               >
                                 <span>{subject.name}</span>
                                 {isSelected && <HugeiconsIcon icon={Tick02Icon} size={16} />}
@@ -700,49 +699,49 @@ export default function TeacherDetailPage() {
             <DialogHeader>
               <DialogTitle>Delete Teacher</DialogTitle>
             </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete <strong>{teacher.name}</strong>?
-              </p>
-              <p className="text-xs text-destructive/80">
-                This action cannot be undone. All associated data will be removed.
-              </p>
-            </div>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <strong>{teacher.name}</strong>?
+                </p>
+                <p className="text-xs text-destructive/80">
+                  This action cannot be undone. All associated data will be removed.
+                </p>
+              </div>
 
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteDialog(false)}
-                disabled={deleteMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                className="flex-1"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? (
-                  <>
-                    <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
-                    Delete
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteDialog(false)}
+                  disabled={deleteMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? (
+                    <>
+                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -181,8 +181,8 @@ export function TeacherDashboard() {
                   </div>
                   {cls.capacity && (
                     <div className="w-24">
-                      <Progress 
-                        value={(cls.studentCount / cls.capacity) * 100} 
+                      <Progress
+                        value={(cls.studentCount / cls.capacity) * 100}
                         className="h-2"
                       />
                       <p className="text-xs text-muted-foreground text-center mt-1">

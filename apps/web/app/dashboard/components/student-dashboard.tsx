@@ -135,8 +135,8 @@ export function StudentDashboard() {
     );
   }
 
-  const paymentProgress = data.summary.totalFees > 0 
-    ? (data.summary.totalPaid / data.summary.totalFees) * 100 
+  const paymentProgress = data.summary.totalFees > 0
+    ? (data.summary.totalPaid / data.summary.totalFees) * 100
     : 100;
 
   return (

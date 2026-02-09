@@ -232,10 +232,10 @@ export function AdminDashboard() {
   const handleExportRevenuePDF = async () => {
     try {
       const rows = revenueData.map((d: any) => [d.name || d.month, `$${(d.value || d.collected).toLocaleString()}`]);
-      
+
       // Get auth token
       const token = localStorage.getItem("accessToken");
-      
+
       // Use fetch directly for binary response
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/reports/export-pdf`, {
         method: "POST",
@@ -251,11 +251,11 @@ export function AdminDashboard() {
           footer: `Total Revenue: $${revenueData.reduce((sum, d) => sum + (d.value || d.collected), 0).toLocaleString()}`,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Export failed: ${response.statusText}`);
       }
-      
+
       // Trigger download
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -318,16 +318,16 @@ export function AdminDashboard() {
               {isTermPeriod ? `End Term ${school.currentTermNumber}` : "End Holiday"}
             </Button>
           )}
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             size="icon"
             onClick={() => setIsNotificationsOpen(true)}
             className="relative"
           >
             <HugeiconsIcon icon={Notification01Icon} size={20} />
             {unreadCount > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className="absolute -top-2 -right-2 size-6 flex items-center justify-center p-0 text-xs"
               >
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -339,8 +339,8 @@ export function AdminDashboard() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
                 <span>Quick actions</span>
-                <HugeiconsIcon 
-                  icon={ChevronDown} 
+                <HugeiconsIcon
+                  icon={ChevronDown}
                   size={18}
                   className={`transition-transform duration-200 ${isQuickActionsOpen ? "rotate-180" : ""}`}
                 />
@@ -554,10 +554,9 @@ export function AdminDashboard() {
                   className="flex items-center justify-between py-2 border-b last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`size-2 rounded-full ${
-                      activity.type === "payment" ? "bg-success" :
-                      activity.type === "student" ? "bg-brand" : "bg-muted-foreground"
-                    }`} />
+                    <div className={`size-2 rounded-full ${activity.type === "payment" ? "bg-success" :
+                        activity.type === "student" ? "bg-brand" : "bg-muted-foreground"
+                      }`} />
                     <span className="text-sm">{activity.description}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -642,11 +641,10 @@ export function AdminDashboard() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`p-4 rounded-lg border transition-all ${
-                      notification.isRead
+                    className={`p-4 rounded-lg border transition-all ${notification.isRead
                         ? "bg-muted/30 border-muted"
                         : `bg-card ${colors.border} shadow-sm`
-                    }`}
+                      }`}
                   >
                     <div className="flex gap-3">
                       <div className={`p-2 rounded-lg ${colors.bg} ${colors.text} flex-shrink-0`}>
@@ -661,9 +659,8 @@ export function AdminDashboard() {
                             <div className="size-2 rounded-full bg-brand flex-shrink-0 mt-1" />
                           )}
                         </div>
-                        <p className={`text-sm mt-1 line-clamp-2 ${
-                          notification.isRead ? "text-muted-foreground" : "text-foreground"
-                        }`}>
+                        <p className={`text-sm mt-1 line-clamp-2 ${notification.isRead ? "text-muted-foreground" : "text-foreground"
+                          }`}>
                           {notification.message}
                         </p>
                         <div className="flex items-center justify-between mt-3">
@@ -851,9 +848,8 @@ function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className={`overflow-hidden ${
-        isFeatured ? "bg-brand" : ""
-      }`}>
+      <Card className={`overflow-hidden ${isFeatured ? "bg-brand" : ""
+        }`}>
         <CardContent className={`${isFeatured ? "p-3" : "p-3"}`}>
           <div className="space-y-3">
             <div className={`p-3 rounded-xl bg-gradient-to-br ${isFeatured ? "bg-white/20" : color} w-fit`}>
@@ -864,9 +860,8 @@ function StatCard({
               <p className={`text-2xl font-semibold ${isFeatured ? "text-white" : ""}`}>{value}</p>
               <p className={`text-xs ${isFeatured ? "text-gray-200" : "text-muted-foreground"}`}>{subtext}</p>
               {trend !== undefined && (
-                <p className={`text-sm flex items-center gap-1 mt-2 ${
-                  isFeatured ? "text-green-200" : "text-green-600"
-                }`}>
+                <p className={`text-sm flex items-center gap-1 mt-2 ${isFeatured ? "text-green-200" : "text-green-600"
+                  }`}>
                   <HugeiconsIcon icon={TrendIcon} size={16} />
                   {Math.abs(trend)}% {trendLabel}
                 </p>
