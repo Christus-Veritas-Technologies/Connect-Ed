@@ -174,13 +174,13 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-family: var(--font-inter), system-ui, sans-serif;
   }
 }
 
 /* Font utilities */
 .font-sans {
-  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
 
 /* Custom scrollbar */
