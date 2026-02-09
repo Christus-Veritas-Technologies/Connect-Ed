@@ -3,15 +3,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChartIcon,
-  FileDownloadIcon,
-  UserGroupIcon,
-  Money01Icon,
-  Calendar03Icon,
-  TrendUpIcon,
-  TrendDownIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  BarChart3,
+  Download,
+  Users,
+  DollarSign,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { exportDataAsCSV, exportToPDF } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
@@ -265,7 +264,7 @@ export default function ReportsPage() {
       >
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={ChartIcon} size={28} className="text-brand" />
+            <BarChart3 size={28} className="text-brand" />
             School Reports
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -291,11 +290,11 @@ export default function ReportsPage() {
           {activeTab === "financial" && (
             <>
               <Button variant="outline" size="sm" onClick={handleExportFinancialCSV}>
-                <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                <Download size={16} />
                 CSV
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportFinancialPDF}>
-                <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                <Download size={16} />
                 PDF
               </Button>
             </>
@@ -304,11 +303,11 @@ export default function ReportsPage() {
           {activeTab === "managerial" && (
             <>
               <Button variant="outline" size="sm" onClick={handleExportManagerialCSV}>
-                <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                <Download size={16} />
                 CSV
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportManagerialPDF}>
-                <HugeiconsIcon icon={FileDownloadIcon} size={16} />
+                <Download size={16} />
                 PDF
               </Button>
             </>
@@ -348,11 +347,11 @@ export default function ReportsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="financial" className="gap-2">
-            <HugeiconsIcon icon={Money01Icon} size={18} />
+            <DollarSign size={18} />
             Financial
           </TabsTrigger>
           <TabsTrigger value="managerial" className="gap-2">
-            <HugeiconsIcon icon={UserGroupIcon} size={18} />
+            <Users size={18} />
             Managerial
           </TabsTrigger>
         </TabsList>
@@ -376,7 +375,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-green-100">
-                          <HugeiconsIcon icon={TrendUpIcon} size={24} className="text-green-600" />
+                          <TrendingUp size={24} className="text-green-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -397,7 +396,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-yellow-100">
-                          <HugeiconsIcon icon={Calendar03Icon} size={24} className="text-yellow-600" />
+                          <Calendar size={24} className="text-yellow-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -418,7 +417,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-red-100">
-                          <HugeiconsIcon icon={TrendDownIcon} size={24} className="text-red-600" />
+                          <TrendingDown size={24} className="text-red-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -439,7 +438,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-purple-100">
-                          <HugeiconsIcon icon={Money01Icon} size={24} className="text-purple-600" />
+                          <DollarSign size={24} className="text-purple-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -471,8 +470,8 @@ export default function ReportsPage() {
                                   item.status === "PAID"
                                     ? "success"
                                     : item.status === "OVERDUE"
-                                    ? "destructive"
-                                    : "warning"
+                                      ? "destructive"
+                                      : "warning"
                                 }
                               >
                                 {item.status}
@@ -607,7 +606,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-blue-100">
-                          <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-blue-600" />
+                          <Users size={24} className="text-blue-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -628,7 +627,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-green-100">
-                          <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-green-600" />
+                          <Users size={24} className="text-green-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -646,7 +645,7 @@ export default function ReportsPage() {
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-purple-100">
-                          <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-purple-600" />
+                          <Users size={24} className="text-purple-600" />
                         </div>
                       </div>
                     </CardContent>
@@ -665,7 +664,7 @@ export default function ReportsPage() {
                           <p className="text-xs text-muted-foreground mt-1">Students per teacher</p>
                         </div>
                         <div className="p-3 rounded-xl bg-orange-100">
-                          <HugeiconsIcon icon={ChartIcon} size={24} className="text-orange-600" />
+                          <BarChart3 size={24} className="text-orange-600" />
                         </div>
                       </div>
                     </CardContent>
