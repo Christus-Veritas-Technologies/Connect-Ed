@@ -4,6 +4,7 @@ import { db, Plan } from "@repo/db";
 import { requireAuth, requirePlan } from "../middleware/auth";
 import { createClassSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { syncChatMembers } from "../lib/chat-sync";
 
 const classes = new Hono();
 
@@ -92,6 +93,12 @@ classes.post("/", zValidator("json", createClassSchema), async (c) => {
     });
 
     console.log(`[POST /classes] ✅ Class created successfully: ${newClass.name} (${newClass.id})`);
+
+    // Sync chat members for the new class (async, don't block response)
+    syncChatMembers(newClass.id).catch((err) =>
+      console.error(`[POST /classes] Chat sync error for class ${newClass.id}:`, err)
+    );
+
     return successResponse(c, { class: newClass }, 201);
   } catch (error) {
     console.error(`[POST /classes] ❌ Create class error:`, error);
@@ -181,6 +188,11 @@ classes.patch("/:id", zValidator("json", createClassSchema.partial()), async (c)
         classTeacher: { select: { id: true, name: true, email: true } },
       },
     });
+
+    // Sync chat members after class update (async)
+    syncChatMembers(id).catch((err) =>
+      console.error(`[PATCH /classes] Chat sync error for class ${id}:`, err)
+    );
 
     return successResponse(c, { class: updatedClass });
   } catch (error) {

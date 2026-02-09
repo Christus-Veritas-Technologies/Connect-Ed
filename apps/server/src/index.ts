@@ -1,6 +1,22 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { createBunWebSocket } from "hono/bun";
+import type { ServerWebSocket } from "bun";
+import { db } from "@repo/db";
+
+// WebSocket manager
+import {
+  joinRoom,
+  leaveRoom,
+  handleIncomingMessage,
+  type WsData,
+} from "./lib/chat-manager";
+import {
+  verifyAccessToken,
+  verifyParentAccessToken,
+  verifyStudentAccessToken,
+} from "./lib/auth";
 
 // Import routes
 import auth from "./routes/auth";
@@ -23,6 +39,10 @@ import notifications from "./routes/notifications";
 import exams from "./routes/exams";
 import studentReports from "./routes/student-reports";
 import receptionists from "./routes/receptionists";
+import chat from "./routes/chat";
+
+// Bun WebSocket helper for Hono
+const { upgradeWebSocket, websocket } = createBunWebSocket<WsData>();
 
 const app = new Hono();
 
@@ -74,6 +94,104 @@ app.route("/notifications", notifications);
 app.route("/exams", exams);
 app.route("/student-reports", studentReports);
 app.route("/receptionists", receptionists);
+app.route("/chat", chat);
+
+// ─── WebSocket upgrade endpoint ─────────────────────────────
+// URL: /ws/chat?token=<JWT>&classId=<classId>
+app.get(
+  "/ws/chat",
+  upgradeWebSocket(async (c) => {
+    const token = c.req.query("token") || "";
+    const classId = c.req.query("classId") || "";
+
+    // Authenticate the user by trying all 3 token types
+    let wsData: WsData | null = null;
+
+    // Try staff token
+    const staffPayload = await verifyAccessToken(token);
+    if (staffPayload) {
+      const user = await db.user.findUnique({
+        where: { id: staffPayload.sub },
+        select: { id: true, name: true, role: true },
+      });
+      if (user) {
+        wsData = {
+          classId,
+          memberId: user.id,
+          memberType: "USER",
+          role: user.role,
+          name: user.name,
+          schoolId: staffPayload.schoolId,
+        };
+      }
+    }
+
+    // Try parent token
+    if (!wsData) {
+      const parentPayload = await verifyParentAccessToken(token);
+      if (parentPayload) {
+        const parent = await db.parent.findUnique({
+          where: { id: parentPayload.sub },
+          select: { id: true, name: true, children: { select: { id: true } } },
+        });
+        if (parent) {
+          wsData = {
+            classId,
+            memberId: parent.id,
+            memberType: "PARENT",
+            role: "PARENT",
+            name: parent.name,
+            schoolId: parentPayload.schoolId,
+            childrenIds: parent.children.map((ch) => ch.id),
+          };
+        }
+      }
+    }
+
+    // Try student token
+    if (!wsData) {
+      const studentPayload = await verifyStudentAccessToken(token);
+      if (studentPayload) {
+        const student = await db.student.findUnique({
+          where: { id: studentPayload.sub },
+          select: { id: true, firstName: true, lastName: true },
+        });
+        if (student) {
+          wsData = {
+            classId,
+            memberId: student.id,
+            memberType: "STUDENT",
+            role: "STUDENT",
+            name: `${student.firstName} ${student.lastName}`,
+            schoolId: studentPayload.schoolId,
+          };
+        }
+      }
+    }
+
+    return {
+      onOpen(_event, ws) {
+        const raw = ws.raw as ServerWebSocket<WsData> | undefined;
+        if (!raw || !wsData) {
+          ws.close(1008, "Unauthorized");
+          return;
+        }
+        // Attach data to the underlying Bun WS
+        Object.assign(raw.data, wsData);
+        joinRoom(raw);
+      },
+      onMessage(event, ws) {
+        const raw = ws.raw as ServerWebSocket<WsData> | undefined;
+        if (!raw) return;
+        handleIncomingMessage(raw, typeof event.data === "string" ? event.data : event.data.toString());
+      },
+      onClose(_event, ws) {
+        const raw = ws.raw as ServerWebSocket<WsData> | undefined;
+        if (raw) leaveRoom(raw);
+      },
+    };
+  })
+);
 
 // Error handling
 app.onError((err, c) => {
@@ -126,4 +244,5 @@ console.log(`
 export default {
   port,
   fetch: app.fetch,
+  websocket,
 };

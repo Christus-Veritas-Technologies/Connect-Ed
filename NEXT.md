@@ -33,3 +33,8 @@ And then for each whatsapp message, make sure it increases the school's "whatsap
 And then register the new agent app in the sturborepo structure jsut like we did for the wbe app so that turborepo recognizes it and we can use the db package and others
 
 Make commits at each step, let's go
+
+-----------------------------------------
+Now for every role except receptionist, allow the onboarding page to show different content depending on the user's role and add content for the onboaridng (decide on what's needed per role) and make each step optional for all the onboarding steps then make it so thqt after inviitng a user (with the specified role) they are redirecte to onbaording when they login
+
+The  add a "receptionists" age to the admin sidenar and add content to tjis page, it should allow the admin to add / remove receptionists (auto-generate the password, send a welcome wmail, create the use rin the db, just like we're doign everywhere here)

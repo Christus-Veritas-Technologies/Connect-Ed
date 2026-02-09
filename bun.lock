@@ -60,6 +60,7 @@
       "dependencies": {
         "@hono/zod-validator": "^0.4.3",
         "@repo/db": "workspace:*",
+        "axios": "^1.13.5",
         "bcryptjs": "^2.4.3",
         "crypto": "^1.0.1",
         "hono": "^4.11.7",

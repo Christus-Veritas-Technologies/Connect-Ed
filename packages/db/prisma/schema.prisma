@@ -59,6 +59,13 @@ enum MessageType {
   SMS
 }
 
+enum ChatMessageType {
+  TEXT
+  EXAM_RESULT
+  GRADE
+  SUBJECT_INFO
+}
+
 enum MessageStatus {
   PENDING
   SENT
@@ -347,6 +354,10 @@ model Class {
   subjects SubjectClass[]
   teachers TeacherClass[]
   exams    Exam[]
+
+  // Chat
+  chatMembers  ChatMember[]
+  chatMessages ChatMessage[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -784,6 +795,61 @@ model ExamResult {
   @@index([examId])
   @@index([studentId])
   @@map("exam_results")
+}
+
+// ============================================
+// CLASS CHAT
+// ============================================
+
+model ChatMember {
+  id String @id @default(cuid())
+
+  classId String
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // Polymorphic member — exactly one of these is set
+  memberType String // "USER" | "STUDENT" | "PARENT"
+  memberId   String
+  role       String // "ADMIN" | "TEACHER" | "STUDENT" | "PARENT"
+
+  // Denormalized for fast display
+  name   String
+  avatar String?
+
+  joinedAt DateTime @default(now())
+
+  @@unique([classId, memberType, memberId])
+  @@index([memberId, memberType])
+  @@index([classId])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id String @id @default(cuid())
+
+  classId String
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // Polymorphic sender
+  senderType String // "USER" | "STUDENT" | "PARENT"
+  senderId   String
+  senderRole String // "ADMIN" | "TEACHER" | "STUDENT" | "PARENT"
+  senderName String
+  senderAvatar String?
+
+  // Message content
+  type     ChatMessageType @default(TEXT)
+  content  String          @db.Text
+  metadata Json?           // For primitives: { examId, studentId, subjectId, marks, grade, ... }
+
+  // Privacy scoping — if set, only targetStudentId + their parents + admins + sender can see
+  targetStudentId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([classId, createdAt])
+  @@index([targetStudentId])
+  @@map("chat_messages")
 }
 
 // ============================================
