@@ -193,10 +193,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your school settings and preferences
+        <p className="text-sm text-muted-foreground">
+          Personalize your account and manage preferences securely.
         </p>
       </div>
 
@@ -204,7 +204,7 @@ export default function SettingsPage() {
         defaultValue={isAdmin ? "school" : "profile"}
         className="space-y-6"
       >
-        <TabsList>
+        <TabsList className="bg-muted/50">
           {isAdmin && (
             <>
               <TabsTrigger value="school">
@@ -235,9 +235,9 @@ export default function SettingsPage() {
         ============================================= */}
         {isAdmin && (
           <TabsContent value="school" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>School Information</CardTitle>
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">School Information</CardTitle>
                 <CardDescription>
                   Update your school&apos;s details. This information is visible
                   to all members.
@@ -396,9 +396,9 @@ export default function SettingsPage() {
         ============================================= */}
         {isAdmin && (
           <TabsContent value="notifications" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>School Notification Channels</CardTitle>
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Notification Channels</CardTitle>
                 <CardDescription>
                   Control which notification channels are enabled for your
                   entire school. Disabling a channel will prevent{" "}
@@ -412,19 +412,19 @@ export default function SettingsPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-0">
                     {notificationChannels.map((channel, index) => (
                       <div key={channel.key}>
-                        <div className="flex items-center justify-between py-4">
-                          <div className="flex items-start gap-4">
-                            <div className="mt-0.5 rounded-lg bg-muted p-2">
+                        <div className="flex items-center justify-between py-5">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
                               <channel.icon className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-base font-medium">
+                            <div className="space-y-0.5">
+                              <Label className="text-sm font-medium text-foreground">
                                 {channel.label}
                               </Label>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground leading-snug">
                                 {channel.description}
                               </p>
                             </div>
@@ -449,9 +449,9 @@ export default function SettingsPage() {
 
             {/* Quota Usage */}
             {schoolData?.school && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notification Quota</CardTitle>
+              <Card className="border-border/60">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Notification Quota</CardTitle>
                   <CardDescription>
                     Your current usage for this billing period
                   </CardDescription>
@@ -495,9 +495,9 @@ export default function SettingsPage() {
             Profile Tab (All users)
         ============================================= */}
         <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Profile</CardTitle>
+          <Card className="border-border/60">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">Profile Settings</CardTitle>
               <CardDescription>
                 Manage your personal information and preferences
               </CardDescription>
@@ -587,9 +587,9 @@ export default function SettingsPage() {
           </Card>
 
           {/* User-level notification preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Notification Preferences</CardTitle>
+          <Card className="border-border/60">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">My Notifications</CardTitle>
               <CardDescription>
                 Control which notifications you personally receive. These
                 settings only affect your account.
@@ -601,17 +601,17 @@ export default function SettingsPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between py-4">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 rounded-lg bg-muted p-2">
+                <div className="space-y-0">
+                  <div className="flex items-center justify-between py-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
                         <BellRing className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-base font-medium">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium text-foreground">
                           In-App Notifications
                         </Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-snug">
                           Show notification badges and alerts in the dashboard
                         </p>
                       </div>
@@ -625,16 +625,16 @@ export default function SettingsPage() {
                     />
                   </div>
                   <Separator />
-                  <div className="flex items-center justify-between py-4">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 rounded-lg bg-muted p-2">
+                  <div className="flex items-center justify-between py-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
                         <Mail className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-base font-medium">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium text-foreground">
                           Email Notifications
                         </Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-snug">
                           Receive email alerts for important updates
                         </p>
                       </div>
@@ -658,9 +658,9 @@ export default function SettingsPage() {
         ============================================= */}
         {isAdmin && (
           <TabsContent value="billing" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Plan</CardTitle>
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Current Plan</CardTitle>
                 <CardDescription>
                   Manage your subscription and billing
                 </CardDescription>
@@ -696,9 +696,9 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Plan Features</CardTitle>
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Plan Features</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -713,9 +713,9 @@ export default function SettingsPage() {
                 {authSchool?.plan !== "ENTERPRISE" && (
                   <>
                     <Separator className="my-6" />
-                    <div className="rounded-lg bg-muted p-4">
-                      <p className="font-semibold">Need more features?</p>
-                      <p className="text-sm text-muted-foreground mb-3">
+                    <div className="rounded-xl bg-muted/50 p-5">
+                      <p className="font-semibold text-foreground">Need more features?</p>
+                      <p className="text-sm text-muted-foreground mb-4">
                         Upgrade your plan to unlock additional features and
                         higher quotas.
                       </p>
@@ -735,10 +735,10 @@ export default function SettingsPage() {
         ============================================= */}
         {isAdmin && (
           <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Team Members</CardTitle>
+            <Card className="border-border/60">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div className="space-y-1">
+                  <CardTitle className="text-lg">Team Members</CardTitle>
                   <CardDescription>
                     Manage staff accounts for your school
                   </CardDescription>
@@ -802,23 +802,25 @@ function QuotaItem({
   const isHigh = percentage > 80;
 
   return (
-    <div className="rounded-lg border p-4 space-y-3">
+    <div className="rounded-xl border border-border/60 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{label}</span>
         </div>
         <span
-          className={`text-sm font-medium ${isHigh ? "text-destructive" : "text-muted-foreground"
-            }`}
+          className={`text-sm font-medium ${
+            isHigh ? "text-destructive" : "text-muted-foreground"
+          }`}
         >
           {used}/{total}
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-muted">
+      <div className="h-2 w-full rounded-full bg-muted/50">
         <div
-          className={`h-full rounded-full transition-all ${isHigh ? "bg-destructive" : "bg-primary"
-            }`}
+          className={`h-full rounded-full transition-all ${
+            isHigh ? "bg-destructive" : "bg-primary"
+          }`}
           style={{ width: `${percentage}%` }}
         />
       </div>
