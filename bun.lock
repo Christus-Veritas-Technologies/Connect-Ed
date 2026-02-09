@@ -9,6 +9,7 @@
         "@radix-ui/react-progress": "^1.1.8",
         "axios": "^1.13.5",
         "formik": "^2.4.9",
+        "recharts": "^3.7.0",
         "yup": "^1.7.1",
       },
       "devDependencies": {
