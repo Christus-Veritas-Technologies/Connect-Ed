@@ -561,8 +561,8 @@ function PricingPreview() {
               variants={fadeUp}
               custom={i}
               className={`relative rounded-2xl border bg-card overflow-hidden ${plan.popular
-                  ? "border-brand ring-1 ring-brand/20"
-                  : "border-border/60"
+                ? "border-brand ring-1 ring-brand/20"
+                : "border-border/60"
                 }`}
             >
               {plan.popular && (
