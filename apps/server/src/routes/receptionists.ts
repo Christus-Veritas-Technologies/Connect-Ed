@@ -99,8 +99,8 @@ receptionists.post("/", async (c) => {
     const notifications = admins.map((admin: { id: string }) =>
       db.notification.create({
         data: {
-          type: NotificationType.SYSTEM,
-          priority: NotificationPriority.LOW,
+          type: NotificationType.TEACHER_ADDED,
+          priority: NotificationPriority.MEDIUM,
           title: "New Receptionist Added",
           message: `${fullName} has been added as a receptionist.`,
           actionUrl: `/dashboard/receptionists`,
@@ -174,8 +174,8 @@ receptionists.delete("/:id", async (c) => {
     const notifications = admins.map((admin: { id: string }) =>
       db.notification.create({
         data: {
-          type: NotificationType.SYSTEM,
-          priority: NotificationPriority.LOW,
+          type: NotificationType.TEACHER_ADDED,
+          priority: NotificationPriority.MEDIUM,
           title: "Receptionist Removed",
           message: `${receptionist.name} has been removed as a receptionist.`,
           actionUrl: `/dashboard/receptionists`,

@@ -16,16 +16,18 @@ export const Plan = {
 } as const;
 
 export const NotificationType = {
-  CLASS_ANNOUNCEMENT: "CLASS_ANNOUNCEMENT" as const,
-  PAYMENT_REMINDER: "PAYMENT_REMINDER" as const,
-  EXAM_SCHEDULE: "EXAM_SCHEDULE" as const,
-  GRADES_RELEASED: "GRADES_RELEASED" as const,
-  SYSTEM: "SYSTEM" as const,
+  PAYMENT_SUCCESS: "PAYMENT_SUCCESS" as const,
+  PAYMENT_FAILED: "PAYMENT_FAILED" as const,
+  STUDENT_ADDED: "STUDENT_ADDED" as const,
+  TEACHER_ADDED: "TEACHER_ADDED" as const,
+  FEE_OVERDUE: "FEE_OVERDUE" as const,
+  MESSAGE_SENT: "MESSAGE_SENT" as const,
+  SYSTEM_ALERT: "SYSTEM_ALERT" as const,
 } as const;
 
 export const NotificationPriority = {
   LOW: "LOW" as const,
-  NORMAL: "NORMAL" as const,
+  MEDIUM: "MEDIUM" as const,
   HIGH: "HIGH" as const,
   URGENT: "URGENT" as const,
 } as const;
@@ -47,29 +49,24 @@ export const FeeStatus = {
   PARTIAL: "PARTIAL" as const,
   PAID: "PAID" as const,
   OVERDUE: "OVERDUE" as const,
-  WAIVED: "WAIVED" as const,
 } as const;
 
 export const PaymentMethod = {
-  PAYNOW: "PAYNOW" as const,
-  BANK_TRANSFER: "BANK_TRANSFER" as const,
   CASH: "CASH" as const,
-  CHEQUE: "CHEQUE" as const,
+  BANK_TRANSFER: "BANK_TRANSFER" as const,
+  ONLINE: "ONLINE" as const,
 } as const;
 
 export const MessageType = {
-  TEXT: "TEXT" as const,
   EMAIL: "EMAIL" as const,
   WHATSAPP: "WHATSAPP" as const,
   SMS: "SMS" as const,
 } as const;
 
 export const MessageStatus = {
-  QUEUED: "QUEUED" as const,
+  PENDING: "PENDING" as const,
   SENT: "SENT" as const,
-  DELIVERED: "DELIVERED" as const,
   FAILED: "FAILED" as const,
-  SCHEDULED: "SCHEDULED" as const,
 } as const;
 
 export const PaymentStatus = {
@@ -79,7 +76,6 @@ export const PaymentStatus = {
 } as const;
 
 export const PaymentType = {
-  INTERMEDIATE: "INTERMEDIATE" as const,
-  INSTALLMENT: "INSTALLMENT" as const,
-  FULL_PAYMENT: "FULL_PAYMENT" as const,
+  SIGNUP_FEE: "SIGNUP_FEE" as const,
+  TERM_PAYMENT: "TERM_PAYMENT" as const,
 } as const;
