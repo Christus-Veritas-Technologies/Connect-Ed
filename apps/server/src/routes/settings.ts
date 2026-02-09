@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Role, SchoolPeriodType } from "@repo/db";
+import { z } from "zod";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { updateSchoolSchema, startTermSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
-import { createNotification } from "./notifications";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePeriodChangeEmail } from "../lib/email";
 import { sendAllReportsToParents } from "../lib/report-dispatch";
 
@@ -12,10 +13,13 @@ const settings = new Hono();
 
 // Apply auth middleware to all routes
 settings.use("*", requireAuth);
-settings.use("*", requireRole(Role.ADMIN));
+
+// =============================================
+// School-level settings (Admin only)
+// =============================================
 
 // GET /settings/school - Get school settings
-settings.get("/school", async (c) => {
+settings.get("/school", requireRole(Role.ADMIN), async (c) => {
   try {
     const schoolId = c.get("schoolId");
 
@@ -27,6 +31,7 @@ settings.get("/school", async (c) => {
         address: true,
         phone: true,
         email: true,
+        website: true,
         plan: true,
         isActive: true,
         emailQuota: true,
@@ -43,6 +48,10 @@ settings.get("/school", async (c) => {
         termStartDate: true,
         currentPeriodType: true,
         holidayStartDate: true,
+        notifyEmail: true,
+        notifyWhatsapp: true,
+        notifySms: true,
+        notifyInApp: true,
       },
     });
 
@@ -57,8 +66,8 @@ settings.get("/school", async (c) => {
   }
 });
 
-// PATCH /settings/school - Update school settings
-settings.patch("/school", zValidator("json", updateSchoolSchema), async (c) => {
+// PATCH /settings/school - Update school info
+settings.patch("/school", requireRole(Role.ADMIN), zValidator("json", updateSchoolSchema), async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
@@ -70,6 +79,7 @@ settings.patch("/school", zValidator("json", updateSchoolSchema), async (c) => {
         address: data.address,
         phone: data.phone,
         email: data.email || undefined,
+        website: data.website || undefined,
       },
       select: {
         id: true,
@@ -77,6 +87,7 @@ settings.patch("/school", zValidator("json", updateSchoolSchema), async (c) => {
         address: true,
         phone: true,
         email: true,
+        website: true,
         plan: true,
       },
     });
@@ -88,8 +99,138 @@ settings.patch("/school", zValidator("json", updateSchoolSchema), async (c) => {
   }
 });
 
+// Notification preferences validation
+const notificationPrefsSchema = z.object({
+  notifyEmail: z.boolean().optional(),
+  notifyWhatsapp: z.boolean().optional(),
+  notifySms: z.boolean().optional(),
+  notifyInApp: z.boolean().optional(),
+});
+
+// GET /settings/notifications - Get notification preferences
+settings.get("/notifications", requireRole(Role.ADMIN), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        notifyEmail: true,
+        notifyWhatsapp: true,
+        notifySms: true,
+        notifyInApp: true,
+      },
+    });
+
+    if (!school) {
+      return errors.notFound(c, "School");
+    }
+
+    return successResponse(c, { preferences: school });
+  } catch (error) {
+    console.error("Get notification prefs error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// PATCH /settings/notifications - Update notification preferences
+settings.patch("/notifications", requireRole(Role.ADMIN), zValidator("json", notificationPrefsSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const data = c.req.valid("json");
+
+    const school = await db.school.update({
+      where: { id: schoolId },
+      data,
+      select: {
+        notifyEmail: true,
+        notifyWhatsapp: true,
+        notifySms: true,
+        notifyInApp: true,
+      },
+    });
+
+    return successResponse(c, { preferences: school });
+  } catch (error) {
+    console.error("Update notification prefs error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// =============================================
+// User-level preferences (any authenticated user)
+// =============================================
+
+const userPrefsSchema = z.object({
+  notifyInApp: z.boolean().optional(),
+  notifyEmail: z.boolean().optional(),
+  name: z.string().min(2).optional(),
+  phone: z.string().optional(),
+});
+
+// GET /settings/profile - Get current user's profile + preferences
+settings.get("/profile", async (c) => {
+  try {
+    const userId = c.get("userId");
+
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        notifyInApp: true,
+        notifyEmail: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return errors.notFound(c, "User");
+    }
+
+    return successResponse(c, { user });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// PATCH /settings/profile - Update current user's profile + preferences
+settings.patch("/profile", zValidator("json", userPrefsSchema), async (c) => {
+  try {
+    const userId = c.get("userId");
+    const data = c.req.valid("json");
+
+    const user = await db.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        notifyInApp: true,
+        notifyEmail: true,
+      },
+    });
+
+    return successResponse(c, { user });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// =============================================
+// Admin-only routes
+// =============================================
+
 // GET /settings/users - List all users in school
-settings.get("/users", async (c) => {
+settings.get("/users", requireRole(Role.ADMIN), async (c) => {
   try {
     const schoolId = c.get("schoolId");
 
@@ -114,7 +255,7 @@ settings.get("/users", async (c) => {
 });
 
 // POST /settings/period/end - End the current period (term → holiday)
-settings.post("/period/end", async (c) => {
+settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
   try {
     const schoolId = c.get("schoolId");
 
@@ -163,9 +304,12 @@ settings.post("/period/end", async (c) => {
       },
     });
 
-    // Create notification and send email to each user
+    // Check school notification preferences
+    const prefs = await getSchoolNotificationPrefs(schoolId);
+
+    // Create notification and send email to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
-      // Create in-app notification
+      // Create in-app notification (createNotification already checks prefs)
       await createNotification({
         schoolId,
         userId: user.id,
@@ -178,23 +322,26 @@ settings.post("/period/end", async (c) => {
           termYear: school.currentTermYear,
           periodType: "HOLIDAY",
         },
+        actorName: "Connect-Ed",
       });
 
-      // Send email notification
-      await sendEmail({
-        to: user.email,
-        subject: `Holiday Period - ${updatedSchool.name}`,
-        html: generatePeriodChangeEmail({
-          name: user.name,
-          schoolName: updatedSchool.name,
-          action: "ended",
-          termNumber: school.currentTermNumber!,
-          termYear: school.currentTermYear!,
-          newPeriod: "holiday",
-        }),
-        schoolId,
-        type: "NOREPLY",
-      });
+      // Send email notification (only if email notifications enabled)
+      if (prefs.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Holiday Period - ${updatedSchool.name}`,
+          html: generatePeriodChangeEmail({
+            name: user.name,
+            schoolName: updatedSchool.name,
+            action: "ended",
+            termNumber: school.currentTermNumber!,
+            termYear: school.currentTermYear!,
+            newPeriod: "holiday",
+          }),
+          schoolId,
+          type: "NOREPLY",
+        });
+      }
     });
 
     await Promise.all(notificationPromises);
@@ -220,7 +367,7 @@ settings.post("/period/end", async (c) => {
 });
 
 // POST /settings/period/start-term - Start a new term (holiday → term)
-settings.post("/period/start-term", zValidator("json", startTermSchema), async (c) => {
+settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", startTermSchema), async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const data = c.req.valid("json");
@@ -267,9 +414,12 @@ settings.post("/period/start-term", zValidator("json", startTermSchema), async (
       },
     });
 
-    // Create notification and send email to each user
+    // Check school notification preferences
+    const prefs = await getSchoolNotificationPrefs(schoolId);
+
+    // Create notification and send email to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
-      // Create in-app notification
+      // Create in-app notification (createNotification already checks prefs)
       await createNotification({
         schoolId,
         userId: user.id,
@@ -282,23 +432,26 @@ settings.post("/period/start-term", zValidator("json", startTermSchema), async (
           termYear: data.year,
           periodType: "TERM",
         },
+        actorName: "Connect-Ed",
       });
 
-      // Send email notification
-      await sendEmail({
-        to: user.email,
-        subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
-        html: generatePeriodChangeEmail({
-          name: user.name,
-          schoolName: updatedSchool.name,
-          action: "started",
-          termNumber: data.termNumber,
-          termYear: data.year,
-          newPeriod: "term",
-        }),
-        schoolId,
-        type: "NOREPLY",
-      });
+      // Send email notification (only if email notifications enabled)
+      if (prefs.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
+          html: generatePeriodChangeEmail({
+            name: user.name,
+            schoolName: updatedSchool.name,
+            action: "started",
+            termNumber: data.termNumber,
+            termYear: data.year,
+            newPeriod: "term",
+          }),
+          schoolId,
+          type: "NOREPLY",
+        });
+      }
     });
 
     await Promise.all(notificationPromises);

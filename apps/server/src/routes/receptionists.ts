@@ -3,6 +3,7 @@ import { db, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { successResponse, errors } from "../lib/response";
 import { z } from "zod";
 
@@ -90,48 +91,49 @@ receptionists.post("/", async (c) => {
       },
     });
 
-    // Send notifications to admins
+    // Send notifications to admins (uses preference-aware helper)
     const admins = await db.user.findMany({
       where: { schoolId, role: Role.ADMIN, isActive: true },
       select: { id: true },
     });
 
     const notifications = admins.map((admin: { id: string }) =>
-      db.notification.create({
-        data: {
-          type: NotificationType.TEACHER_ADDED,
-          priority: NotificationPriority.MEDIUM,
-          title: "New Receptionist Added",
-          message: `${fullName} has been added as a receptionist.`,
-          actionUrl: `/dashboard/receptionists`,
-          schoolId,
-          userId: admin.id,
-        },
+      createNotification({
+        type: NotificationType.TEACHER_ADDED,
+        priority: NotificationPriority.MEDIUM,
+        title: "New Receptionist Added",
+        message: `${fullName} has been added as a receptionist.`,
+        actionUrl: `/dashboard/receptionists`,
+        schoolId,
+        userId: admin.id,
+        actorName: fullName,
       })
     );
 
     await Promise.all(notifications);
 
-    // Send welcome email
-    const school = await db.school.findFirst({
-      where: { id: schoolId },
-      select: { name: true },
-    });
+    // Send welcome email (check school preferences)
+    const [school, prefs] = await Promise.all([
+      db.school.findFirst({ where: { id: schoolId }, select: { name: true } }),
+      getSchoolNotificationPrefs(schoolId),
+    ]);
 
-    await sendEmail({
-      to: data.email.toLowerCase(),
-      subject: "Welcome to Connect-Ed - Your Login Credentials",
-      html: generateWelcomeEmailWithCredentials({
-        name: fullName,
-        email: data.email.toLowerCase(),
-        password: generatedPassword,
-        role: "TEACHER",
-        schoolName: school?.name ?? undefined,
-        additionalInfo: "You have been added as a Receptionist. You can manage student records, fees, and reports.",
-      }),
-      schoolId,
-      type: "KIN",
-    });
+    if (prefs.email) {
+      await sendEmail({
+        to: data.email.toLowerCase(),
+        subject: "Welcome to Connect-Ed - Your Login Credentials",
+        html: generateWelcomeEmailWithCredentials({
+          name: fullName,
+          email: data.email.toLowerCase(),
+          password: generatedPassword,
+          role: "TEACHER",
+          schoolName: school?.name ?? undefined,
+          additionalInfo: "You have been added as a Receptionist. You can manage student records, fees, and reports.",
+        }),
+        schoolId,
+        type: "KIN",
+      });
+    }
 
     return successResponse(c, { receptionist }, 201);
   } catch (error) {
@@ -165,23 +167,22 @@ receptionists.delete("/:id", async (c) => {
       where: { id: receptionistId },
     });
 
-    // Send notifications to admins
+    // Send notifications to admins (uses preference-aware helper)
     const admins = await db.user.findMany({
       where: { schoolId, role: Role.ADMIN, isActive: true },
       select: { id: true },
     });
 
     const notifications = admins.map((admin: { id: string }) =>
-      db.notification.create({
-        data: {
-          type: NotificationType.TEACHER_ADDED,
-          priority: NotificationPriority.MEDIUM,
-          title: "Receptionist Removed",
-          message: `${receptionist.name} has been removed as a receptionist.`,
-          actionUrl: `/dashboard/receptionists`,
-          schoolId,
-          userId: admin.id,
-        },
+      createNotification({
+        type: NotificationType.TEACHER_ADDED,
+        priority: NotificationPriority.MEDIUM,
+        title: "Receptionist Removed",
+        message: `${receptionist.name} has been removed as a receptionist.`,
+        actionUrl: `/dashboard/receptionists`,
+        schoolId,
+        userId: admin.id,
+        actorName: receptionist.name,
       })
     );
 

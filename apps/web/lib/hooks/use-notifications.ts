@@ -11,16 +11,21 @@ interface Notification {
   id: string;
   title: string;
   message: string;
-  type: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+  type: string;
+  priority: string;
   actionUrl?: string;
   isRead: boolean;
+  readAt?: string;
+  actorName?: string;
+  actorAvatar?: string;
+  metadata?: Record<string, unknown>;
   createdAt: string;
-  role?: "ADMIN" | "TEACHER" | "STUDENT";
 }
 
 interface NotificationsResponse {
   notifications: Notification[];
   unreadCount: number;
+  total: number;
 }
 
 export function useNotificationCounts() {
@@ -93,3 +98,19 @@ export function useMarkAllNotificationsAsRead() {
     },
   });
 }
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      return api.delete(`/notifications/${notificationId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export type { Notification, NotificationsResponse };

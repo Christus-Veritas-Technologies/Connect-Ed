@@ -6,7 +6,7 @@ import { createCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { PLAN_FEATURES } from "../lib/auth";
 import { Paynow } from "paynow";
-import { createNotification } from "./notifications";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
 const payments = new Hono();
@@ -178,21 +178,25 @@ payments.post("/callback", async (c) => {
           amount: intermediatePayment.amount.toString(),
           plan: intermediatePayment.plan,
         },
+        actorName: intermediatePayment.user.name,
       });
 
-      // Send success email
-      await sendEmail({
-        to: intermediatePayment.user.email,
-        subject: "Payment Successful - Connect-Ed",
-        html: generatePaymentSuccessEmail({
-          name: intermediatePayment.user.name,
-          amount: Number(intermediatePayment.amount),
-          plan: intermediatePayment.plan,
-          transactionId: intermediatePaymentId,
-        }),
-        schoolId: intermediatePayment.schoolId,
-        type: "SALES",
-      });
+      // Send success email (check preferences)
+      const prefs = await getSchoolNotificationPrefs(intermediatePayment.schoolId);
+      if (prefs.email) {
+        await sendEmail({
+          to: intermediatePayment.user.email,
+          subject: "Payment Successful - Connect-Ed",
+          html: generatePaymentSuccessEmail({
+            name: intermediatePayment.user.name,
+            amount: Number(intermediatePayment.amount),
+            plan: intermediatePayment.plan,
+            transactionId: intermediatePaymentId,
+          }),
+          schoolId: intermediatePayment.schoolId,
+          type: "SALES",
+        });
+      }
     } else {
       // Create failure notification for admin
       await createNotification({
@@ -207,20 +211,24 @@ payments.post("/callback", async (c) => {
           amount: intermediatePayment.amount.toString(),
           plan: intermediatePayment.plan,
         },
+        actorName: intermediatePayment.user.name,
       });
 
-      // Send failure email
-      await sendEmail({
-        to: intermediatePayment.user.email,
-        subject: "Payment Failed - Connect-Ed",
-        html: generatePaymentFailedEmail({
-          name: intermediatePayment.user.name,
-          amount: Number(intermediatePayment.amount),
-          plan: intermediatePayment.plan,
-        }),
-        schoolId: intermediatePayment.schoolId,
-        type: "SALES",
-      });
+      // Send failure email (check preferences)
+      const failPrefs = await getSchoolNotificationPrefs(intermediatePayment.schoolId);
+      if (failPrefs.email) {
+        await sendEmail({
+          to: intermediatePayment.user.email,
+          subject: "Payment Failed - Connect-Ed",
+          html: generatePaymentFailedEmail({
+            name: intermediatePayment.user.name,
+            amount: Number(intermediatePayment.amount),
+            plan: intermediatePayment.plan,
+          }),
+          schoolId: intermediatePayment.schoolId,
+          type: "SALES",
+        });
+      }
     }
 
     return successResponse(c, { status: "processed" });

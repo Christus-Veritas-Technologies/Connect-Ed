@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Notification01Icon,
-  Add01Icon,
-  Delete02Icon,
-  Cancel01Icon,
-  SentIcon,
-  TimeQuarterIcon,
-  UserIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  MessageCircle,
+  Send,
+  Trash2,
+  Plus,
+  Clock,
+  Megaphone,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
   useAnnouncements,
@@ -24,9 +25,9 @@ import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -67,36 +68,295 @@ function getTimeRemaining(createdAt: string, length: string): string {
   const remaining = durationMs - (now - created);
   if (remaining <= 0) return "Expired";
   const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
-  const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const hours = Math.floor(
+    (remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000)
+  );
   if (days > 0) return `${days}d ${hours}h left`;
   return `${hours}h left`;
 }
 
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return "Just now";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 function getCommentAuthor(comment: AnnouncementComment) {
   if (comment.user) {
-    return { name: comment.user.name, email: comment.user.email, role: comment.user.role };
+    return { name: comment.user.name, role: comment.user.role };
   }
   if (comment.parent) {
-    return { name: comment.parent.name, email: comment.parent.email, role: "PARENT" };
+    return { name: comment.parent.name, role: "PARENT" };
   }
   if (comment.student) {
     return {
       name: `${comment.student.firstName} ${comment.student.lastName}`,
-      email: comment.student.email || "",
       role: "STUDENT",
     };
   }
-  return { name: "Unknown", email: "", role: "UNKNOWN" };
+  return { name: "Unknown", role: "UNKNOWN" };
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  ADMIN: "bg-red-100 text-red-700 border-red-200",
-  RECEPTIONIST: "bg-blue-100 text-blue-700 border-blue-200",
-  TEACHER: "bg-purple-100 text-purple-700 border-purple-200",
-  PARENT: "bg-green-100 text-green-700 border-green-200",
-  STUDENT: "bg-orange-100 text-orange-700 border-orange-200",
+  ADMIN: "text-red-600 dark:text-red-400",
+  RECEPTIONIST: "text-blue-600 dark:text-blue-400",
+  TEACHER: "text-violet-600 dark:text-violet-400",
+  PARENT: "text-emerald-600 dark:text-emerald-400",
+  STUDENT: "text-amber-600 dark:text-amber-400",
 };
 
+const AVATAR_COLORS: Record<string, string> = {
+  ADMIN: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+  RECEPTIONIST: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+  TEACHER: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
+  PARENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+  STUDENT: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+};
+
+/* ─── Comment Item ─── */
+function CommentItem({ comment }: { comment: AnnouncementComment }) {
+  const author = getCommentAuthor(comment);
+  return (
+    <div className="flex gap-3">
+      <Avatar className="size-7 shrink-0 mt-0.5">
+        <AvatarFallback
+          className={`text-[10px] font-semibold ${AVATAR_COLORS[author.role] || "bg-muted text-muted-foreground"}`}
+        >
+          {getInitials(author.name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold">{author.name}</span>
+          <span
+            className={`text-[11px] font-medium ${ROLE_COLORS[author.role] || "text-muted-foreground"}`}
+          >
+            {author.role}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            · {formatRelativeTime(comment.createdAt)}
+          </span>
+        </div>
+        <p className="text-sm text-foreground mt-0.5">{comment.content}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Announcement Post ─── */
+function AnnouncementPost({
+  announcement,
+  isAdmin,
+  onDelete,
+  onComment,
+  commentPending,
+}: {
+  announcement: Announcement;
+  isAdmin: boolean;
+  onDelete: (id: string) => void;
+  onComment: (id: string, content: string) => void;
+  commentPending: boolean;
+}) {
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const timeRemaining = getTimeRemaining(
+    announcement.createdAt,
+    announcement.length
+  );
+  const isExpired = timeRemaining === "Expired";
+  const commentCount = announcement._count.comments;
+  const previewComments = announcement.comments.slice(0, 2);
+  const hasMoreComments = commentCount > 2;
+
+  const handleSubmitComment = () => {
+    const content = replyText.trim();
+    if (!content) return;
+    onComment(announcement.id, content);
+    setReplyText("");
+  };
+
+  return (
+    <article className="border-b border-border last:border-b-0">
+      <div className="px-4 pt-4 pb-3">
+        {/* Author row */}
+        <div className="flex items-start gap-3">
+          <Avatar className="size-10 shrink-0">
+            <AvatarFallback
+              className={`text-xs font-semibold ${AVATAR_COLORS[announcement.createdBy.role] || "bg-muted text-muted-foreground"}`}
+            >
+              {getInitials(announcement.createdBy.name)}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold truncate">
+                {announcement.createdBy.name}
+              </span>
+              <span
+                className={`text-xs font-medium ${ROLE_COLORS[announcement.createdBy.role] || "text-muted-foreground"}`}
+              >
+                {announcement.createdBy.role}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                · {formatRelativeTime(announcement.createdAt)}
+              </span>
+            </div>
+
+            {/* Content */}
+            <h3 className="text-[15px] font-bold mt-1.5">
+              {announcement.heading}
+            </h3>
+            <p className="text-sm text-foreground mt-1 whitespace-pre-wrap leading-relaxed">
+              {announcement.subheading}
+            </p>
+
+            {/* Meta badges */}
+            <div className="flex items-center gap-2 mt-3">
+              <Badge
+                variant="outline"
+                className="text-[11px] gap-1 px-2 py-0.5 font-normal"
+              >
+                <Clock className="size-3" />
+                {LENGTH_LABELS[announcement.length]}
+              </Badge>
+              <Badge
+                variant="secondary"
+                className={`text-[11px] px-2 py-0.5 font-normal ${isExpired
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                  }`}
+              >
+                {timeRemaining}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Admin delete */}
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-destructive shrink-0"
+              onClick={() => onDelete(announcement.id)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Action bar */}
+        <div className="flex items-center gap-6 mt-3 ml-[52px] border-t border-border pt-2">
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            onClick={() => setShowAllComments(!showAllComments)}
+          >
+            <MessageCircle className="size-4" />
+            <span>
+              {commentCount} {commentCount === 1 ? "comment" : "comments"}
+            </span>
+          </button>
+        </div>
+
+        {/* Reply input — always visible */}
+        <div className="flex items-center gap-2 mt-3 ml-[52px]">
+          <Input
+            placeholder="Write a reply..."
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitComment();
+              }
+            }}
+            className="flex-1 h-9 text-sm"
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="size-9 p-0"
+            onClick={handleSubmitComment}
+            disabled={commentPending || !replyText.trim()}
+          >
+            {commentPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
+          </Button>
+        </div>
+
+        {/* Comments section */}
+        {commentCount > 0 && (
+          <div className="mt-3 ml-[52px] space-y-3">
+            {/* Preview comments (always visible — latest 2) */}
+            {!showAllComments && (
+              <>
+                {previewComments.map((comment) => (
+                  <CommentItem key={comment.id} comment={comment} />
+                ))}
+                {hasMoreComments && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                    onClick={() => setShowAllComments(true)}
+                  >
+                    <ChevronDown className="size-3" />
+                    View all {commentCount} comments
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* All comments */}
+            <AnimatePresence>
+              {showAllComments && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-3 overflow-hidden"
+                >
+                  {announcement.comments.map((comment) => (
+                    <CommentItem key={comment.id} comment={comment} />
+                  ))}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                    onClick={() => setShowAllComments(false)}
+                  >
+                    <ChevronUp className="size-3" />
+                    Show less
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/* ─── Main Page ─── */
 export default function AnnouncementsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
@@ -114,8 +374,6 @@ export default function AnnouncementsPage() {
     subheading: "",
     length: "" as string,
   });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState<Record<string, string>>({});
 
   const handleCreate = () => {
     if (!formData.heading || !formData.subheading || !formData.length) {
@@ -135,25 +393,24 @@ export default function AnnouncementsPage() {
           toast.success("Announcement posted!");
         },
         onError: (err) => {
-          const msg = err instanceof ApiError ? err.message : "Failed to create announcement";
+          const msg =
+            err instanceof ApiError
+              ? err.message
+              : "Failed to create announcement";
           toast.error(msg);
         },
       }
     );
   };
 
-  const handleComment = (announcementId: string) => {
-    const content = commentText[announcementId]?.trim();
-    if (!content) return;
+  const handleComment = (announcementId: string, content: string) => {
     commentMutation.mutate(
       { announcementId, content },
       {
-        onSuccess: () => {
-          setCommentText((prev) => ({ ...prev, [announcementId]: "" }));
-          toast.success("Comment added");
-        },
+        onSuccess: () => toast.success("Comment added"),
         onError: (err) => {
-          const msg = err instanceof ApiError ? err.message : "Failed to add comment";
+          const msg =
+            err instanceof ApiError ? err.message : "Failed to add comment";
           toast.error(msg);
         },
       }
@@ -173,217 +430,58 @@ export default function AnnouncementsPage() {
       : createMutation.error?.message;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <HugeiconsIcon icon={Notification01Icon} size={28} className="text-brand" />
-            Announcements
-          </h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">Announcements</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             School-wide announcements and updates
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
-            <HugeiconsIcon icon={Add01Icon} size={20} />
-            New Announcement
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="size-4" />
+            New Post
           </Button>
         )}
       </div>
 
-      {/* Announcements List */}
+      {/* Feed */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="size-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : announcements.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-              <HugeiconsIcon icon={Notification01Icon} size={48} className="text-muted-foreground" />
-            </div>
-            <p className="text-lg font-semibold mb-1">No announcements</p>
-            <p className="text-muted-foreground text-sm">
-              {isAdmin ? "Create your first announcement to get started." : "Check back later for updates."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Megaphone className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-foreground">
+            No announcements yet
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isAdmin
+              ? "Create your first announcement to get started."
+              : "Check back later for updates."}
+          </p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          <AnimatePresence>
-            {announcements.map((announcement, index) => {
-              const isExpanded = expandedId === announcement.id;
-              const timeRemaining = getTimeRemaining(announcement.createdAt, announcement.length);
-
-              return (
-                <motion.div
-                  key={announcement.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="overflow-hidden border-2 hover:border-brand/30 transition-colors">
-                    {/* Announcement Header */}
-                    <div
-                      className="p-6 cursor-pointer"
-                      onClick={() => setExpandedId(isExpanded ? null : announcement.id)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2 flex-wrap">
-                            <h3 className="text-lg font-bold truncate">{announcement.heading}</h3>
-                            <Badge variant="outline" className="shrink-0">
-                              <HugeiconsIcon icon={TimeQuarterIcon} size={12} className="mr-1" />
-                              {LENGTH_LABELS[announcement.length]}
-                            </Badge>
-                            <Badge
-                              variant="secondary"
-                              className={
-                                timeRemaining === "Expired"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-green-100 text-green-700"
-                              }
-                            >
-                              {timeRemaining}
-                            </Badge>
-                          </div>
-                          <p className="text-muted-foreground text-sm line-clamp-2">
-                            {announcement.subheading}
-                          </p>
-                          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                            <span>
-                              By <strong>{announcement.createdBy.name}</strong>
-                            </span>
-                            <span>
-                              {new Date(announcement.createdAt).toLocaleDateString()}
-                            </span>
-                            <span>{announcement._count.comments} comment{announcement._count.comments !== 1 ? "s" : ""}</span>
-                          </div>
-                        </div>
-                        {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(announcement.id);
-                            }}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <HugeiconsIcon icon={Delete02Icon} size={18} />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Expanded: Full content + Comments */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-6 pb-6 border-t">
-                            {/* Full subheading */}
-                            <div className="py-4">
-                              <p className="text-sm whitespace-pre-wrap">{announcement.subheading}</p>
-                            </div>
-
-                            {/* Comments */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-muted-foreground">
-                                Comments ({announcement.comments.length})
-                              </h4>
-
-                              {announcement.comments.length > 0 && (
-                                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                                  {announcement.comments.map((comment) => {
-                                    const author = getCommentAuthor(comment);
-                                    return (
-                                      <div
-                                        key={comment.id}
-                                        className="p-3 rounded-lg bg-muted/50 border"
-                                      >
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                          <div className="size-7 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center">
-                                            <span className="text-[10px] font-bold text-white">
-                                              {author.name
-                                                .split(" ")
-                                                .map((n) => n[0])
-                                                .join("")
-                                                .slice(0, 2)}
-                                            </span>
-                                          </div>
-                                          <span className="text-sm font-semibold">{author.name}</span>
-                                          <Badge
-                                            variant="outline"
-                                            className={`text-[10px] px-1.5 py-0 ${ROLE_COLORS[author.role] || ""}`}
-                                          >
-                                            {author.role}
-                                          </Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mb-1">
-                                          {author.email}
-                                        </p>
-                                        <p className="text-sm">{comment.content}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">
-                                          {new Date(comment.createdAt).toLocaleString()}
-                                        </p>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-
-                              {/* Add comment */}
-                              <div className="flex gap-2 pt-2">
-                                <Input
-                                  placeholder="Write a comment..."
-                                  value={commentText[announcement.id] || ""}
-                                  onChange={(e) =>
-                                    setCommentText((prev) => ({
-                                      ...prev,
-                                      [announcement.id]: e.target.value,
-                                    }))
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleComment(announcement.id);
-                                    }
-                                  }}
-                                  className="flex-1"
-                                />
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleComment(announcement.id)}
-                                  disabled={
-                                    commentMutation.isPending ||
-                                    !commentText[announcement.id]?.trim()
-                                  }
-                                  className="gap-1.5"
-                                >
-                                  <HugeiconsIcon icon={SentIcon} size={16} />
-                                  Send
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+        <div className="rounded-lg border bg-card overflow-hidden">
+          {announcements.map((announcement) => (
+            <AnnouncementPost
+              key={announcement.id}
+              announcement={announcement}
+              isAdmin={isAdmin}
+              onDelete={handleDelete}
+              onComment={handleComment}
+              commentPending={commentMutation.isPending}
+            />
+          ))}
         </div>
       )}
 
@@ -406,7 +504,10 @@ export default function AnnouncementsPage() {
                 placeholder="Announcement heading..."
                 value={formData.heading}
                 onChange={(e) =>
-                  setFormData({ ...formData, heading: e.target.value.slice(0, 32) })
+                  setFormData({
+                    ...formData,
+                    heading: e.target.value.slice(0, 32),
+                  })
                 }
                 maxLength={32}
               />
@@ -416,11 +517,13 @@ export default function AnnouncementsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Subheading / Details</Label>
+              <Label>Details</Label>
               <Textarea
-                placeholder="Announcement details..."
+                placeholder="What's happening at school..."
                 value={formData.subheading}
-                onChange={(e) => setFormData({ ...formData, subheading: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, subheading: e.target.value })
+                }
                 rows={4}
               />
             </div>
@@ -429,7 +532,9 @@ export default function AnnouncementsPage() {
               <Label>Duration</Label>
               <Select
                 value={formData.length}
-                onValueChange={(v) => setFormData({ ...formData, length: v })}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, length: v })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="How long to show..." />
@@ -457,7 +562,7 @@ export default function AnnouncementsPage() {
               >
                 {createMutation.isPending ? (
                   <>
-                    <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                    <Loader2 className="size-4 animate-spin mr-2" />
                     Posting...
                   </>
                 ) : (

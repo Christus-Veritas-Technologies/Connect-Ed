@@ -115,15 +115,15 @@ export default function StudentsPage() {
   const absentStudents = 0; // TODO: Update when backend supports status field
 
   // Filter students by status
-  const filteredStudents = statusFilter === "all" 
-    ? students 
+  const filteredStudents = statusFilter === "all"
+    ? students
     : statusFilter === "active"
-    ? students.filter((s) => s.isActive)
-    : statusFilter === "suspended"
-    ? [] // TODO: Update when backend supports status field
-    : statusFilter === "absent"
-    ? [] // TODO: Update when backend supports status field
-    : students.filter((s) => !s.isActive);
+      ? students.filter((s) => s.isActive)
+      : statusFilter === "suspended"
+        ? [] // TODO: Update when backend supports status field
+        : statusFilter === "absent"
+          ? [] // TODO: Update when backend supports status field
+          : students.filter((s) => !s.isActive);
 
   // Export handlers
   const handleExportCSV = () => {
@@ -328,7 +328,7 @@ export default function StudentsPage() {
             className="pl-10"
           />
         </div>
-        
+
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]">
@@ -396,16 +396,13 @@ export default function StudentsPage() {
       >
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "cards" | "table" | "list")}>
           <TabsList>
-            <TabsTrigger value="cards" className="gap-2">
-              <HugeiconsIcon icon={GridIcon} size={18} />
+            <TabsTrigger value="cards">
               Cards
             </TabsTrigger>
-            <TabsTrigger value="table" className="gap-2">
-              <HugeiconsIcon icon={TableIcon} size={18} />
+            <TabsTrigger value="table">
               Table
             </TabsTrigger>
-            <TabsTrigger value="list" className="gap-2">
-              <HugeiconsIcon icon={ListViewIcon} size={18} />
+            <TabsTrigger value="list">
               List
             </TabsTrigger>
           </TabsList>
@@ -451,88 +448,88 @@ export default function StudentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                <AnimatePresence>
-                  {filteredStudents.map((student, index) => (
-                    <motion.tr
-                      key={student.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group hover:bg-muted/50 transition-colors"
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
-                            className="size-10 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md"
-                          >
-                            <span className="text-sm font-bold text-white">
-                              {student.firstName[0]}
-                              {student.lastName[0]}
-                            </span>
-                          </motion.div>
-                          <div>
-                            <p className="font-semibold">
-                              {student.firstName} {student.lastName}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm text-muted-foreground">
-                        {student.admissionNumber}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{student.class?.name || "—"}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            student.isActive
-                              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                          }
-                        >
-                          {student.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                              <HugeiconsIcon icon={MoreVerticalIcon} size={18} />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48" align="end">
-                            <div className="flex flex-col gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                onClick={(e) => handleViewStudentDetails(student, e)}
-                              >
-                                <HugeiconsIcon icon={ViewIcon} size={16} />
-                                View details
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={(e) => handleDeleteStudent(student, e)}
-                              >
-                                <HugeiconsIcon icon={Delete02Icon} size={16} />
-                                Delete {student.firstName}
-                              </Button>
+                  <AnimatePresence>
+                    {filteredStudents.map((student, index) => (
+                      <motion.tr
+                        key={student.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="group hover:bg-muted/50 transition-colors"
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <motion.div
+                              whileHover={{ scale: 1.1 }}
+                              className="size-10 rounded-full bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md"
+                            >
+                              <span className="text-sm font-bold text-white">
+                                {student.firstName[0]}
+                                {student.lastName[0]}
+                              </span>
+                            </motion.div>
+                            <div>
+                              <p className="font-semibold">
+                                {student.firstName} {student.lastName}
+                              </p>
                             </div>
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground">
+                          {student.admissionNumber}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{student.class?.name || "—"}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              student.isActive
+                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                            }
+                          >
+                            {student.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
+                                <HugeiconsIcon icon={MoreVerticalIcon} size={18} />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48" align="end">
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
+                                  onClick={(e) => handleViewStudentDetails(student, e)}
+                                >
+                                  <HugeiconsIcon icon={ViewIcon} size={16} />
+                                  View details
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={(e) => handleDeleteStudent(student, e)}
+                                >
+                                  <HugeiconsIcon icon={Delete02Icon} size={16} />
+                                  Delete {student.firstName}
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                </TableBody>
+              </Table>
             )}
 
             {/* Cards View */}

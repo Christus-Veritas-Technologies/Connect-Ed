@@ -3,6 +3,7 @@ import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { successResponse, errors } from "../lib/response";
 import { z } from "zod";
 
@@ -160,47 +161,48 @@ teachers.post("/", async (c) => {
       });
     });
 
-    // Send notifications
+    // Send notifications (preference-aware)
     const admins = await db.user.findMany({
       where: { schoolId, role: Role.ADMIN, isActive: true },
       select: { id: true },
     });
 
     const notifications = admins.map((admin) =>
-      db.notification.create({
-        data: {
-          type: NotificationType.TEACHER_ADDED,
-          priority: NotificationPriority.MEDIUM,
-          title: "New Teacher Added",
-          message: `${fullName} has been added to the school.`,
-          actionUrl: `/dashboard/teachers`,
-          schoolId,
-          userId: admin.id,
-        },
+      createNotification({
+        type: NotificationType.TEACHER_ADDED,
+        priority: NotificationPriority.MEDIUM,
+        title: "New Teacher Added",
+        message: `${fullName} has been added to the school.`,
+        actionUrl: `/dashboard/teachers`,
+        schoolId,
+        userId: admin.id,
+        actorName: fullName,
       })
     );
 
     await Promise.all(notifications);
 
-    // Send welcome email
-    const school = await db.school.findFirst({
-      where: { id: schoolId },
-      select: { name: true },
-    });
+    // Send welcome email (respects school preferences)
+    const [school, prefs] = await Promise.all([
+      db.school.findFirst({ where: { id: schoolId }, select: { name: true } }),
+      getSchoolNotificationPrefs(schoolId),
+    ]);
 
-    await sendEmail({
-      to: data.email.toLowerCase(),
-      subject: "Welcome to Connect-Ed - Your Login Credentials",
-      html: generateWelcomeEmailWithCredentials({
-        name: fullName,
-        email: data.email.toLowerCase(),
-        password: generatedPassword,
-        role: "TEACHER",
-        schoolName: school?.name ?? undefined,
-      }),
-      schoolId,
-      type: "KIN",
-    });
+    if (prefs.email) {
+      await sendEmail({
+        to: data.email.toLowerCase(),
+        subject: "Welcome to Connect-Ed - Your Login Credentials",
+        html: generateWelcomeEmailWithCredentials({
+          name: fullName,
+          email: data.email.toLowerCase(),
+          password: generatedPassword,
+          role: "TEACHER",
+          schoolName: school?.name ?? undefined,
+        }),
+        schoolId,
+        type: "KIN",
+      });
+    }
 
     return successResponse(c, { teacher, password: generatedPassword }, 201);
   } catch (error) {

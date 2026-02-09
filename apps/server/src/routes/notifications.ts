@@ -188,6 +188,7 @@ notifications.delete("/:id", requireAuth, async (c) => {
 });
 
 // Helper function to create notification (can be called from other routes)
+// Respects school-level and user-level notification preferences
 export async function createNotification(params: {
   schoolId: string;
   userId?: string;
@@ -197,8 +198,32 @@ export async function createNotification(params: {
   priority?: NotificationPriority;
   actionUrl?: string;
   metadata?: any;
+  actorName?: string;
+  actorAvatar?: string;
 }) {
   try {
+    // Check school-level in-app notification preference
+    const school = await db.school.findUnique({
+      where: { id: params.schoolId },
+      select: { notifyInApp: true },
+    });
+
+    if (!school?.notifyInApp) {
+      return null; // In-app notifications disabled at school level
+    }
+
+    // If targeted to a specific user, check their preference too
+    if (params.userId) {
+      const user = await db.user.findUnique({
+        where: { id: params.userId },
+        select: { notifyInApp: true },
+      });
+
+      if (user && !user.notifyInApp) {
+        return null; // User opted out of in-app notifications
+      }
+    }
+
     return await db.notification.create({
       data: {
         schoolId: params.schoolId,
@@ -209,12 +234,43 @@ export async function createNotification(params: {
         priority: params.priority || "MEDIUM",
         actionUrl: params.actionUrl,
         metadata: params.metadata,
+        actorName: params.actorName,
+        actorAvatar: params.actorAvatar,
       },
     });
   } catch (error) {
     console.error("Create notification error:", error);
     throw error;
   }
+}
+
+// Helper: Check if a specific notification channel is enabled for a school
+export async function getSchoolNotificationPrefs(schoolId: string) {
+  const school = await db.school.findUnique({
+    where: { id: schoolId },
+    select: {
+      notifyEmail: true,
+      notifyWhatsapp: true,
+      notifySms: true,
+      notifyInApp: true,
+    },
+  });
+
+  return {
+    email: school?.notifyEmail ?? true,
+    whatsapp: school?.notifyWhatsapp ?? true,
+    sms: school?.notifySms ?? true,
+    inApp: school?.notifyInApp ?? true,
+  };
+}
+
+// Helper: Check if a user has opted into email notifications
+export async function getUserEmailPref(userId: string): Promise<boolean> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { notifyEmail: true },
+  });
+  return user?.notifyEmail ?? true;
 }
 
 export default notifications;

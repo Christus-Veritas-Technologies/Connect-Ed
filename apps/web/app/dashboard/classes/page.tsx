@@ -93,13 +93,13 @@ export default function ClassesPage() {
     level: "",
     classTeacherId: "",
   });
-  
+
   // TanStack Query hooks
   const { data: classesData, isLoading } = useClasses();
   const { data: teachersData } = useTeachers();
   const createMutation = useCreateClass();
   const deleteMutation = useDeleteClass();
-  
+
   const classes = classesData?.classes || [];
   const teachers = teachersData?.teachers || [];
 
@@ -200,8 +200,8 @@ export default function ClassesPage() {
       statusFilter === "all"
         ? true
         : statusFilter === "active"
-        ? cls.isActive
-        : !cls.isActive;
+          ? cls.isActive
+          : !cls.isActive;
 
     return matchesSearch && matchesStatus;
   });
@@ -388,12 +388,10 @@ export default function ClassesPage() {
 
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cards")}>
           <TabsList>
-            <TabsTrigger value="table" className="gap-2">
-              <HugeiconsIcon icon={TableIcon} size={18} />
+            <TabsTrigger value="table">
               Table
             </TabsTrigger>
-            <TabsTrigger value="cards" className="gap-2">
-              <HugeiconsIcon icon={GridIcon} size={18} />
+            <TabsTrigger value="cards">
               Cards
             </TabsTrigger>
           </TabsList>
@@ -567,7 +565,7 @@ export default function ClassesPage() {
 
                           <div className="space-y-3 mb-4">
                             <h4 className="font-bold text-lg">{classItem.name}</h4>
-                            
+
                             <div className="space-y-2 text-sm">
                               <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Students:</span>
@@ -575,7 +573,7 @@ export default function ClassesPage() {
                                   {classItem._count?.students || 0}
                                 </span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Teacher:</span>
                                 <span className={`font-medium ${classItem.classTeacher ? 'text-green-600' : 'text-orange-600'}`}>

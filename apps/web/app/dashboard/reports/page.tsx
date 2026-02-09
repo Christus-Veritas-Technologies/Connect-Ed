@@ -346,12 +346,10 @@ export default function ReportsPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="financial" className="gap-2">
-            <DollarSign size={18} />
+          <TabsTrigger value="financial">
             Financial
           </TabsTrigger>
-          <TabsTrigger value="managerial" className="gap-2">
-            <Users size={18} />
+          <TabsTrigger value="managerial">
             Managerial
           </TabsTrigger>
         </TabsList>

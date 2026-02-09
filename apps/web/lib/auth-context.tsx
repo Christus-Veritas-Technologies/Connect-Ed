@@ -35,6 +35,10 @@ interface School {
   termStartDate: string | null;
   currentPeriodType: "TERM" | "HOLIDAY";
   holidayStartDate: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
 }
 
 type UserType = "STAFF" | "PARENT" | "STUDENT";
@@ -67,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userType: UserType;
         accessToken: string;
       }>("/auth/refresh");
-      
+
       setAccessToken(data.accessToken);
       setUser(data.user);
       setSchool(data.school);

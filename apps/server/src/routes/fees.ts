@@ -4,6 +4,7 @@ import { db, FeeStatus, PaymentMethod, NotificationType, NotificationPriority } 
 import { requireAuth } from "../middleware/auth";
 import { createFeeSchema, recordPaymentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { createNotification } from "./notifications";
 
 const fees = new Hono();
 
@@ -340,16 +341,15 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
 
     for (const admin of admins) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.PAYMENT_SUCCESS,
-            priority: NotificationPriority.MEDIUM,
-            title: "Fee Payment Received",
-            message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
-            actionUrl: `/dashboard/fees`,
-            schoolId,
-            userId: admin.id,
-          },
+        createNotification({
+          type: NotificationType.PAYMENT_SUCCESS,
+          priority: NotificationPriority.MEDIUM,
+          title: "Fee Payment Received",
+          message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
+          actionUrl: `/dashboard/fees`,
+          schoolId,
+          userId: admin.id,
+          actorName: studentName,
         })
       );
     }
@@ -363,16 +363,15 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
 
       if (parent) {
         notifications.push(
-          db.notification.create({
-            data: {
-              type: NotificationType.PAYMENT_SUCCESS,
-              priority: NotificationPriority.HIGH,
-              title: "Fee Payment Recorded",
-              message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
-              actionUrl: `/dashboard/fees`,
-              schoolId,
-              metadata: { parentId: parent.id, studentId: fee.student.id },
-            },
+          createNotification({
+            type: NotificationType.PAYMENT_SUCCESS,
+            priority: NotificationPriority.HIGH,
+            title: "Fee Payment Recorded",
+            message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+            actionUrl: `/dashboard/fees`,
+            schoolId,
+            metadata: { parentId: parent.id, studentId: fee.student.id },
+            actorName: studentName,
           })
         );
       }
@@ -381,16 +380,15 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
     // 3. Notify the student (school-level notification with student metadata)
     if (fee.student) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.PAYMENT_SUCCESS,
-            priority: NotificationPriority.MEDIUM,
-            title: "Fee Payment Recorded",
-            message: `A payment of ₦${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
-            actionUrl: `/dashboard/fees`,
-            schoolId,
-            metadata: { studentId: fee.student.id },
-          },
+        createNotification({
+          type: NotificationType.PAYMENT_SUCCESS,
+          priority: NotificationPriority.MEDIUM,
+          title: "Fee Payment Recorded",
+          message: `A payment of ₦${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+          actionUrl: `/dashboard/fees`,
+          schoolId,
+          metadata: { studentId: fee.student.id },
+          actorName: studentName,
         })
       );
     }

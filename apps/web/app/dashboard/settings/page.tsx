@@ -1,205 +1,827 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/lib/api";
 import { PRICING } from "@/lib/pricing";
+import { toast } from "sonner";
+import {
+  useSchoolSettings,
+  useUpdateSchool,
+  useNotificationPrefs,
+  useUpdateNotificationPrefs,
+  useUserProfile,
+  useUpdateProfile,
+  useSchoolUsers,
+} from "@/lib/hooks";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Mail,
+  MessageSquare,
+  Smartphone,
+  BellRing,
+  Loader2,
+  Save,
+  Globe,
+  Phone,
+  MapPin,
+  Copy,
+  Check,
+} from "lucide-react";
 
 export default function SettingsPage() {
-  const { school, user, checkAuth } = useAuth();
-  
-  const [activeTab, setActiveTab] = useState("general");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const { school: authSchool, user, checkAuth } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
+  // Data hooks
+  const { data: schoolData, isLoading: schoolLoading } = useSchoolSettings();
+  const { data: notifData, isLoading: notifLoading } = useNotificationPrefs();
+  const { data: profileData, isLoading: profileLoading } = useUserProfile();
+  const { data: usersData } = useSchoolUsers();
+
+  // Mutations
+  const updateSchool = useUpdateSchool();
+  const updateNotifPrefs = useUpdateNotificationPrefs();
+  const updateProfile = useUpdateProfile();
+
+  // School form state
   const [schoolForm, setSchoolForm] = useState({
-    name: school?.name || "",
+    name: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
   });
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    phone: "",
+  });
+
+  // Copy ID state
+  const [copied, setCopied] = useState(false);
+
+  // Sync school form when data loads
+  useEffect(() => {
+    if (schoolData?.school) {
+      const s = schoolData.school;
+      setSchoolForm({
+        name: s.name || "",
+        address: s.address || "",
+        phone: s.phone || "",
+        email: s.email || "",
+        website: s.website || "",
+      });
+    }
+  }, [schoolData]);
+
+  // Sync profile form when data loads
+  useEffect(() => {
+    if (profileData?.user) {
+      const u = profileData.user;
+      setProfileForm({
+        name: u.name || "",
+        phone: u.phone || "",
+      });
+    }
+  }, [profileData]);
 
   const handleUpdateSchool = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setMessage({ type: "", text: "" });
-
     try {
-      await api.patch("/settings/school", schoolForm);
+      await updateSchool.mutateAsync(schoolForm);
       await checkAuth();
-      setMessage({ type: "success", text: "Settings updated successfully" });
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to update settings" });
-    } finally {
-      setIsLoading(false);
+      toast.success("School information updated");
+    } catch {
+      toast.error("Failed to update school information");
     }
   };
 
-  const planPricing = school?.plan ? PRICING[school.plan] : null;
+  const handleToggleNotification = async (
+    key: "notifyEmail" | "notifyWhatsapp" | "notifySms" | "notifyInApp",
+    value: boolean
+  ) => {
+    try {
+      await updateNotifPrefs.mutateAsync({ [key]: value });
+      toast.success("Notification preference updated");
+    } catch {
+      toast.error("Failed to update notification preference");
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateProfile.mutateAsync(profileForm);
+      await checkAuth();
+      toast.success("Profile updated");
+    } catch {
+      toast.error("Failed to update profile");
+    }
+  };
+
+  const handleToggleUserPref = async (
+    key: "notifyInApp" | "notifyEmail",
+    value: boolean
+  ) => {
+    try {
+      await updateProfile.mutateAsync({ [key]: value });
+      toast.success("Preference updated");
+    } catch {
+      toast.error("Failed to update preference");
+    }
+  };
+
+  const handleCopyId = async () => {
+    if (authSchool?.id) {
+      await navigator.clipboard.writeText(authSchool.id);
+      setCopied(true);
+      toast.success("School ID copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const prefs = notifData?.preferences;
+  const profile = profileData?.user;
+  const planPricing = authSchool?.plan ? PRICING[authSchool.plan] : null;
+
+  const notificationChannels = [
+    {
+      key: "notifyEmail" as const,
+      label: "Email Notifications",
+      description:
+        "Receive notifications via email (welcome emails, reports, alerts)",
+      icon: Mail,
+      enabled: prefs?.notifyEmail ?? true,
+    },
+    {
+      key: "notifyWhatsapp" as const,
+      label: "WhatsApp Notifications",
+      description: "Receive notifications via WhatsApp messages",
+      icon: MessageSquare,
+      enabled: prefs?.notifyWhatsapp ?? true,
+    },
+    {
+      key: "notifySms" as const,
+      label: "SMS Notifications",
+      description: "Receive notifications via text messages",
+      icon: Smartphone,
+      enabled: prefs?.notifySms ?? true,
+    },
+    {
+      key: "notifyInApp" as const,
+      label: "In-App Notifications",
+      description:
+        "Show notification badges and alerts within the platform",
+      icon: BellRing,
+      enabled: prefs?.notifyInApp ?? true,
+    },
+  ];
 
   return (
-    <div>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 700 }}>Settings</h1>
-        <p style={{ color: 'var(--muted-foreground)' }}>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground">
           Manage your school settings and preferences
         </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-        {[
-          { id: "general", label: "General" },
-          { id: "billing", label: "Billing" },
-          { id: "users", label: "Users" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            className={`btn ${activeTab === tab.id ? 'btn-primary' : 'btn-outline'}`}
-            style={{ padding: '0.5rem 1rem' }}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        defaultValue={isAdmin ? "school" : "profile"}
+        className="space-y-6"
+      >
+        <TabsList>
+          {isAdmin && (
+            <>
+              <TabsTrigger value="school">
+                School
+              </TabsTrigger>
+              <TabsTrigger value="notifications">
+                Notifications
+              </TabsTrigger>
+            </>
+          )}
+          <TabsTrigger value="profile">
+            Profile
+          </TabsTrigger>
+          {isAdmin && (
+            <>
+              <TabsTrigger value="billing">
+                Billing
+              </TabsTrigger>
+              <TabsTrigger value="users">
+                Users
+              </TabsTrigger>
+            </>
+          )}
+        </TabsList>
 
-      {message.text && (
-        <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-error'}`}>
-          {message.text}
-        </div>
-      )}
+        {/* =============================================
+            School Data Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="school" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>School Information</CardTitle>
+                <CardDescription>
+                  Update your school&apos;s details. This information is visible
+                  to all members.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {schoolLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <form onSubmit={handleUpdateSchool} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="schoolName">School Name</Label>
+                        <Input
+                          id="schoolName"
+                          value={schoolForm.name}
+                          onChange={(e) =>
+                            setSchoolForm({
+                              ...schoolForm,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="Enter school name"
+                        />
+                      </div>
 
-      {/* General Settings */}
-      {activeTab === "general" && (
-        <div className="card">
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
-            School Information
-          </h2>
-          <form onSubmit={handleUpdateSchool}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">School Name</label>
-              <input
-                type="text"
-                className="form-input"
-                value={schoolForm.name}
-                onChange={(e) => setSchoolForm({ ...schoolForm, name: e.target.value })}
-              />
-            </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="schoolAddress">
+                          <MapPin className="inline h-4 w-4 mr-1" />
+                          Address
+                        </Label>
+                        <Input
+                          id="schoolAddress"
+                          value={schoolForm.address}
+                          onChange={(e) =>
+                            setSchoolForm({
+                              ...schoolForm,
+                              address: e.target.value,
+                            })
+                          }
+                          placeholder="Enter school address"
+                        />
+                      </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">School ID</label>
-              <input
-                type="text"
-                className="form-input"
-                value={school?.id || ""}
-                disabled
-                style={{ background: 'var(--muted)' }}
-              />
-              <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>
-                Use this ID when making cash payments
-              </p>
-            </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="schoolPhone">
+                          <Phone className="inline h-4 w-4 mr-1" />
+                          Phone
+                        </Label>
+                        <Input
+                          id="schoolPhone"
+                          type="tel"
+                          value={schoolForm.phone}
+                          onChange={(e) =>
+                            setSchoolForm({
+                              ...schoolForm,
+                              phone: e.target.value,
+                            })
+                          }
+                          placeholder="+234..."
+                        />
+                      </div>
 
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              disabled={isLoading}
-            >
-              {isLoading ? "Saving..." : "Save Changes"}
-            </button>
-          </form>
-        </div>
-      )}
+                      <div className="space-y-2">
+                        <Label htmlFor="schoolEmail">
+                          <Mail className="inline h-4 w-4 mr-1" />
+                          Email
+                        </Label>
+                        <Input
+                          id="schoolEmail"
+                          type="email"
+                          value={schoolForm.email}
+                          onChange={(e) =>
+                            setSchoolForm({
+                              ...schoolForm,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="contact@school.com"
+                        />
+                      </div>
 
-      {/* Billing Settings */}
-      {activeTab === "billing" && (
-        <div>
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
-              Current Plan
-            </h2>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span className={`badge ${
-                  school?.plan === 'ENTERPRISE' ? 'badge-primary' : 
-                  school?.plan === 'GROWTH' ? 'badge-success' : 
-                  'badge-warning'
-                }`} style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
-                  {school?.plan} Plan
-                </span>
-                <p style={{ marginTop: '0.5rem', color: 'var(--muted-foreground)' }}>
-                  {planPricing?.description}
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                  ${planPricing?.monthlyEstimate}/mo
-                </p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>
-                  (${planPricing?.perTermCost}/term)
-                </p>
-              </div>
-            </div>
-          </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="schoolWebsite">
+                          <Globe className="inline h-4 w-4 mr-1" />
+                          Website
+                        </Label>
+                        <Input
+                          id="schoolWebsite"
+                          type="url"
+                          value={schoolForm.website}
+                          onChange={(e) =>
+                            setSchoolForm({
+                              ...schoolForm,
+                              website: e.target.value,
+                            })
+                          }
+                          placeholder="https://www.school.com"
+                        />
+                      </div>
+                    </div>
 
-          <div className="card">
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
-              Plan Features
-            </h2>
-            <ul style={{ listStyle: 'none' }}>
-              {planPricing?.features.map((feature, i) => (
-                <li key={i} style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ color: 'var(--primary)' }}>✓</span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+                    <Separator />
 
-            {school?.plan !== "ENTERPRISE" && (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--muted)', borderRadius: 'var(--radius)' }}>
-                <p style={{ fontWeight: 600 }}>Need more features?</p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '1rem' }}>
-                  Upgrade your plan to unlock additional features and higher quotas.
-                </p>
-                <a href="/payment" className="btn btn-primary">
-                  Upgrade Plan
-                </a>
-              </div>
+                    <div className="space-y-2">
+                      <Label>School ID</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={authSchool?.id || ""}
+                          disabled
+                          className="font-mono text-sm bg-muted"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={handleCopyId}
+                        >
+                          {copied ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Use this ID when making cash payments
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={updateSchool.isPending}
+                        className="gap-2"
+                      >
+                        {updateSchool.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* =============================================
+            Notifications Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="notifications" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>School Notification Channels</CardTitle>
+                <CardDescription>
+                  Control which notification channels are enabled for your
+                  entire school. Disabling a channel will prevent{" "}
+                  <strong>all</strong> notifications of that type from being
+                  sent.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {notifLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {notificationChannels.map((channel, index) => (
+                      <div key={channel.key}>
+                        <div className="flex items-center justify-between py-4">
+                          <div className="flex items-start gap-4">
+                            <div className="mt-0.5 rounded-lg bg-muted p-2">
+                              <channel.icon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-base font-medium">
+                                {channel.label}
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                {channel.description}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={channel.enabled}
+                            onCheckedChange={(value) =>
+                              handleToggleNotification(channel.key, value)
+                            }
+                            disabled={updateNotifPrefs.isPending}
+                          />
+                        </div>
+                        {index < notificationChannels.length - 1 && (
+                          <Separator />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quota Usage */}
+            {schoolData?.school && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notification Quota</CardTitle>
+                  <CardDescription>
+                    Your current usage for this billing period
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <QuotaItem
+                      label="Emails"
+                      used={schoolData.school.emailUsed}
+                      total={schoolData.school.emailQuota}
+                      icon={Mail}
+                    />
+                    <QuotaItem
+                      label="WhatsApp"
+                      used={schoolData.school.whatsappUsed}
+                      total={schoolData.school.whatsappQuota}
+                      icon={MessageSquare}
+                    />
+                    <QuotaItem
+                      label="SMS"
+                      used={schoolData.school.smsUsed}
+                      total={schoolData.school.smsQuota}
+                      icon={Smartphone}
+                    />
+                  </div>
+                  {schoolData.school.quotaResetDate && (
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      Quota resets on{" "}
+                      {new Date(
+                        schoolData.school.quotaResetDate
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             )}
-          </div>
-        </div>
-      )}
+          </TabsContent>
+        )}
 
-      {/* Users Settings */}
-      {activeTab === "users" && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>
-              Team Members
-            </h2>
-            <button className="btn btn-primary">
-              + Add User
-            </button>
-          </div>
+        {/* =============================================
+            Profile Tab (All users)
+        ============================================= */}
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Profile</CardTitle>
+              <CardDescription>
+                Manage your personal information and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {profileLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="profileName">Full Name</Label>
+                      <Input
+                        id="profileName"
+                        value={profileForm.name}
+                        onChange={(e) =>
+                          setProfileForm({
+                            ...profileForm,
+                            name: e.target.value,
+                          })
+                        }
+                        placeholder="Your name"
+                      />
+                    </div>
 
-          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: '1rem',
-              borderBottom: '1px solid var(--border)'
-            }}>
-              <div>
-                <p style={{ fontWeight: 600 }}>{user?.name}</p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>{user?.email}</p>
-              </div>
-              <span className="badge badge-primary">{user?.role}</span>
-            </div>
-            <div style={{ padding: '1rem', color: 'var(--muted-foreground)', fontSize: '0.875rem' }}>
-              Additional team members will appear here. Click &quot;Add User&quot; to invite receptionists or teachers.
-            </div>
-          </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="profileEmail">Email</Label>
+                      <Input
+                        id="profileEmail"
+                        value={profile?.email || ""}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Contact your admin to change your email
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profilePhone">
+                        <Phone className="inline h-4 w-4 mr-1" />
+                        Phone
+                      </Label>
+                      <Input
+                        id="profilePhone"
+                        type="tel"
+                        value={profileForm.phone}
+                        onChange={(e) =>
+                          setProfileForm({
+                            ...profileForm,
+                            phone: e.target.value,
+                          })
+                        }
+                        placeholder="+234..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <div className="flex items-center h-9">
+                        <Badge variant="secondary" className="text-sm">
+                          {profile?.role}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={updateProfile.isPending}
+                      className="gap-2"
+                    >
+                      {updateProfile.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      Save Profile
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* User-level notification preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Notification Preferences</CardTitle>
+              <CardDescription>
+                Control which notifications you personally receive. These
+                settings only affect your account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {profileLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between py-4">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 rounded-lg bg-muted p-2">
+                        <BellRing className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-base font-medium">
+                          In-App Notifications
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Show notification badges and alerts in the dashboard
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profile?.notifyInApp ?? true}
+                      onCheckedChange={(value) =>
+                        handleToggleUserPref("notifyInApp", value)
+                      }
+                      disabled={updateProfile.isPending}
+                    />
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between py-4">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 rounded-lg bg-muted p-2">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-base font-medium">
+                          Email Notifications
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Receive email alerts for important updates
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={profile?.notifyEmail ?? true}
+                      onCheckedChange={(value) =>
+                        handleToggleUserPref("notifyEmail", value)
+                      }
+                      disabled={updateProfile.isPending}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* =============================================
+            Billing Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="billing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Plan</CardTitle>
+                <CardDescription>
+                  Manage your subscription and billing
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <Badge
+                      variant={
+                        authSchool?.plan === "ENTERPRISE"
+                          ? "default"
+                          : authSchool?.plan === "GROWTH"
+                            ? "secondary"
+                            : "outline"
+                      }
+                      className="text-base px-4 py-1"
+                    >
+                      {authSchool?.plan} Plan
+                    </Badge>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {planPricing?.description}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold">
+                      ${planPricing?.monthlyEstimate}/mo
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      (${planPricing?.perTermCost}/term)
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Plan Features</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {planPricing?.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {authSchool?.plan !== "ENTERPRISE" && (
+                  <>
+                    <Separator className="my-6" />
+                    <div className="rounded-lg bg-muted p-4">
+                      <p className="font-semibold">Need more features?</p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Upgrade your plan to unlock additional features and
+                        higher quotas.
+                      </p>
+                      <Button asChild>
+                        <a href="/payment">Upgrade Plan</a>
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* =============================================
+            Users Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Team Members</CardTitle>
+                  <CardDescription>
+                    Manage staff accounts for your school
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y rounded-lg border">
+                  {usersData?.users?.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{u.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {u.email}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={u.isActive ? "default" : "secondary"}
+                        >
+                          {u.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        <Badge variant="outline">{u.role}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {(!usersData?.users || usersData.users.length === 0) && (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      No team members found. Add teachers or receptionists
+                      from their respective pages.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  );
+}
+
+// =============================================
+// Quota Progress Item
+// =============================================
+
+function QuotaItem({
+  label,
+  used,
+  total,
+  icon: Icon,
+}: {
+  label: string;
+  used: number;
+  total: number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const percentage = total > 0 ? Math.min((used / total) * 100, 100) : 0;
+  const isHigh = percentage > 80;
+
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{label}</span>
         </div>
-      )}
+        <span
+          className={`text-sm font-medium ${isHigh ? "text-destructive" : "text-muted-foreground"
+            }`}
+        >
+          {used}/{total}
+        </span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${isHigh ? "bg-destructive" : "bg-primary"
+            }`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
     </div>
   );
 }

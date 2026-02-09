@@ -6,6 +6,7 @@ import { createStudentSchema, updateStudentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 
 const students = new Hono();
 
@@ -212,7 +213,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     const student = result;
 
-    // Send notifications
+    // Send notifications (preference-aware)
     const notifications = [];
 
     // 1. Notify admins about new student
@@ -223,16 +224,15 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     for (const admin of admins) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.STUDENT_ADDED,
-            priority: NotificationPriority.MEDIUM,
-            title: "New Student Added",
-            message: `${student.firstName} ${student.lastName} has been added${student.class ? ` to ${student.class.name}` : ""}.`,
-            actionUrl: `/dashboard/students`,
-            schoolId,
-            userId: admin.id,
-          },
+        createNotification({
+          type: NotificationType.STUDENT_ADDED,
+          priority: NotificationPriority.MEDIUM,
+          title: "New Student Added",
+          message: `${student.firstName} ${student.lastName} has been added${student.class ? ` to ${student.class.name}` : ""}.`,
+          actionUrl: `/dashboard/students`,
+          schoolId,
+          userId: admin.id,
+          actorName: `${student.firstName} ${student.lastName}`,
         })
       );
     }
@@ -240,16 +240,15 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     // 2. Notify class teacher about new student
     if (student.class?.classTeacherId) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.STUDENT_ADDED,
-            priority: NotificationPriority.HIGH,
-            title: "New Student in Your Class",
-            message: `${student.firstName} ${student.lastName} has been added to ${student.class.name}.`,
-            actionUrl: `/dashboard/classes/${student.class.id}`,
-            schoolId,
-            userId: student.class.classTeacherId,
-          },
+        createNotification({
+          type: NotificationType.STUDENT_ADDED,
+          priority: NotificationPriority.HIGH,
+          title: "New Student in Your Class",
+          message: `${student.firstName} ${student.lastName} has been added to ${student.class.name}.`,
+          actionUrl: `/dashboard/classes/${student.class.id}`,
+          schoolId,
+          userId: student.class.classTeacherId,
+          actorName: `${student.firstName} ${student.lastName}`,
         })
       );
     }
@@ -257,16 +256,15 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     // 3. Welcome notification for student (if email provided)
     if (student.email) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.SYSTEM_ALERT,
-            priority: NotificationPriority.HIGH,
-            title: "Welcome to Connect-Ed!",
-            message: "Your account has been created. Check your email for login credentials.",
-            actionUrl: `/login`,
-            schoolId,
-            metadata: { role: "STUDENT" },
-          },
+        createNotification({
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.HIGH,
+          title: "Welcome to Connect-Ed!",
+          message: "Your account has been created. Check your email for login credentials.",
+          actionUrl: `/login`,
+          schoolId,
+          metadata: { role: "STUDENT" },
+          actorName: "Connect-Ed",
         })
       );
     }
@@ -274,26 +272,28 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     // Execute all notifications
     await Promise.all(notifications);
 
-    // Send welcome email with credentials if email provided
+    // Send welcome email with credentials if email provided (respects school preferences)
     if (student.email && generatedPassword) {
-      const school = await db.school.findUnique({
-        where: { id: schoolId },
-        select: { name: true },
-      });
+      const [school, prefs] = await Promise.all([
+        db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+        getSchoolNotificationPrefs(schoolId),
+      ]);
 
-      await sendEmail({
-        to: student.email,
-        subject: "Welcome to Connect-Ed - Your Login Credentials",
-        html: generateWelcomeEmailWithCredentials({
-          name: `${student.firstName} ${student.lastName}`,
-          email: student.email,
-          password: generatedPassword,
-          role: "STUDENT",
-          schoolName: school?.name,
-        }),
-        schoolId,
-        type: "KIN",
-      });
+      if (prefs.email) {
+        await sendEmail({
+          to: student.email,
+          subject: "Welcome to Connect-Ed - Your Login Credentials",
+          html: generateWelcomeEmailWithCredentials({
+            name: `${student.firstName} ${student.lastName}`,
+            email: student.email,
+            password: generatedPassword,
+            role: "STUDENT",
+            schoolName: school?.name,
+          }),
+          schoolId,
+          type: "KIN",
+        });
+      }
     }
 
     console.log(`[POST /students] ✅ Student created successfully: ${student.firstName} ${student.lastName} (${student.id})`);

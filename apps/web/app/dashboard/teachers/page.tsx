@@ -90,7 +90,7 @@ export default function TeachersPage() {
   const [formError, setFormError] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -102,14 +102,14 @@ export default function TeachersPage() {
   const [classSearch, setClassSearch] = useState("");
 
   const markNotificationsByUrl = useMarkNotificationsByUrl();
-  
+
   // TanStack Query hooks
   const { data: teachersData, isLoading } = useTeachers();
   const { data: classesData } = useClasses();
   const { data: subjectsData } = useSubjects();
   const createMutation = useCreateTeacher();
   const deleteMutation = useDeleteTeacher();
-  
+
   const teachers = teachersData?.teachers || [];
   const classes = classesData?.classes || [];
   const allSubjects = subjectsData?.subjects || [];
@@ -135,7 +135,7 @@ export default function TeachersPage() {
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    
+
     createMutation.mutate(
       {
         firstName: formData.firstName,
@@ -197,15 +197,15 @@ export default function TeachersPage() {
   const filteredTeachers = teachers.filter((teacher) => {
     const matchesSearch = search
       ? teacher.name.toLowerCase().includes(search.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(search.toLowerCase())
+      teacher.email.toLowerCase().includes(search.toLowerCase())
       : true;
 
     const matchesStatus =
       statusFilter === "all"
         ? true
         : statusFilter === "active"
-        ? teacher.isActive
-        : !teacher.isActive;
+          ? teacher.isActive
+          : !teacher.isActive;
 
     return matchesSearch && matchesStatus;
   });
@@ -400,16 +400,13 @@ export default function TeachersPage() {
       >
         <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
           <TabsList>
-            <TabsTrigger value="cards" className="gap-2">
-              <HugeiconsIcon icon={GridIcon} size={18} />
+            <TabsTrigger value="cards">
               Cards
             </TabsTrigger>
-            <TabsTrigger value="table" className="gap-2">
-              <HugeiconsIcon icon={TableIcon} size={18} />
+            <TabsTrigger value="table">
               Table
             </TabsTrigger>
-            <TabsTrigger value="list" className="gap-2">
-              <HugeiconsIcon icon={ListViewIcon} size={18} />
+            <TabsTrigger value="list">
               List
             </TabsTrigger>
           </TabsList>
@@ -791,11 +788,10 @@ export default function TeachersPage() {
                                 : [...formData.subjectIds, subject.id],
                             });
                           }}
-                          className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${
-                            isSelected
+                          className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
                               ? "bg-brand/10 text-brand border border-brand/30"
                               : "hover:bg-muted"
-                          }`}
+                            }`}
                         >
                           <span>{subject.name}</span>
                           {isSelected && (
@@ -847,11 +843,10 @@ export default function TeachersPage() {
                               });
                               setClassSearch("");
                             }}
-                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${
-                              isSelected
+                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${isSelected
                                 ? "bg-brand/10"
                                 : "hover:bg-muted cursor-pointer"
-                            }`}
+                              }`}
                           >
                             <span className="text-sm">
                               {cls.name}
@@ -870,10 +865,10 @@ export default function TeachersPage() {
                     {classes.filter((cls) =>
                       cls.name.toLowerCase().includes(classSearch.toLowerCase())
                     ).length === 0 && (
-                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                        No classes match
-                      </div>
-                    )}
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                          No classes match
+                        </div>
+                      )}
                   </div>
                 )}
               </div>

@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { z } from "zod";
 
 const parents = new Hono();
@@ -273,16 +274,15 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
 
     for (const admin of admins) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.SYSTEM_ALERT,
-            priority: NotificationPriority.MEDIUM,
-            title: "New Parent Added",
-            message: adminMessage,
-            actionUrl: `/dashboard/parents`,
-            schoolId,
-            userId: admin.id,
-          },
+        createNotification({
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.MEDIUM,
+          title: "New Parent Added",
+          message: adminMessage,
+          actionUrl: `/dashboard/parents`,
+          schoolId,
+          userId: admin.id,
+          actorName: fullName,
         })
       );
     }
@@ -298,38 +298,36 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     }
 
     notifications.push(
-      db.notification.create({
-        data: {
-          type: NotificationType.SYSTEM_ALERT,
-          priority: NotificationPriority.HIGH,
-          title: "Welcome to Connect-Ed!",
-          message: parentMessage,
-          actionUrl: `/login`,
-          schoolId,
-          metadata: { role: "PARENT" },
-        },
+      createNotification({
+        type: NotificationType.SYSTEM_ALERT,
+        priority: NotificationPriority.HIGH,
+        title: "Welcome to Connect-Ed!",
+        message: parentMessage,
+        actionUrl: `/login`,
+        schoolId,
+        metadata: { role: "PARENT" },
+        actorName: "Connect-Ed",
       })
     );
 
     // 3. Notify existing parents about new parent requests
     for (const student of studentsWithParent) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.SYSTEM_ALERT,
-            priority: NotificationPriority.HIGH,
-            title: "New Parent Request",
-            message: `${fullName} has requested to be added as a parent for ${student.firstName} ${student.lastName}. Please review and respond.`,
-            actionUrl: `/dashboard/parent-requests`,
-            schoolId,
-            userId: null, // We'll need to handle parent notifications differently since they're not Users
-            metadata: { 
-              role: "PARENT",
-              parentId: student.parentId,
-              requestingParentName: fullName,
-              studentName: `${student.firstName} ${student.lastName}`,
-            },
+        createNotification({
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.HIGH,
+          title: "New Parent Request",
+          message: `${fullName} has requested to be added as a parent for ${student.firstName} ${student.lastName}. Please review and respond.`,
+          actionUrl: `/dashboard/parent-requests`,
+          schoolId,
+          userId: null,
+          metadata: { 
+            role: "PARENT",
+            parentId: student.parentId,
+            requestingParentName: fullName,
+            studentName: `${student.firstName} ${student.lastName}`,
           },
+          actorName: fullName,
         })
       );
     }
@@ -337,11 +335,11 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     // Execute all notifications
     await Promise.all(notifications);
 
-    // Send welcome email with credentials
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { name: true },
-    });
+    // Send welcome email with credentials (respects school preferences)
+    const [school, prefs] = await Promise.all([
+      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+      getSchoolNotificationPrefs(schoolId),
+    ]);
 
     let emailAdditionalInfo = "";
     if (studentsWithoutParent.length > 0) {
@@ -351,20 +349,22 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       emailAdditionalInfo += studentsWithoutParent.length > 0 ? ` Requests have been sent for: ${requestedChildrenNames}.` : `Requests have been sent to existing parents for: ${requestedChildrenNames}. You will be notified once they accept.`;
     }
 
-    await sendEmail({
-      to: parent.email,
-      subject: "Welcome to Connect-Ed - Your Login Credentials",
-      html: generateWelcomeEmailWithCredentials({
-        name: fullName,
-        email: parent.email,
-        password: generatedPassword,
-        role: "PARENT",
-        schoolName: school?.name,
-        additionalInfo: emailAdditionalInfo,
-      }),
-      schoolId,
-      type: "KIN",
-    });
+    if (prefs.email) {
+      await sendEmail({
+        to: parent.email,
+        subject: "Welcome to Connect-Ed - Your Login Credentials",
+        html: generateWelcomeEmailWithCredentials({
+          name: fullName,
+          email: parent.email,
+          password: generatedPassword,
+          role: "PARENT",
+          schoolName: school?.name,
+          additionalInfo: emailAdditionalInfo,
+        }),
+        schoolId,
+        type: "KIN",
+      });
+    }
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${fullName} (${parent.id})`);
     console.log(`[POST /parents] Direct links: ${studentsWithoutParent.length}, Requests: ${studentsWithParent.length}`);
@@ -599,58 +599,58 @@ parents.post("/requests/:id/accept", async (c) => {
 
     for (const admin of admins) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.SYSTEM_ALERT,
-            priority: NotificationPriority.MEDIUM,
-            title: "Parent Request Accepted",
-            message: `${request.existingParent.name} accepted ${request.requestingParent.name} as a parent for ${request.student.firstName} ${request.student.lastName}.`,
-            actionUrl: `/dashboard/parents`,
-            schoolId,
-            userId: admin.id,
-          },
+        createNotification({
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.MEDIUM,
+          title: "Parent Request Accepted",
+          message: `${request.existingParent.name} accepted ${request.requestingParent.name} as a parent for ${request.student.firstName} ${request.student.lastName}.`,
+          actionUrl: `/dashboard/parents`,
+          schoolId,
+          userId: admin.id,
+          actorName: request.existingParent.name,
         })
       );
     }
 
     // Notify requesting parent
     notifications.push(
-      db.notification.create({
-        data: {
-          type: NotificationType.SYSTEM_ALERT,
-          priority: NotificationPriority.HIGH,
-          title: "Parent Request Accepted",
-          message: `Your request to be added as a parent for ${request.student.firstName} ${request.student.lastName} has been accepted!`,
-          actionUrl: `/dashboard`,
-          schoolId,
-          metadata: { 
-            role: "PARENT",
-            parentId: request.requestingParentId,
-          },
+      createNotification({
+        type: NotificationType.SYSTEM_ALERT,
+        priority: NotificationPriority.HIGH,
+        title: "Parent Request Accepted",
+        message: `Your request to be added as a parent for ${request.student.firstName} ${request.student.lastName} has been accepted!`,
+        actionUrl: `/dashboard`,
+        schoolId,
+        metadata: { 
+          role: "PARENT",
+          parentId: request.requestingParentId,
         },
+        actorName: request.existingParent.name,
       })
     );
 
     await Promise.all(notifications);
 
-    // Send email to requesting parent
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { name: true },
-    });
+    // Send email to requesting parent (respects school preferences)
+    const [school, prefs] = await Promise.all([
+      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+      getSchoolNotificationPrefs(schoolId),
+    ]);
 
-    await sendEmail({
-      to: request.requestingParent.email,
-      subject: "Parent Request Accepted",
-      html: `
-        <h2>Great News!</h2>
-        <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> has been accepted by ${request.existingParent.name}.</p>
-        <p>You can now access their information in your parent dashboard.</p>
-        <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
-      `,
-      schoolId,
-      type: "NOREPLY",
-    });
+    if (prefs.email) {
+      await sendEmail({
+        to: request.requestingParent.email,
+        subject: "Parent Request Accepted",
+        html: `
+          <h2>Great News!</h2>
+          <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> has been accepted by ${request.existingParent.name}.</p>
+          <p>You can now access their information in your parent dashboard.</p>
+          <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
+        `,
+        schoolId,
+        type: "NOREPLY",
+      });
+    }
 
     return successResponse(c, { 
       message: "Parent request accepted successfully",
@@ -723,58 +723,58 @@ parents.post("/requests/:id/decline", async (c) => {
 
     for (const admin of admins) {
       notifications.push(
-        db.notification.create({
-          data: {
-            type: NotificationType.SYSTEM_ALERT,
-            priority: NotificationPriority.MEDIUM,
-            title: "Parent Request Declined",
-            message: `${request.existingParent.name} declined ${request.requestingParent.name} as a parent for ${request.student.firstName} ${request.student.lastName}.`,
-            actionUrl: `/dashboard/parents`,
-            schoolId,
-            userId: admin.id,
-          },
+        createNotification({
+          type: NotificationType.SYSTEM_ALERT,
+          priority: NotificationPriority.MEDIUM,
+          title: "Parent Request Declined",
+          message: `${request.existingParent.name} declined ${request.requestingParent.name} as a parent for ${request.student.firstName} ${request.student.lastName}.`,
+          actionUrl: `/dashboard/parents`,
+          schoolId,
+          userId: admin.id,
+          actorName: request.existingParent.name,
         })
       );
     }
 
     // Notify requesting parent
     notifications.push(
-      db.notification.create({
-        data: {
-          type: NotificationType.SYSTEM_ALERT,
-          priority: NotificationPriority.MEDIUM,
-          title: "Parent Request Declined",
-          message: `Your request to be added as a parent for ${request.student.firstName} ${request.student.lastName} was declined.`,
-          actionUrl: `/dashboard`,
-          schoolId,
-          metadata: { 
-            role: "PARENT",
-            parentId: request.requestingParentId,
-          },
+      createNotification({
+        type: NotificationType.SYSTEM_ALERT,
+        priority: NotificationPriority.MEDIUM,
+        title: "Parent Request Declined",
+        message: `Your request to be added as a parent for ${request.student.firstName} ${request.student.lastName} was declined.`,
+        actionUrl: `/dashboard`,
+        schoolId,
+        metadata: { 
+          role: "PARENT",
+          parentId: request.requestingParentId,
         },
+        actorName: request.existingParent.name,
       })
     );
 
     await Promise.all(notifications);
 
-    // Send email to requesting parent
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { name: true },
-    });
+    // Send email to requesting parent (respects school preferences)
+    const [school, prefs] = await Promise.all([
+      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
+      getSchoolNotificationPrefs(schoolId),
+    ]);
 
-    await sendEmail({
-      to: request.requestingParent.email,
-      subject: "Parent Request Update",
-      html: `
-        <h2>Request Update</h2>
-        <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> was declined by ${request.existingParent.name}.</p>
-        <p>If you believe this is an error, please contact the school administration.</p>
-        <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
-      `,
-      schoolId,
-      type: "NOREPLY",
-    });
+    if (prefs.email) {
+      await sendEmail({
+        to: request.requestingParent.email,
+        subject: "Parent Request Update",
+        html: `
+          <h2>Request Update</h2>
+          <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> was declined by ${request.existingParent.name}.</p>
+          <p>If you believe this is an error, please contact the school administration.</p>
+          <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
+        `,
+        schoolId,
+        type: "NOREPLY",
+      });
+    }
 
     return successResponse(c, { 
       message: "Parent request declined successfully",
