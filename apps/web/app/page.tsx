@@ -13,7 +13,6 @@ import {
   TeacherIcon,
   Notification01Icon,
   Shield01Icon,
-  ArrowRight01Icon,
   ArrowDown01Icon,
   CheckmarkCircle02Icon,
   User02Icon,
@@ -115,6 +114,9 @@ const roleUSPs = [
     color: "from-blue-500 to-blue-600",
     accent: "border-blue-200 dark:border-blue-800",
     dotColor: "bg-blue-500",
+    ctaBg: "bg-blue-500 hover:bg-blue-600",
+    ctaText: "Set Up Your School",
+    ctaHref: "/auth/signup",
     points: [
       "Complete oversight of staff, students, and finances",
       "Revenue & expense reports with PDF export",
@@ -129,6 +131,9 @@ const roleUSPs = [
     color: "from-emerald-500 to-emerald-600",
     accent: "border-emerald-200 dark:border-emerald-800",
     dotColor: "bg-emerald-500",
+    ctaBg: "bg-emerald-500 hover:bg-emerald-600",
+    ctaText: "Access Your Classes",
+    ctaHref: "/auth/login",
     points: [
       "View and manage assigned class rosters",
       "Record exam marks and generate report cards",
@@ -143,6 +148,9 @@ const roleUSPs = [
     color: "from-violet-500 to-violet-600",
     accent: "border-violet-200 dark:border-violet-800",
     dotColor: "bg-violet-500",
+    ctaBg: "bg-violet-500 hover:bg-violet-600",
+    ctaText: "Check In on Your Child",
+    ctaHref: "/auth/login",
     points: [
       "View your child's academic report cards",
       "Track fee balances and make online payments",
@@ -157,6 +165,9 @@ const roleUSPs = [
     color: "from-amber-500 to-amber-600",
     accent: "border-amber-200 dark:border-amber-800",
     dotColor: "bg-amber-500",
+    ctaBg: "bg-amber-500 hover:bg-amber-600",
+    ctaText: "Join Your Class",
+    ctaHref: "/auth/login",
     points: [
       "Access personal academic report cards",
       "Participate in class channels",
@@ -198,17 +209,18 @@ function Navbar() {
         {/* Nav links */}
         <div className="hidden md:flex items-center gap-8">
           {[
-            { label: "Features", href: "#features" },
-            { label: "Solutions", href: "#roles" },
-            { label: "Pricing", href: "#pricing" },
+            { label: "Features", href: "/features" },
+            { label: "Solutions", href: "/solutions" },
+            { label: "Who It's For", href: "/who-its-for" },
+            { label: "Pricing", href: "/pricing" },
           ].map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -218,10 +230,7 @@ function Navbar() {
             <div className="h-10 w-28 rounded-lg bg-muted animate-pulse" />
           ) : isAuthenticated ? (
             <Button size="default" asChild>
-              <Link href="/dashboard">
-                Dashboard
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-              </Link>
+              <Link href="/dashboard">Dashboard</Link>
             </Button>
           ) : (
             <>
@@ -229,10 +238,7 @@ function Navbar() {
                 <Link href="/auth/login">Log in</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/auth/signup">
-                  Start Free Trial
-                  <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 ml-0.5" />
-                </Link>
+                <Link href="/auth/signup">Start Free Trial</Link>
               </Button>
             </>
           )}
@@ -300,41 +306,18 @@ function Hero() {
             <div className="h-12 w-40 rounded-lg bg-muted animate-pulse" />
           ) : isAuthenticated ? (
             <Button size="xl" asChild>
-              <Link href="/dashboard">
-                Go to Dashboard
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-              </Link>
+              <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
           ) : (
             <>
               <Button size="xl" asChild>
-                <Link href="/auth/signup">
-                  Start Free Trial
-                  <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                </Link>
+                <Link href="/auth/signup">Start Free Trial</Link>
               </Button>
               <Button variant="outline" size="xl" asChild>
                 <Link href="/auth/login">Log in to Your Account</Link>
               </Button>
             </>
           )}
-        </motion.div>
-
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={4}
-          className="mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground"
-        >
-          <span className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-4 text-emerald-500" />
-            No credit card required
-          </span>
-          <span className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-4 text-emerald-500" />
-            Onboard in under 10 minutes
-          </span>
         </motion.div>
 
         {/* Scroll indicator */}
@@ -395,13 +378,13 @@ function Features() {
               key={feature.title}
               variants={fadeUp}
               custom={i}
-              className="group relative rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:border-brand/30 hover:shadow-md overflow-hidden"
+              className="group relative rounded-2xl border border-brand/30 bg-card p-6 transition-all duration-300 hover:shadow-md overflow-hidden"
             >
               {/* Subtle corner accent */}
               <div className="absolute top-0 right-0 size-20 bg-linear-to-bl from-brand/5 to-transparent rounded-bl-3xl pointer-events-none" />
 
               <div className="relative">
-                <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/10 group-hover:bg-brand group-hover:text-white group-hover:ring-brand/20 transition-all duration-300">
+                <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-brand text-white ring-1 ring-brand/20 transition-all duration-300">
                   <HugeiconsIcon icon={feature.icon} className="size-5" />
                 </div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">
@@ -482,6 +465,14 @@ function RoleUSPs() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-5">
+                <Button
+                  className={`${item.ctaBg} text-white`}
+                  asChild
+                >
+                  <Link href={item.ctaHref}>{item.ctaText}</Link>
+                </Button>
+              </div>
             </motion.div>
           ))}
         </AnimatedSection>
@@ -496,10 +487,11 @@ function PricingPreview() {
   const plans = [
     {
       name: "Lite",
-      price: "$50",
+      price: 50,
       period: "/term",
-      description: "Small schools — up to 500 students",
+      description: "Perfect for small schools with less than 500 students.",
       features: [
+        "Up to 500 students",
         "Student management",
         "Fee tracking & reminders",
         "Expense tracking",
@@ -509,29 +501,31 @@ function PricingPreview() {
     },
     {
       name: "Growth",
-      price: "$90",
+      price: 90,
       period: "/term",
-      description: "Mid-size schools — 500 to 1,200 students",
+      description: "Ideal for mid-size schools with 500 to 1,200 students.",
       popular: true,
+      includedFrom: "Lite",
       features: [
-        "Everything in Lite",
         "Teacher portal & management",
         "Class management",
         "Class communication channels",
         "Higher messaging quotas",
+        "Premium support",
       ],
     },
     {
       name: "Enterprise",
-      price: "$150",
+      price: 150,
       period: "/term",
-      description: "Large institutions — 2,000 to 3,000 students",
+      description: "Built for large institutions with 2,000 to 3,000 students.",
+      includedFrom: "Growth",
       features: [
-        "Everything in Growth",
         "Student & parent portals",
         "Online fee payments",
         "Exam & report card system",
-        "Dedicated priority support",
+        "Highest messaging quotas",
+        "24/7 dedicated support",
       ],
     },
   ];
@@ -560,70 +554,85 @@ function PricingPreview() {
           </motion.p>
         </AnimatedSection>
 
-        <AnimatedSection className="grid gap-6 sm:grid-cols-3">
+        <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
               variants={fadeUp}
               custom={i}
-              whileHover={{ y: -4 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className={`relative rounded-2xl border bg-card p-6 transition-colors duration-300 overflow-hidden ${plan.popular
+              className={`relative rounded-2xl border bg-card overflow-hidden ${plan.popular
                   ? "border-brand ring-1 ring-brand/20"
-                  : "border-border/60 hover:border-brand/30"
+                  : "border-border/60"
                 }`}
             >
-              {/* Corner decoration on popular plan */}
               {plan.popular && (
-                <>
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge variant="brand" size="sm">
-                      Recommended
-                    </Badge>
-                  </div>
-                  <div className="absolute top-0 right-0 size-24 bg-linear-to-bl from-brand/5 to-transparent pointer-events-none" />
-                </>
+                <div className="absolute -top-px left-1/2 -translate-x-1/2 translate-y-0">
+                  <Badge variant="brand" size="sm" className="rounded-t-none">
+                    Recommended
+                  </Badge>
+                </div>
               )}
 
-              <h3 className="text-lg font-semibold text-foreground">
-                {plan.name}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {plan.description}
-              </p>
-              <div className="mt-5 mb-6">
-                <span className="text-3xl font-bold text-foreground">
-                  {plan.price}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {plan.period}
-                </span>
+              <div className="p-6 pb-0">
+                <h3 className="text-xl font-bold text-foreground">
+                  {plan.name}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                  {plan.description}
+                </p>
+
+                <div className="mt-6 mb-6 flex items-baseline gap-1">
+                  <span className="text-sm font-medium text-muted-foreground align-super">
+                    $
+                  </span>
+                  <span className="text-5xl font-bold tracking-tight text-foreground italic">
+                    {plan.price}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-0.5">
+                    {plan.period}
+                  </span>
+                </div>
+
+                <Button
+                  variant={plan.popular ? "default" : "outline"}
+                  className="w-full"
+                  asChild
+                >
+                  <Link href="/auth/signup">Get Started</Link>
+                </Button>
               </div>
-              <ul className="space-y-2.5 mb-6">
-                {plan.features.map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <HugeiconsIcon
-                      icon={CheckmarkCircle02Icon}
-                      className="size-4 text-emerald-500 shrink-0"
-                    />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                variant={plan.popular ? "default" : "outline"}
-                className="w-full"
-                asChild
-              >
-                <Link href="/auth/signup">
-                  {plan.popular ? "Get Started" : "Choose Plan"}
-                </Link>
-              </Button>
+
+              <div className="p-6 pt-5 mt-5 border-t border-border/40">
+                <p className="text-sm font-semibold text-foreground mb-4">
+                  {plan.includedFrom
+                    ? `Everything in ${plan.includedFrom}, plus:`
+                    : "What\u2019s included:"}
+                </p>
+                <ul className="space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 text-sm text-muted-foreground"
+                    >
+                      <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        className="size-4 text-brand shrink-0 mt-0.5"
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </motion.div>
           ))}
+        </AnimatedSection>
+
+        <AnimatedSection className="mt-10 text-center">
+          <motion.div variants={fadeUp}>
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/pricing">View Full Plan Details</Link>
+            </Button>
+          </motion.div>
         </AnimatedSection>
       </div>
     </section>
@@ -665,10 +674,7 @@ function CTASection() {
                   className="bg-white text-brand hover:bg-white/90"
                   asChild
                 >
-                  <Link href="/dashboard">
-                    Go to Dashboard
-                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                  </Link>
+                  <Link href="/dashboard">Go to Dashboard</Link>
                 </Button>
               ) : (
                 <Button
@@ -676,10 +682,7 @@ function CTASection() {
                   className="bg-white text-brand hover:bg-white/90"
                   asChild
                 >
-                  <Link href="/auth/signup">
-                    Start Your Free Trial
-                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                  </Link>
+                  <Link href="/auth/signup">Start Your Free Trial</Link>
                 </Button>
               )}
             </div>
@@ -725,17 +728,18 @@ function Footer() {
             <h4 className="text-sm font-semibold text-foreground">Platform</h4>
             <div className="flex flex-col gap-2">
               {[
-                { label: "Features", href: "#features" },
-                { label: "Solutions", href: "#roles" },
-                { label: "Pricing", href: "#pricing" },
+                { label: "Features", href: "/features" },
+                { label: "Solutions", href: "/solutions" },
+                { label: "Who It's For", href: "/who-its-for" },
+                { label: "Pricing", href: "/pricing" },
               ].map((link) => (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
