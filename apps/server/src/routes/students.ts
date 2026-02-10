@@ -166,6 +166,16 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
       hashedPassword = await hashPassword(generatedPassword);
     }
 
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        termlyFee: true,
+        termStartDate: true,
+        currentTermNumber: true,
+        currentTermYear: true,
+      },
+    });
+
     // Create student
     console.log(`[POST /students] Inserting student: ${data.firstName} ${data.lastName}`);
     const result = await db.$transaction(async (tx) => {
@@ -205,6 +215,21 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
             subjectId,
           })),
           skipDuplicates: true,
+        });
+      }
+
+      // Charge termly fee if the school already configured one
+      if (school?.termlyFee && school.termlyFee.gt(0)) {
+        const feeDescription = `Term ${school.currentTermNumber ?? 1} ${school.currentTermYear ?? new Date().getFullYear()} tuition`;
+        const dueDate = school.termStartDate ? new Date(school.termStartDate) : new Date();
+        await tx.fee.create({
+          data: {
+            amount: school.termlyFee,
+            description: feeDescription,
+            dueDate,
+            schoolId,
+            studentId: student.id,
+          },
         });
       }
 
