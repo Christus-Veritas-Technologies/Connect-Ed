@@ -80,6 +80,14 @@ enum NotificationType {
   FEE_OVERDUE
   MESSAGE_SENT
   SYSTEM_ALERT
+  SHARED_FILE
+}
+
+enum SharedFileRecipientType {
+  USER
+  STUDENT
+  PARENT
+  ROLE
 }
 
 enum NotificationPriority {
@@ -168,6 +176,7 @@ model School {
   announcements  Announcement[]
   grades         Grade[]
   exams          Exam[]
+  sharedFiles    SharedFile[]
 
   @@map("schools")
 }
@@ -228,6 +237,10 @@ model User {
   // Exams
   createdExams Exam[] @relation("ExamTeacher")
 
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("UserUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("UserFileRecipients")
+
   @@index([schoolId])
   @@index([email])
   @@map("users")
@@ -273,6 +286,10 @@ model Student {
   announcementComments AnnouncementComment[] @relation("StudentAnnouncementComments")
   examResults          ExamResult[]
 
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("StudentUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("StudentFileRecipients")
+
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
   @@index([classId])
@@ -307,6 +324,10 @@ model Parent {
   
   // Announcement comments
   announcementComments AnnouncementComment[] @relation("ParentAnnouncementComments")
+
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("ParentUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("ParentFileRecipients")
 
   @@index([schoolId])
   @@map("parents")
@@ -926,4 +947,85 @@ model AnnouncementComment {
   @@index([announcementId])
   @@index([createdAt])
   @@map("announcement_comments")
+}
+
+// ============================================
+// SHARED FILES & CLOUD STORAGE
+// ============================================
+
+model SharedFile {
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+  storedName  String  @unique // UUID key in R2 bucket
+  originalName String // Original file name (e.g. "homework.pdf")
+  size        Int     // File size in bytes
+  mimeType    String
+  url         String? // Public/signed URL (optional, generated on demand)
+
+  // Uploader — one of these will be set (polymorphic)
+  uploadedByUserId    String?
+  uploadedByUser      User?    @relation("UserUploadedFiles", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedByStudentId String?
+  uploadedByStudent   Student? @relation("StudentUploadedFiles", fields: [uploadedByStudentId], references: [id], onDelete: SetNull)
+  uploadedByParentId  String?
+  uploadedByParent    Parent?  @relation("ParentUploadedFiles", fields: [uploadedByParentId], references: [id], onDelete: SetNull)
+
+  // School scope
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Recipients
+  recipients SharedFileRecipient[]
+
+  @@index([schoolId])
+  @@index([uploadedByUserId])
+  @@index([uploadedByStudentId])
+  @@index([uploadedByParentId])
+  @@index([createdAt])
+  @@map("shared_files")
+}
+
+model SharedFileRecipient {
+  id String @id @default(cuid())
+
+  // The file being shared
+  fileId String
+  file   SharedFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Recipient type — who this was shared with
+  recipientType SharedFileRecipientType
+
+  // If shared with an individual (one of these will be set)
+  recipientUserId    String?
+  recipientUser      User?    @relation("UserFileRecipients", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientStudentId String?
+  recipientStudent   Student? @relation("StudentFileRecipients", fields: [recipientStudentId], references: [id], onDelete: Cascade)
+  recipientParentId  String?
+  recipientParent    Parent?  @relation("ParentFileRecipients", fields: [recipientParentId], references: [id], onDelete: Cascade)
+
+  // If shared with a role (e.g., "TEACHER", "PARENT", "STUDENT", "ADMIN")
+  recipientRole String? // Role name when recipientType is ROLE
+
+  // Read tracking
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([fileId, recipientUserId])
+  @@unique([fileId, recipientStudentId])
+  @@unique([fileId, recipientParentId])
+  @@unique([fileId, recipientRole])
+  @@index([fileId])
+  @@index([recipientUserId])
+  @@index([recipientStudentId])
+  @@index([recipientParentId])
+  @@index([recipientRole])
+  @@map("shared_file_recipients")
 }

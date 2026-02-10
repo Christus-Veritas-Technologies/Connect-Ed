@@ -15,6 +15,7 @@ import {
   Notification01Icon,
   BookOpen01Icon,
   SentIcon,
+  FileAttachmentIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -46,6 +47,7 @@ const navSections = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
       { href: "/dashboard/announcements", label: "Announcements", icon: Notification01Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
+      { href: "/dashboard/shared-files", label: "Shared Files", icon: FileAttachmentIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
       { href: "/dashboard/chats", label: "Chats", icon: SentIcon, roles: ["ADMIN", "TEACHER", "PARENT", "STUDENT"], plans: ["GROWTH", "ENTERPRISE"] },
     ],
   },

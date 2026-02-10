@@ -40,11 +40,27 @@ import exams from "./routes/exams";
 import studentReports from "./routes/student-reports";
 import receptionists from "./routes/receptionists";
 import chat from "./routes/chat";
+import sharedFiles from "./routes/shared-files";
+import { initR2 } from "@repo/upload";
 
 // Bun WebSocket helper for Hono
 const { upgradeWebSocket, websocket } = createBunWebSocket<WsData>();
 
 const app = new Hono();
+
+// Initialize Cloudflare R2 (file uploads)
+if (process.env.R2_ACCOUNT_ID) {
+  initR2({
+    accountId: process.env.R2_ACCOUNT_ID,
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+    bucketName: process.env.R2_BUCKET_NAME || "connect-ed-files",
+    publicUrl: process.env.R2_PUBLIC_URL || undefined,
+  });
+  console.log("✅ Cloudflare R2 initialized");
+} else {
+  console.warn("⚠️  R2_ACCOUNT_ID not set — file uploads will be unavailable");
+}
 
 // Global middleware
 app.use("*", logger());
@@ -95,6 +111,7 @@ app.route("/exams", exams);
 app.route("/student-reports", studentReports);
 app.route("/receptionists", receptionists);
 app.route("/chat", chat);
+app.route("/shared-files", sharedFiles);
 
 // ─── WebSocket upgrade endpoint ─────────────────────────────
 // URL: /ws/chat?token=<JWT>&classId=<classId>

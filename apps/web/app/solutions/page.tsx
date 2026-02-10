@@ -10,12 +10,13 @@ import {
     SentIcon,
     BookOpen01Icon,
     Notification01Icon,
-    ArrowRight01Icon,
+    FileAttachmentIcon,
     CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Navbar, Footer } from "@/components/marketing-layout";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -135,11 +136,26 @@ const solutions = [
             "Engagement analytics and read tracking",
         ],
     },
+    {
+        title: "Shared Files & Storage",
+        description:
+            "Distribute homework, policies, and resources securely. Every plan includes generous cloud storage backed by Cloudflare R2.",
+        icon: FileAttachmentIcon,
+        benefits: [
+            "Share files with individuals or entire roles",
+            "Searchable recipient picker",
+            "Auto-named uploads with custom titles and subtitles",
+            "In-app preview and one-click download",
+            "Real-time notifications for new shared files",
+        ],
+    },
 ];
 
 export default function SolutionsPage() {
     return (
         <main className="min-h-screen bg-background">
+            <Navbar />
+
             {/* Hero */}
             <section className={`pt-32 pb-16 ${patternBg} bg-muted/30`}>
                 <div className="mx-auto max-w-6xl px-6 text-center">
@@ -175,58 +191,61 @@ export default function SolutionsPage() {
                 </div>
             </section>
 
-            {/* Solution sections */}
-            {solutions.map((solution, idx) => (
-                <section
-                    key={solution.title}
-                    className={`py-20 ${idx % 2 === 0 ? "" : `${patternBg} bg-muted/30`}`}
-                >
-                    <div className="mx-auto max-w-6xl px-6">
-                        <AnimatedSection className="grid gap-12 items-center lg:grid-cols-2">
-                            <motion.div variants={fadeUp} className={idx % 2 !== 0 ? "lg:order-2" : ""}>
-                                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand text-white ring-2 ring-brand/20">
-                                    <HugeiconsIcon icon={solution.icon} className="size-6" />
-                                </div>
-                                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
-                                    {solution.title}
-                                </h2>
-                                <p className="text-muted-foreground leading-relaxed mb-6">
-                                    {solution.description}
-                                </p>
-                                <Button asChild>
-                                    <Link href="/auth/signup">Start Free Trial</Link>
-                                </Button>
-                            </motion.div>
-
-                            <motion.div
-                                variants={fadeUp}
-                                custom={1}
-                                className={idx % 2 !== 0 ? "lg:order-1" : ""}
-                            >
-                                <div className="rounded-2xl border border-border/60 bg-card p-6">
-                                    <h4 className="text-sm font-semibold text-foreground mb-4">
-                                        Key Capabilities
-                                    </h4>
-                                    <div className="space-y-3">
-                                        {solution.benefits.map((benefit) => (
-                                            <div
-                                                key={benefit}
-                                                className="flex items-start gap-2.5 text-sm text-muted-foreground"
-                                            >
-                                                <HugeiconsIcon
-                                                    icon={CheckmarkCircle02Icon}
-                                                    className="size-4 text-emerald-500 shrink-0 mt-0.5"
-                                                />
-                                                <span>{benefit}</span>
-                                            </div>
-                                        ))}
+            {/* Solution sections — alternating */}
+            {solutions.map((solution, idx) => {
+                const isEven = idx % 2 !== 0;
+                return (
+                    <section
+                        key={solution.title}
+                        className={`py-20 ${isEven ? `${patternBg} bg-muted/30` : ""}`}
+                    >
+                        <div className="mx-auto max-w-6xl px-6">
+                            <AnimatedSection className="grid gap-12 items-center lg:grid-cols-2">
+                                <motion.div variants={fadeUp} className={isEven ? "lg:order-2" : ""}>
+                                    <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand text-white ring-2 ring-brand/20">
+                                        <HugeiconsIcon icon={solution.icon} className="size-6" />
                                     </div>
-                                </div>
-                            </motion.div>
-                        </AnimatedSection>
-                    </div>
-                </section>
-            ))}
+                                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+                                        {solution.title}
+                                    </h2>
+                                    <p className="text-muted-foreground leading-relaxed mb-6">
+                                        {solution.description}
+                                    </p>
+                                    <Button asChild>
+                                        <Link href="/auth/signup">Get Started</Link>
+                                    </Button>
+                                </motion.div>
+
+                                <motion.div
+                                    variants={fadeUp}
+                                    custom={1}
+                                    className={isEven ? "lg:order-1" : ""}
+                                >
+                                    <div className="rounded-2xl border border-border/60 bg-card p-6">
+                                        <h4 className="text-sm font-semibold text-foreground mb-4">
+                                            Key Capabilities
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {solution.benefits.map((benefit) => (
+                                                <div
+                                                    key={benefit}
+                                                    className="flex items-start gap-2.5 text-sm text-muted-foreground"
+                                                >
+                                                    <HugeiconsIcon
+                                                        icon={CheckmarkCircle02Icon}
+                                                        className="size-4 text-emerald-500 shrink-0 mt-0.5"
+                                                    />
+                                                    <span>{benefit}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </AnimatedSection>
+                        </div>
+                    </section>
+                );
+            })}
 
             {/* CTA */}
             <section className="py-20">
@@ -239,19 +258,18 @@ export default function SolutionsPage() {
                             See It in Action
                         </motion.h2>
                         <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-md mx-auto">
-                            Create a free account and explore every solution with no commitment.
+                            Create an account and explore every solution with no commitment.
                         </motion.p>
                         <motion.div variants={fadeUp}>
                             <Button size="xl" asChild>
-                                <Link href="/auth/signup">
-                                    Start Free Trial
-                                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                                </Link>
+                                <Link href="/auth/signup">Get Started</Link>
                             </Button>
                         </motion.div>
                     </AnimatedSection>
                 </div>
             </section>
+
+            <Footer />
         </main>
     );
 }

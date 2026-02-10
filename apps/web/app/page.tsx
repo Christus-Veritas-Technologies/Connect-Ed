@@ -12,6 +12,7 @@ import {
   BookOpen01Icon,
   TeacherIcon,
   Notification01Icon,
+  FileAttachmentIcon,
   Shield01Icon,
   ArrowDown01Icon,
   CheckmarkCircle02Icon,
@@ -104,6 +105,12 @@ const features = [
     title: "Announcements",
     description:
       "Publish school-wide or role-targeted announcements with read tracking and threaded comments.",
+  },
+  {
+    icon: FileAttachmentIcon,
+    title: "Shared Files",
+    description:
+      "Share documents, homework, and resources with individuals or roles — with cloud storage included in every plan.",
   },
 ];
 
@@ -217,6 +224,7 @@ function Navbar() {
             <Link
               key={link.href}
               href={link.href}
+              target="_blank"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.label}
@@ -238,7 +246,7 @@ function Navbar() {
                 <Link href="/auth/login">Log in</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/auth/signup">Start Free Trial</Link>
+                <Link href="/auth/signup">Get Started</Link>
               </Button>
             </>
           )}
@@ -311,7 +319,7 @@ function Hero() {
           ) : (
             <>
               <Button size="xl" asChild>
-                <Link href="/auth/signup">Start Free Trial</Link>
+                <Link href="/auth/signup">Get Started</Link>
               </Button>
               <Button variant="outline" size="xl" asChild>
                 <Link href="/auth/login">Log in to Your Account</Link>
@@ -496,6 +504,7 @@ function PricingPreview() {
         "Fee tracking & reminders",
         "Expense tracking",
         "Financial reports (PDF export)",
+        "150 GB cloud storage",
         "Email, WhatsApp & SMS messaging",
       ],
     },
@@ -510,7 +519,8 @@ function PricingPreview() {
         "Teacher portal & management",
         "Class management",
         "Class communication channels",
-        "Higher messaging quotas",
+        "Shared files & resources",
+        "400 GB cloud storage",
         "Premium support",
       ],
     },
@@ -524,7 +534,7 @@ function PricingPreview() {
         "Student & parent portals",
         "Online fee payments",
         "Exam & report card system",
-        "Highest messaging quotas",
+        "1,000 GB cloud storage",
         "24/7 dedicated support",
       ],
     },
@@ -682,7 +692,7 @@ function CTASection() {
                   className="bg-white text-brand hover:bg-white/90"
                   asChild
                 >
-                  <Link href="/auth/signup">Start Your Free Trial</Link>
+                  <Link href="/auth/signup">Get Started</Link>
                 </Button>
               )}
             </div>
@@ -736,6 +746,7 @@ function Footer() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  target="_blank"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
                 >
                   {link.label}

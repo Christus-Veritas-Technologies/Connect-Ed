@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
-    ArrowRight01Icon,
     CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Navbar, Footer } from "@/components/marketing-layout";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -63,6 +63,7 @@ const plans = [
             "Fee tracking & reminders",
             "Expense tracking",
             "Detailed reports (PDF export)",
+            "150 GB cloud storage",
             "200 emails/month",
             "200 WhatsApp messages/month",
             "100 SMS/month",
@@ -82,6 +83,8 @@ const plans = [
             "Class management",
             "Class teacher assignments",
             "Class communication channels",
+            "Shared files & resources",
+            "400 GB cloud storage",
             "500 emails/month",
             "500 WhatsApp messages/month",
             "300 SMS/month",
@@ -99,6 +102,7 @@ const plans = [
             "Student & parent portals",
             "Online fee payments for parents",
             "Exam & report card system",
+            "1,000 GB cloud storage",
             "1,500 emails/month",
             "1,500 WhatsApp messages/month",
             "750 SMS/month",
@@ -119,9 +123,9 @@ const faqs = [
             "Absolutely. You can upgrade or downgrade your plan at any time from the settings page. Changes take effect at the start of the next term.",
     },
     {
-        question: "Is there a free trial?",
+        question: "How does cloud storage work?",
         answer:
-            "Yes — every plan comes with a free trial so you can explore all features before committing.",
+            "Every plan includes cloud storage for shared files. Files are securely stored on Cloudflare R2 and can be shared with individuals or roles. Storage limits vary by plan.",
     },
     {
         question: "What payment methods do you accept?",
@@ -133,6 +137,8 @@ const faqs = [
 export default function PricingPage() {
     return (
         <main className="min-h-screen bg-background">
+            <Navbar />
+
             {/* Hero */}
             <section className={`pt-32 pb-16 ${patternBg} bg-muted/30`}>
                 <div className="mx-auto max-w-6xl px-6 text-center">
@@ -286,19 +292,18 @@ export default function PricingPage() {
                             Ready to Get Started?
                         </motion.h2>
                         <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-md mx-auto">
-                            Create your account and start your free trial today.
+                            Create your account today — no credit card required.
                         </motion.p>
                         <motion.div variants={fadeUp}>
                             <Button size="xl" asChild>
-                                <Link href="/auth/signup">
-                                    Start Free Trial
-                                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                                </Link>
+                                <Link href="/auth/signup">Get Started</Link>
                             </Button>
                         </motion.div>
                     </AnimatedSection>
                 </div>
             </section>
+
+            <Footer />
         </main>
     );
 }

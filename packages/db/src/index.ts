@@ -23,6 +23,14 @@ export const NotificationType = {
   FEE_OVERDUE: "FEE_OVERDUE" as const,
   MESSAGE_SENT: "MESSAGE_SENT" as const,
   SYSTEM_ALERT: "SYSTEM_ALERT" as const,
+  SHARED_FILE: "SHARED_FILE" as const,
+} as const;
+
+export const SharedFileRecipientType = {
+  USER: "USER" as const,
+  STUDENT: "STUDENT" as const,
+  PARENT: "PARENT" as const,
+  ROLE: "ROLE" as const,
 } as const;
 
 export const NotificationPriority = {
