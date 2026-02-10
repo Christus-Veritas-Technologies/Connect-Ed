@@ -585,6 +585,8 @@ model FeePayment {
   paymentMethod PaymentMethod
   reference     String?
   notes         String?
+  termNumber    Int?
+  termYear      Int?
 
   // Timestamps
   createdAt DateTime @default(now())

@@ -239,14 +239,14 @@ export default function SettingsPage() {
   const quotaMetrics: QuotaMetric[] = [
     ...(seatLimit > 0
       ? [
-          {
-            label: "Team seats",
-            used: totalTeamMembers,
-            limit: seatLimit,
-            unit: "accounts",
-            helper: "Admin, receptionist & teacher seats",
-          },
-        ]
+        {
+          label: "Team seats",
+          used: totalTeamMembers,
+          limit: seatLimit,
+          unit: "accounts",
+          helper: "Admin, receptionist & teacher seats",
+        },
+      ]
       : []),
     ...channelQuotaFields
       .map((entry) => {

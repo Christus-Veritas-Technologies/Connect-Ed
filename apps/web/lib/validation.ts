@@ -64,6 +64,8 @@ export const recordPaymentSchema = z.object({
   paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "ONLINE"]),
   reference: z.string().optional(),
   notes: z.string().optional(),
+  termNumber: z.number().int().min(1).max(3).optional(),
+  termYear: z.number().int().min(2020).max(2100).optional(),
 });
 
 // Expense schemas

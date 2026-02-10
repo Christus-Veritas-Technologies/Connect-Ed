@@ -312,6 +312,8 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           notes: data.notes,
           schoolId,
           receivedById: userId,
+          ...(typeof data.termNumber === "number" ? { termNumber: data.termNumber } : {}),
+          ...(typeof data.termYear === "number" ? { termYear: data.termYear } : {}),
         },
       });
 

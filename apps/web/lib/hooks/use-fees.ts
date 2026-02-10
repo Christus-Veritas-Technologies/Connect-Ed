@@ -28,6 +28,8 @@ interface FeePayment {
   reference?: string;
   notes?: string;
   createdAt: string;
+  termNumber?: number | null;
+  termYear?: number | null;
 }
 
 interface FeeListResponse {
@@ -83,6 +85,8 @@ interface RecordPaymentInput {
   paymentMethod: "CASH" | "BANK_TRANSFER" | "ONLINE";
   reference?: string;
   notes?: string;
+  termNumber?: number;
+  termYear?: number;
 }
 
 // Query Keys

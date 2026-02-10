@@ -16,6 +16,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { useFees, useFeeStats, useRecordPayment } from "@/lib/hooks";
+import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { AddFeeDialog } from "@/components/dialogs/add-fee-dialog";
@@ -71,6 +72,8 @@ interface Fee {
   };
 }
 
+type PaymentMethodOption = "CASH" | "BANK_TRANSFER" | "ONLINE";
+
 // ─── Main Page ───────────────────────────────────────────────
 
 export default function FeesPage() {
@@ -85,13 +88,23 @@ export default function FeesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState<Fee | null>(null);
   const [search, setSearch] = useState("");
+  const { school } = useAuth();
 
-  const [paymentForm, setPaymentForm] = useState({
+  const getDefaultTermNumber = () =>
+    (school?.currentTermNumber ?? 1).toString();
+  const getDefaultTermYear = () =>
+    (school?.currentTermYear ?? new Date().getFullYear()).toString();
+  const getDefaultPaymentForm = () => ({
     amount: "",
-    paymentMethod: "CASH" as "CASH" | "BANK_TRANSFER" | "ONLINE",
+    paymentMethod: "CASH" as PaymentMethodOption,
     reference: "",
     notes: "",
+    termNumber: getDefaultTermNumber(),
+    termYear: getDefaultTermYear(),
   });
+
+  const [paymentForm, setPaymentForm] = useState(getDefaultPaymentForm);
+  const resetPaymentForm = () => setPaymentForm(getDefaultPaymentForm());
 
   // Compute date filters from time period
   const getDateFilters = () => {
@@ -159,6 +172,8 @@ export default function FeesPage() {
   });
   const { data: feeStats } = useFeeStats();
   const recordPaymentMutation = useRecordPayment();
+  const baseYear = school?.currentTermYear ?? new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, idx) => baseYear - 2 + idx);
 
   const fees: Fee[] = feesData?.fees || [];
 
@@ -179,6 +194,9 @@ export default function FeesPage() {
     e.preventDefault();
     if (!showPaymentModal) return;
 
+    const parsedTermNumber = Number(paymentForm.termNumber);
+    const parsedTermYear = Number(paymentForm.termYear);
+
     recordPaymentMutation.mutate(
       {
         feeId: showPaymentModal.id,
@@ -187,16 +205,17 @@ export default function FeesPage() {
           paymentMethod: paymentForm.paymentMethod,
           reference: paymentForm.reference || undefined,
           notes: paymentForm.notes || undefined,
+          termNumber: Number.isFinite(parsedTermNumber)
+            ? parsedTermNumber
+            : undefined,
+          termYear: Number.isFinite(parsedTermYear)
+            ? parsedTermYear
+            : undefined,
         },
       },
       {
         onSuccess: () => {
-          setPaymentForm({
-            amount: "",
-            paymentMethod: "CASH",
-            reference: "",
-            notes: "",
-          });
+          resetPaymentForm();
           setShowPaymentModal(null);
         },
       }
@@ -364,7 +383,10 @@ export default function FeesPage() {
           icon={<CheckCircle className="size-6" />}
           color="green"
           meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
-          delay={0.1}
+              <div className="text-xs text-muted-foreground mb-4">
+          Covers Term {paymentForm.termNumber}, {paymentForm.termYear}
+        </div>
+        delay={0.1}
         />
         <StatsCard
           label="Unpaid This Term"
@@ -594,10 +616,8 @@ export default function FeesPage() {
                           onClick={() => {
                             setShowPaymentModal(fee);
                             setPaymentForm({
+                              ...getDefaultPaymentForm(),
                               amount: String(fee.amount - fee.paidAmount),
-                              paymentMethod: "CASH",
-                              reference: "",
-                              notes: "",
                             });
                           }}
                         >
@@ -701,7 +721,12 @@ export default function FeesPage() {
       {/* Record Payment Dialog */}
       <Dialog
         open={!!showPaymentModal}
-        onOpenChange={() => setShowPaymentModal(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetPaymentForm();
+            setShowPaymentModal(null);
+          }
+        }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -760,9 +785,7 @@ export default function FeesPage() {
               <Label>Payment Method</Label>
               <Select
                 value={paymentForm.paymentMethod}
-                onValueChange={(
-                  value: "CASH" | "BANK_TRANSFER" | "ONLINE"
-                ) =>
+                onValueChange={(value: PaymentMethodOption) =>
                   setPaymentForm({
                     ...paymentForm,
                     paymentMethod: value,
@@ -779,6 +802,51 @@ export default function FeesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Term</Label>
+                <Select
+                  value={paymentForm.termNumber}
+                  onValueChange={(value) =>
+                    setPaymentForm({ ...paymentForm, termNumber: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Term 1</SelectItem>
+                    <SelectItem value="2">Term 2</SelectItem>
+                    <SelectItem value="3">Term 3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Select
+                  value={paymentForm.termYear}
+                  onValueChange={(value) =>
+                    setPaymentForm({ ...paymentForm, termYear: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Choose the term and year this payment should cover (helps when
+              paying ahead).
+            </p>
 
             <div className="space-y-2">
               <Label>Reference (optional)</Label>
@@ -799,7 +867,10 @@ export default function FeesPage() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => setShowPaymentModal(null)}
+                onClick={() => {
+                  resetPaymentForm();
+                  setShowPaymentModal(null);
+                }}
               >
                 Cancel
               </Button>
