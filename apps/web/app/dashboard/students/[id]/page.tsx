@@ -4,22 +4,22 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
-  UserGroupIcon,
-  ArrowLeft01Icon,
-  PencilEdit01Icon,
-  Delete02Icon,
-  BookmarkAdd01Icon,
-  UserIcon,
-  Mail01Icon,
-  TelephoneIcon,
-  CalendarIcon,
-  DollarCircleIcon,
-  Tick02Icon,
-  Cancel01Icon,
-  LocationIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  BookmarkPlus,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  DollarSign,
+  CheckCircle,
+  XCircle,
+  MapPin,
+  Loader2,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -133,18 +133,14 @@ export default function StudentDetailPage() {
   const pendingFees = (student.fees?.length || 0) - paidFees;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-50 p-4 md:p-6">
-      {/* Back Button */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/students")}
-          className="mb-4 gap-2"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
-          Back to Students
-        </Button>
-      </motion.div>
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs
+        items={[
+          { label: "Students", href: "/dashboard/students" },
+          { label: `${student.firstName} ${student.lastName}` },
+        ]}
+      />
 
       {/* Hero Section */}
       <motion.div
@@ -193,7 +189,7 @@ export default function StudentDetailPage() {
                   variant="secondary"
                   className="gap-2 shadow-lg"
                 >
-                  <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
+                  <Pencil className="size-5" />
                   Edit
                 </Button>
                 <Button
@@ -201,7 +197,7 @@ export default function StudentDetailPage() {
                   variant="destructive"
                   className="gap-2 shadow-lg"
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={20} />
+                  <Trash2 className="size-5" />
                   Delete
                 </Button>
               </div>
@@ -215,7 +211,7 @@ export default function StudentDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={DollarCircleIcon} size={80} />
+              <DollarSign className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-green-100">Total Fees</p>
@@ -227,7 +223,7 @@ export default function StudentDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={Tick02Icon} size={80} />
+              <CheckCircle className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Paid</p>
@@ -239,7 +235,7 @@ export default function StudentDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={Cancel01Icon} size={80} />
+              <XCircle className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-orange-100">Balance</p>
@@ -251,7 +247,7 @@ export default function StudentDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={BookmarkAdd01Icon} size={80} />
+              <BookmarkPlus className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-purple-100">Class</p>
@@ -274,7 +270,7 @@ export default function StudentDetailPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-brand/10">
-                  <HugeiconsIcon icon={UserIcon} size={24} className="text-brand" />
+                  <User className="size-6 text-brand" />
                 </div>
                 <h2 className="text-xl font-bold">Personal Info</h2>
               </div>
@@ -282,7 +278,7 @@ export default function StudentDetailPage() {
               <div className="space-y-4">
                 {student.dateOfBirth && (
                   <div className="flex items-center gap-3 py-3 border-b">
-                    <HugeiconsIcon icon={CalendarIcon} size={20} className="text-muted-foreground" />
+                    <Calendar className="size-5 text-muted-foreground" />
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">Date of Birth</p>
                       <p className="font-semibold">
@@ -294,7 +290,7 @@ export default function StudentDetailPage() {
 
                 {student.email && (
                   <div className="flex items-center gap-3 py-3 border-b">
-                    <HugeiconsIcon icon={Mail01Icon} size={20} className="text-muted-foreground" />
+                    <Mail className="size-5 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Email</p>
                       <p className="font-semibold text-sm truncate">{student.email}</p>
@@ -304,7 +300,7 @@ export default function StudentDetailPage() {
 
                 {student.phone && (
                   <div className="flex items-center gap-3 py-3 border-b">
-                    <HugeiconsIcon icon={TelephoneIcon} size={20} className="text-muted-foreground" />
+                    <Phone className="size-5 text-muted-foreground" />
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-semibold">{student.phone}</p>
@@ -313,7 +309,7 @@ export default function StudentDetailPage() {
                 )}
 
                 <div className="flex items-center gap-3 py-3">
-                  <HugeiconsIcon icon={CalendarIcon} size={20} className="text-muted-foreground" />
+                  <Calendar className="size-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground">Enrolled</p>
                     <p className="font-semibold text-sm">
@@ -331,7 +327,7 @@ export default function StudentDetailPage() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 rounded-xl bg-brand/10">
-                    <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-brand" />
+                    <BookmarkPlus className="size-6 text-brand" />
                   </div>
                   <h2 className="text-xl font-bold">Class</h2>
                 </div>
@@ -376,7 +372,7 @@ export default function StudentDetailPage() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-purple-50">
-                      <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-purple-600" />
+                      <User className="size-6 text-purple-600" />
                     </div>
                     <h2 className="text-xl font-bold">Parent / Guardian</h2>
                   </div>
@@ -403,12 +399,12 @@ export default function StudentDetailPage() {
                     <p className="text-lg font-bold mb-1">{student.parent.name}</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <HugeiconsIcon icon={Mail01Icon} size={14} />
+                        <Mail className="size-3.5" />
                         <span className="truncate">{student.parent.email}</span>
                       </div>
                       {student.parent.phone && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <HugeiconsIcon icon={TelephoneIcon} size={14} />
+                          <Phone className="size-3.5" />
                           <span>{student.parent.phone}</span>
                         </div>
                       )}
@@ -425,7 +421,7 @@ export default function StudentDetailPage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-xl bg-green-50">
-                    <HugeiconsIcon icon={DollarCircleIcon} size={24} className="text-green-600" />
+                    <DollarSign className="size-6 text-green-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold">Fee Records</h2>
@@ -439,7 +435,7 @@ export default function StudentDetailPage() {
               {!student.fees || student.fees.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-                    <HugeiconsIcon icon={DollarCircleIcon} size={48} className="text-muted-foreground" />
+                    <DollarSign className="size-12 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground">No fee records yet</p>
                 </div>
@@ -457,10 +453,10 @@ export default function StudentDetailPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.7 + index * 0.05 }}
                         className={`p-4 rounded-xl border-2 transition-all ${fee.isPaid
-                            ? "bg-green-50 border-green-200"
-                            : isOverdue
-                              ? "bg-red-50 border-red-200"
-                              : "bg-orange-50 border-orange-200"
+                          ? "bg-green-50 border-green-200"
+                          : isOverdue
+                            ? "bg-red-50 border-red-200"
+                            : "bg-orange-50 border-orange-200"
                           }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -542,7 +538,7 @@ export default function StudentDetailPage() {
                     </>
                   ) : (
                     <>
-                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      <Trash2 className="size-4 mr-2" />
                       Delete
                     </>
                   )}

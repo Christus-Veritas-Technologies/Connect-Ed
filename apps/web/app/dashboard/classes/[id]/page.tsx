@@ -4,17 +4,18 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
-  BookmarkAdd01Icon,
-  ArrowLeft01Icon,
-  PencilEdit01Icon,
-  Delete02Icon,
-  TeacherIcon,
-  UserGroupIcon,
-  Cancel01Icon,
-  Tick02Icon,
-  Add01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  GraduationCap,
+  Users,
+  X,
+  Check,
+  Plus,
+  BookmarkPlus,
+  Loader2,
+} from "lucide-react";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 import { useAuth } from "@/lib/auth-context";
 import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
@@ -187,18 +188,14 @@ export default function ClassDetailPage() {
   const inactiveStudents = classData.students.length - activeStudents;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-brand/5 p-4 md:p-6">
-      {/* Back Button */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/classes")}
-          className="mb-4 gap-2"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
-          Back to Classes
-        </Button>
-      </motion.div>
+    <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <DashboardBreadcrumbs
+        items={[
+          { label: "Classes", href: "/dashboard/classes" },
+          { label: classData?.name || "Class" },
+        ]}
+      />
 
       {/* Hero Section */}
       <motion.div
@@ -254,7 +251,7 @@ export default function ClassDetailPage() {
                     variant="secondary"
                     className="gap-2 shadow-lg"
                   >
-                    <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
+                    <Pencil className="size-5" />
                     Edit
                   </Button>
                   <Button
@@ -262,7 +259,7 @@ export default function ClassDetailPage() {
                     variant="destructive"
                     className="gap-2 shadow-lg"
                   >
-                    <HugeiconsIcon icon={Delete02Icon} size={20} />
+                    <Trash2 className="size-5" />
                     Delete
                   </Button>
                 </>
@@ -281,7 +278,7 @@ export default function ClassDetailPage() {
                     className="gap-2"
                     disabled={isSaving}
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={20} />
+                    <X className="size-5" />
                     Cancel
                   </Button>
                   <Button onClick={handleSave} className="gap-2" disabled={isSaving}>
@@ -292,7 +289,7 @@ export default function ClassDetailPage() {
                       </>
                     ) : (
                       <>
-                        <HugeiconsIcon icon={Tick02Icon} size={20} />
+                        <Check className="size-5" />
                         Save
                       </>
                     )}
@@ -309,7 +306,7 @@ export default function ClassDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={UserGroupIcon} size={80} />
+              <Users className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Total Students</p>
@@ -321,7 +318,7 @@ export default function ClassDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-green-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={Tick02Icon} size={80} />
+              <Check className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-green-100">Active</p>
@@ -333,7 +330,7 @@ export default function ClassDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={Cancel01Icon} size={80} />
+              <X className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-orange-100">Inactive</p>
@@ -345,7 +342,7 @@ export default function ClassDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={TeacherIcon} size={80} />
+              <GraduationCap className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-purple-100">Teacher</p>
@@ -369,7 +366,7 @@ export default function ClassDetailPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-brand/10">
-                  <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-brand" />
+                  <BookmarkPlus className="size-6 text-brand" />
                 </div>
                 <h2 className="text-xl font-bold">Class Information</h2>
               </div>
@@ -520,7 +517,7 @@ export default function ClassDetailPage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-xl bg-blue-50">
-                    <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-blue-600" />
+                    <Users className="size-6 text-blue-600" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold">Students</h2>
@@ -535,7 +532,7 @@ export default function ClassDetailPage() {
                     size="sm"
                     className="gap-2"
                   >
-                    <HugeiconsIcon icon={Add01Icon} size={16} />
+                    <Plus className="size-4" />
                     Add Student
                   </Button>
                 )}
@@ -544,7 +541,7 @@ export default function ClassDetailPage() {
               {classData.students.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-                    <HugeiconsIcon icon={UserGroupIcon} size={48} className="text-muted-foreground" />
+                    <Users className="size-12 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground mb-4">No students in this class yet</p>
                   {canEdit && (
@@ -553,7 +550,7 @@ export default function ClassDetailPage() {
                       variant="outline"
                       className="gap-2"
                     >
-                      <HugeiconsIcon icon={Add01Icon} size={16} />
+                      <Plus className="size-4" />
                       Add First Student
                     </Button>
                   )}
@@ -663,7 +660,7 @@ export default function ClassDetailPage() {
                     </>
                   ) : (
                     <>
-                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      <Trash2 className="size-4 mr-2" />
                       Delete
                     </>
                   )}

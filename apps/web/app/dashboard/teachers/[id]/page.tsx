@@ -4,18 +4,19 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
-  TeacherIcon,
-  ArrowLeft01Icon,
-  PencilEdit01Icon,
-  Delete02Icon,
-  BookmarkAdd01Icon,
-  Mail01Icon,
-  CalendarIcon,
-  Cancel01Icon,
-  Tick02Icon,
-  Search01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  BookmarkPlus,
+  Mail,
+  Calendar,
+  X,
+  Check,
+  Search,
+  GraduationCap,
+  Loader2,
+} from "lucide-react";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 import { useAuth } from "@/lib/auth-context";
 import { canEditEntity } from "@/lib/roles";
 import { useTeacher, useUpdateTeacher, useDeleteTeacher } from "@/lib/hooks/use-teachers";
@@ -172,18 +173,14 @@ export default function TeacherDetailPage() {
   const totalSubjects = teacher.teacherSubjects?.length || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-indigo-50 p-4 md:p-6">
-      {/* Back Button */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/dashboard/teachers")}
-          className="mb-4 gap-2"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} />
-          Back to Teachers
-        </Button>
-      </motion.div>
+    <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <DashboardBreadcrumbs
+        items={[
+          { label: "Teachers", href: "/dashboard/teachers" },
+          { label: teacher?.name || "Teacher" },
+        ]}
+      />
 
       {/* Hero Section */}
       <motion.div
@@ -225,7 +222,7 @@ export default function TeacherDetailPage() {
                 )}
                 <div className="space-y-2 mb-3">
                   <div className="flex items-center gap-2 text-white/90">
-                    <HugeiconsIcon icon={Mail01Icon} size={18} />
+                    <Mail className="size-[18px]" />
                     {isEditing ? (
                       <Input
                         type="email"
@@ -285,7 +282,7 @@ export default function TeacherDetailPage() {
                       variant="secondary"
                       className="gap-2 shadow-lg"
                     >
-                      <HugeiconsIcon icon={Cancel01Icon} size={20} />
+                      <X className="size-5" />
                       Cancel
                     </Button>
                     <Button
@@ -296,7 +293,7 @@ export default function TeacherDetailPage() {
                       {updateMutation.isPending ? (
                         <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       ) : (
-                        <HugeiconsIcon icon={Tick02Icon} size={20} />
+                        <Check className="size-5" />
                       )}
                       Save
                     </Button>
@@ -308,7 +305,7 @@ export default function TeacherDetailPage() {
                       variant="secondary"
                       className="gap-2 shadow-lg"
                     >
-                      <HugeiconsIcon icon={PencilEdit01Icon} size={20} />
+                      <Pencil className="size-5" />
                       Edit
                     </Button>
                     <Button
@@ -316,7 +313,7 @@ export default function TeacherDetailPage() {
                       variant="destructive"
                       className="gap-2 shadow-lg"
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={20} />
+                      <Trash2 className="size-5" />
                       Delete
                     </Button>
                   </>
@@ -332,7 +329,7 @@ export default function TeacherDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={BookmarkAdd01Icon} size={80} />
+              <BookmarkPlus className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Classes Teaching</p>
@@ -344,7 +341,7 @@ export default function TeacherDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={TeacherIcon} size={80} />
+              <GraduationCap className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-purple-100">Subjects</p>
@@ -356,7 +353,7 @@ export default function TeacherDetailPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 opacity-10">
-              <HugeiconsIcon icon={CalendarIcon} size={80} />
+              <Calendar className="size-20" />
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-indigo-100">Joined</p>
@@ -381,7 +378,7 @@ export default function TeacherDetailPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-purple-50">
-                  <HugeiconsIcon icon={TeacherIcon} size={24} className="text-purple-600" />
+                  <GraduationCap className="size-6 text-purple-600" />
                 </div>
                 <h2 className="text-xl font-bold">Level & Subjects</h2>
               </div>
@@ -430,12 +427,12 @@ export default function TeacherDetailPage() {
                                   });
                                 }}
                                 className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
-                                    ? "bg-brand/10 text-brand border border-brand/30"
-                                    : "hover:bg-muted"
+                                  ? "bg-brand/10 text-brand border border-brand/30"
+                                  : "hover:bg-muted"
                                   }`}
                               >
                                 <span>{subject.name}</span>
-                                {isSelected && <HugeiconsIcon icon={Tick02Icon} size={16} />}
+                                {isSelected && <Check className="size-4" />}
                               </button>
                             );
                           })
@@ -477,14 +474,14 @@ export default function TeacherDetailPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-indigo-50">
-                  <HugeiconsIcon icon={TeacherIcon} size={24} className="text-indigo-600" />
+                  <GraduationCap className="size-6 text-indigo-600" />
                 </div>
                 <h2 className="text-xl font-bold">Details</h2>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3 py-3 border-b">
-                  <HugeiconsIcon icon={Mail01Icon} size={20} className="text-muted-foreground" />
+                  <Mail className="size-5 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground">Email</p>
                     <p className="font-semibold text-sm truncate">{teacher.email}</p>
@@ -492,7 +489,7 @@ export default function TeacherDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-3 py-3 border-b">
-                  <HugeiconsIcon icon={BookmarkAdd01Icon} size={20} className="text-muted-foreground" />
+                  <BookmarkPlus className="size-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground">Classes</p>
                     <p className="font-semibold">{totalClasses}</p>
@@ -500,7 +497,7 @@ export default function TeacherDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-3 py-3">
-                  <HugeiconsIcon icon={CalendarIcon} size={20} className="text-muted-foreground" />
+                  <Calendar className="size-5 text-muted-foreground" />
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground">Joined</p>
                     <p className="font-semibold text-sm">
@@ -525,7 +522,7 @@ export default function TeacherDetailPage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-xl bg-blue-50">
-                    <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-blue-600" />
+                    <BookmarkPlus className="size-6 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-bold">Classes</h2>
                 </div>
@@ -539,11 +536,7 @@ export default function TeacherDetailPage() {
                   {/* Search to add class */}
                   <div className="relative">
                     <div className="relative">
-                      <HugeiconsIcon
-                        icon={Search01Icon}
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      />
+                      <Search className="size-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder="Search to add a class..."
                         value={classSearch}
@@ -628,7 +621,7 @@ export default function TeacherDetailPage() {
                                 })
                               }
                             >
-                              <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                              <X className="size-[18px]" />
                             </Button>
                           </div>
                         );
@@ -641,7 +634,7 @@ export default function TeacherDetailPage() {
                   {uniqueClasses.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-                        <HugeiconsIcon icon={BookmarkAdd01Icon} size={48} className="text-muted-foreground" />
+                        <BookmarkPlus className="size-12 text-muted-foreground" />
                       </div>
                       <p className="text-muted-foreground">No classes assigned yet</p>
                     </div>
@@ -733,7 +726,7 @@ export default function TeacherDetailPage() {
                     </>
                   ) : (
                     <>
-                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      <Trash2 className="size-4 mr-2" />
                       Delete
                     </>
                   )}
