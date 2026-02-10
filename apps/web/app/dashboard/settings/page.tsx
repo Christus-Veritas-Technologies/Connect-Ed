@@ -42,6 +42,22 @@ import {
 } from "lucide-react";
 import { DashboardBreadcrumbs } from "@/components/dashboard";
 
+const PLAN_SEAT_LIMITS = {
+  LITE: 10,
+  GROWTH: 30,
+  ENTERPRISE: 300,
+} as const;
+
+type PlanSeatKey = keyof typeof PLAN_SEAT_LIMITS;
+
+type QuotaMetric = {
+  label: string;
+  used: number;
+  limit: number;
+  unit: string;
+  helper: string;
+};
+
 export default function SettingsPage() {
   const { school: authSchool, user, checkAuth } = useAuth();
   const isAdmin = user?.role === "ADMIN";
@@ -191,6 +207,64 @@ export default function SettingsPage() {
       enabled: prefs?.notifyInApp ?? true,
     },
   ];
+
+  const planKey = (authSchool?.plan ?? "LITE") as PlanSeatKey;
+  const seatLimit = PLAN_SEAT_LIMITS[planKey] ?? 0;
+  const totalTeamMembers = usersData?.users?.length ?? 0;
+
+  const channelQuotaFields = [
+    {
+      label: "Emails",
+      used: authSchool?.emailUsed ?? 0,
+      limit: authSchool?.emailQuota ?? planPricing?.quotas?.email,
+      unit: "emails",
+      helper: "Monthly email quota",
+    },
+    {
+      label: "WhatsApp messages",
+      used: authSchool?.whatsappUsed ?? 0,
+      limit: authSchool?.whatsappQuota ?? planPricing?.quotas?.whatsapp,
+      unit: "messages",
+      helper: "Monthly WhatsApp quota",
+    },
+    {
+      label: "SMS messages",
+      used: authSchool?.smsUsed ?? 0,
+      limit: authSchool?.smsQuota ?? planPricing?.quotas?.sms,
+      unit: "messages",
+      helper: "Monthly SMS quota",
+    },
+  ];
+
+  const quotaMetrics: QuotaMetric[] = [
+    ...(seatLimit > 0
+      ? [
+          {
+            label: "Team seats",
+            used: totalTeamMembers,
+            limit: seatLimit,
+            unit: "accounts",
+            helper: "Admin, receptionist & teacher seats",
+          },
+        ]
+      : []),
+    ...channelQuotaFields
+      .map((entry) => {
+        if (!entry.limit) return null;
+        return {
+          label: entry.label,
+          used: entry.used,
+          limit: entry.limit,
+          unit: entry.unit,
+          helper: entry.helper,
+        };
+      })
+      .filter((metric): metric is QuotaMetric => Boolean(metric)),
+  ];
+
+  const quotaResetLabel = authSchool?.quotaResetDate
+    ? `Resets ${new Date(authSchool.quotaResetDate).toLocaleDateString()}`
+    : "Resets monthly";
 
   return (
     <div className="space-y-6">
@@ -704,14 +778,58 @@ export default function SettingsPage() {
                 <CardTitle className="text-lg">Plan Features</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {planPricing?.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
+                  <div>
+                    <ul className="space-y-2">
+                      {planPricing?.features.map((feature, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {quotaMetrics.length > 0 && (
+                    <div className="space-y-4 rounded-2xl border border-border/50 bg-muted/40 p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">Quota usage</p>
+                        <p className="text-xs text-muted-foreground">{quotaResetLabel}</p>
+                      </div>
+                      <div className="space-y-3">
+                        {quotaMetrics.map((metric) => {
+                          const percent = metric.limit
+                            ? Math.min(100, Math.round((metric.used / metric.limit) * 100))
+                            : 0;
+                          return (
+                            <div
+                              key={metric.label}
+                              className="rounded-xl border border-border/60 bg-background/60 p-3"
+                            >
+                              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                <span>{metric.label}</span>
+                                <span className="font-semibold text-foreground">
+                                  {metric.limit
+                                    ? `${metric.used}/${metric.limit} ${metric.unit}`
+                                    : `${metric.used} ${metric.unit}`}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{metric.helper}</p>
+                              {metric.limit > 0 && (
+                                <div className="mt-3 h-1.5 rounded-full bg-muted">
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-brand to-emerald-500"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {authSchool?.plan !== "ENTERPRISE" && (
                   <>
