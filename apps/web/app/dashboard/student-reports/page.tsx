@@ -460,13 +460,15 @@ export default function StudentReportsPage() {
           </div>
 
           {/* Pagination */}
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredReports.length}
-            pageSize={ITEMS_PER_PAGE}
-            onPageChange={setCurrentPage}
-            noun="reports"
-          />
+          {filteredReports.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredReports.length}
+              pageSize={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+              noun="report"
+            />
+          )}
         </>
       )}
     </div>

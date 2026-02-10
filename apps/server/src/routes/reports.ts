@@ -232,13 +232,18 @@ reports.get("/managerial", async (c) => {
     }
 
     // Get teacher and student statistics
-    const [totalTeachers, totalStudents, totalParents, activeTeachers, activeStudents] = await Promise.all([
+    const [totalTeachers, totalStudents, activeTeachers, activeStudents] = await Promise.all([
       db.user.count({ where: { schoolId, role: "TEACHER" } }),
       db.student.count({ where: { schoolId } }),
-      db.user.count({ where: { schoolId, role: "PARENT" } }),
       db.user.count({ where: { schoolId, role: "TEACHER", createdAt: { gte: startDate, lte: endDate } } }),
       db.student.count({ where: { schoolId, createdAt: { gte: startDate, lte: endDate } } }),
     ]);
+
+    // Count parents through students
+    const totalParents = await db.student.count({
+      where: { schoolId, parentEmail: { not: null } },
+      distinct: ['parentEmail'],
+    });
 
     // Get class distribution
     const classDistribution = await db.class.findMany({

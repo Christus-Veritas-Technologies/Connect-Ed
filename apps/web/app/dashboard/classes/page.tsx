@@ -200,7 +200,7 @@ export default function ClassesPage() {
   // ── State ──
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "table" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "list">("table");
   const [filterTab, setFilterTab] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
