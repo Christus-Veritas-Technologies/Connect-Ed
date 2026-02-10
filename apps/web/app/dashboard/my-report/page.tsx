@@ -1,15 +1,13 @@
 "use client";
 
-import {
-  ChartHistogramIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { BarChart3, Loader2 } from "lucide-react";
 import { useMyReport } from "@/lib/hooks/use-student-reports";
 import {
   StudentReportFull,
   ExportReportButton,
 } from "../components/student-report-card";
 import { Card, CardContent } from "@/components/ui/card";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 
 export default function MyReportPage() {
   const { data, isLoading } = useMyReport();
@@ -17,10 +15,13 @@ export default function MyReportPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs items={[{ label: "My Report" }]} />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-3xl font-bold text-foreground">
             My Academic Report
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -32,20 +33,16 @@ export default function MyReportPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="size-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+          <Loader2 className="size-8 animate-spin text-brand" />
         </div>
       ) : !report ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-              <HugeiconsIcon icon={ChartHistogramIcon} size={48} className="text-muted-foreground" />
-            </div>
-            <p className="text-lg font-semibold mb-1">No report available</p>
-            <p className="text-muted-foreground text-sm">
-              Your academic report will appear here once exams have been graded.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl">
+          <BarChart3 className="size-12 text-muted-foreground mb-4" />
+          <p className="text-lg font-semibold mb-1">No report available</p>
+          <p className="text-sm text-muted-foreground">
+            Your academic report will appear here once exams have been graded.
+          </p>
+        </div>
       ) : (
         <StudentReportFull report={report} showStudentHeader={false} />
       )}

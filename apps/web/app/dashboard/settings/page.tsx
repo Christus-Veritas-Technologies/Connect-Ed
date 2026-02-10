@@ -40,6 +40,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 
 export default function SettingsPage() {
   const { school: authSchool, user, checkAuth } = useAuth();
@@ -193,8 +194,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <DashboardBreadcrumbs items={[{ label: "Settings" }]} />
+
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Personalize your account and manage preferences securely.
         </p>

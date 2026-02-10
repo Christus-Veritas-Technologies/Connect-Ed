@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-    SentIcon,
-    School01Icon,
-    UserGroupIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { MessageCircle, School, Users, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useChatRooms, type ChatRoom } from "@/lib/hooks/use-chat";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardBreadcrumbs, EmptyState } from "@/components/dashboard";
 
 export default function ChatsPage() {
     const router = useRouter();
@@ -35,10 +32,13 @@ export default function ChatsPage() {
 
     return (
         <div className="space-y-6">
+            {/* Breadcrumb */}
+            <DashboardBreadcrumbs items={[{ label: "Chats" }]} />
+
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-semibold text-foreground">Class Chats</h1>
-                <p className="text-gray-500 mt-1">
+                <h1 className="text-3xl font-bold text-foreground">Class Chats</h1>
+                <p className="text-muted-foreground mt-1">
                     {user?.role === "ADMIN"
                         ? "View and manage all class chat rooms"
                         : "Your class conversations"}
@@ -53,17 +53,15 @@ export default function ChatsPage() {
                     ))}
                 </div>
             ) : rooms.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
-                    <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center">
-                        <HugeiconsIcon icon={SentIcon} size={28} className="text-gray-300" />
-                    </div>
-                    <p className="font-medium text-gray-600">No chat rooms yet</p>
-                    <p className="text-sm text-center max-w-xs">
-                        {user?.role === "ADMIN"
+                <EmptyState
+                    icon={MessageCircle}
+                    title="No chat rooms yet"
+                    description={
+                        user?.role === "ADMIN"
                             ? "Create a class to start chatting. Chat rooms are automatically created for each class."
-                            : "You'll see your class chat here once you're assigned to a class."}
-                    </p>
-                </div>
+                            : "You'll see your class chat here once you're assigned to a class."
+                    }
+                />
             ) : (
                 <div className="grid gap-3">
                     {rooms.map((room, index) => (
@@ -83,46 +81,56 @@ function RoomCard({ room, index }: { room: ChatRoom; index: number }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.04 }}
-            onClick={() => router.push(`/dashboard/chats/${room.classId}`)}
-            className="flex items-center gap-4 p-4 bg-white rounded-xl border shadow-sm hover:shadow-md hover:border-brand/20 transition-all cursor-pointer group"
         >
-            {/* Class avatar */}
-            <div className="size-12 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand/20 transition-colors">
-                <HugeiconsIcon icon={School01Icon} size={22} className="text-brand" />
-            </div>
+            <Card
+                hover
+                className="cursor-pointer"
+                onClick={() => router.push(`/dashboard/chats/${room.classId}`)}
+            >
+                <CardContent className="p-4 flex items-center gap-4">
+                    {/* Class avatar */}
+                    <div className="size-12 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0">
+                        <School className="size-5 text-brand" />
+                    </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900 truncate">{room.className}</h3>
-                    {room.level && (
-                        <Badge size="sm" variant="outline">
-                            {room.level}
-                        </Badge>
-                    )}
-                </div>
-                {room.lastMessage ? (
-                    <p className="text-sm text-gray-500 truncate mt-0.5">
-                        <span className="font-medium">{room.lastMessage.senderName}:</span>{" "}
-                        {room.lastMessage.content}
-                    </p>
-                ) : (
-                    <p className="text-sm text-gray-400 mt-0.5">No messages yet</p>
-                )}
-            </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-semibold truncate">{room.className}</h3>
+                            {room.level && (
+                                <Badge size="sm" variant="outline">
+                                    {room.level}
+                                </Badge>
+                            )}
+                        </div>
+                        {room.lastMessage ? (
+                            <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                <span className="font-medium">
+                                    {room.lastMessage.senderName}:
+                                </span>{" "}
+                                {room.lastMessage.content}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-muted-foreground/60 mt-0.5">
+                                No messages yet
+                            </p>
+                        )}
+                    </div>
 
-            {/* Meta */}
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                {room.lastMessage && (
-                    <span className="text-[10px] text-gray-400">
-                        {formatRelative(room.lastMessage.createdAt)}
-                    </span>
-                )}
-                <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <HugeiconsIcon icon={UserGroupIcon} size={12} />
-                    <span>{room.memberCount}</span>
-                </div>
-            </div>
+                    {/* Meta */}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {room.lastMessage && (
+                            <span className="text-[10px] text-muted-foreground">
+                                {formatRelative(room.lastMessage.createdAt)}
+                            </span>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="size-3" />
+                            <span>{room.memberCount}</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </motion.div>
     );
 }

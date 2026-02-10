@@ -166,12 +166,12 @@ export default function FeesPage() {
   const filteredFees = fees.filter((fee) =>
     search
       ? `${fee.student.firstName} ${fee.student.lastName}`
-          .toLowerCase()
-          .includes(search.toLowerCase()) ||
-        fee.description.toLowerCase().includes(search.toLowerCase()) ||
-        fee.student.admissionNumber
-          .toLowerCase()
-          .includes(search.toLowerCase())
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      fee.description.toLowerCase().includes(search.toLowerCase()) ||
+      fee.student.admissionNumber
+        .toLowerCase()
+        .includes(search.toLowerCase())
       : true
   );
 
@@ -495,19 +495,19 @@ export default function FeesPage() {
 
               {((termFilter && termFilter !== "all_terms") ||
                 (yearFilter && yearFilter !== "all_years")) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setTermFilter("");
-                    setYearFilter("");
-                  }}
-                  className="text-muted-foreground"
-                >
-                  <X className="size-4" />
-                  Clear
-                </Button>
-              )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTermFilter("");
+                      setYearFilter("");
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    <X className="size-4" />
+                    Clear
+                  </Button>
+                )}
             </div>
           </div>
         </CardContent>

@@ -100,11 +100,10 @@ function ReceptionistCard({
           e.stopPropagation();
           onSelect(receptionist.id);
         }}
-        className={`absolute top-3 left-3 z-10 size-5 rounded border-2 flex items-center justify-center transition-all ${
-          isSelected
+        className={`absolute top-3 left-3 z-10 size-5 rounded border-2 flex items-center justify-center transition-all ${isSelected
             ? "bg-brand border-brand text-white"
             : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
-        }`}
+          }`}
       >
         {isSelected && <Check className="size-3" />}
       </button>
@@ -494,11 +493,10 @@ export default function ReceptionistsPage() {
                     {/* Selection */}
                     <button
                       onClick={() => toggleSelect(r.id)}
-                      className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                        selectedIds.has(r.id)
+                      className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${selectedIds.has(r.id)
                           ? "bg-brand border-brand text-white"
                           : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
-                      }`}
+                        }`}
                     >
                       {selectedIds.has(r.id) && <Check className="size-3" />}
                     </button>
@@ -568,12 +566,11 @@ export default function ReceptionistsPage() {
                 <TableHead className="w-10">
                   <button
                     onClick={toggleSelectAll}
-                    className={`size-5 rounded border-2 flex items-center justify-center transition-all ${
-                      selectedIds.size === filteredReceptionists.length &&
-                      filteredReceptionists.length > 0
+                    className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.size === filteredReceptionists.length &&
+                        filteredReceptionists.length > 0
                         ? "bg-brand border-brand text-white"
                         : "border-muted-foreground/30 hover:border-brand"
-                    }`}
+                      }`}
                   >
                     {selectedIds.size === filteredReceptionists.length &&
                       filteredReceptionists.length > 0 && (
@@ -602,11 +599,10 @@ export default function ReceptionistsPage() {
                     <TableCell>
                       <button
                         onClick={() => toggleSelect(r.id)}
-                        className={`size-5 rounded border-2 flex items-center justify-center transition-all ${
-                          selectedIds.has(r.id)
+                        className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.has(r.id)
                             ? "bg-brand border-brand text-white"
                             : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
-                        }`}
+                          }`}
                       >
                         {selectedIds.has(r.id) && (
                           <Check className="size-3" />

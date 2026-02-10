@@ -111,9 +111,8 @@ function ClassCard({
     >
       <Card
         hover
-        className={`h-full cursor-pointer transition-all ${
-          isSelected ? "ring-2 ring-brand shadow-lg" : ""
-        }`}
+        className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+          }`}
         onClick={onSelect}
       >
         <CardContent className="p-4">
@@ -861,8 +860,8 @@ export default function ClassesPage() {
                       .filter((teacher: any) =>
                         teacherSearch
                           ? teacher.name
-                              .toLowerCase()
-                              .includes(teacherSearch.toLowerCase())
+                            .toLowerCase()
+                            .includes(teacherSearch.toLowerCase())
                           : true
                       )
                       .map((teacher: any) => (

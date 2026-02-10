@@ -101,9 +101,8 @@ function ExamCard({
     >
       <Card
         hover
-        className={`h-full cursor-pointer transition-all ${
-          isSelected ? "ring-2 ring-brand shadow-lg" : ""
-        }`}
+        className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+          }`}
         onClick={onSelect}
       >
         <CardContent className="p-4">
@@ -219,7 +218,7 @@ export default function ExamsPage() {
     .filter((exam: any) =>
       search
         ? exam.name.toLowerCase().includes(search.toLowerCase()) ||
-          exam.subject.name.toLowerCase().includes(search.toLowerCase())
+        exam.subject.name.toLowerCase().includes(search.toLowerCase())
         : true
     )
     .filter((exam: any) => {
@@ -239,11 +238,11 @@ export default function ExamsPage() {
   const avgScore =
     gradedExams.length > 0
       ? Math.round(
-          gradedExams.reduce(
-            (sum: number, e: any) => sum + (e.stats?.averageMark || 0),
-            0
-          ) / gradedExams.length
-        )
+        gradedExams.reduce(
+          (sum: number, e: any) => sum + (e.stats?.averageMark || 0),
+          0
+        ) / gradedExams.length
+      )
       : 0;
 
   const recentExams = !search ? filteredExams.slice(0, 8) : [];

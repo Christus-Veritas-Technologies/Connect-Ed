@@ -256,11 +256,10 @@ function AnnouncementCard({
               </Badge>
               <Badge
                 variant="secondary"
-                className={`text-[11px] px-2 py-0.5 font-normal ${
-                  isExpired
+                className={`text-[11px] px-2 py-0.5 font-normal ${isExpired
                     ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
                     : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
-                }`}
+                  }`}
               >
                 {timeRemaining}
               </Badge>
@@ -419,7 +418,7 @@ export default function AnnouncementsPage() {
     .filter((a) =>
       search
         ? a.heading.toLowerCase().includes(search.toLowerCase()) ||
-          a.subheading.toLowerCase().includes(search.toLowerCase())
+        a.subheading.toLowerCase().includes(search.toLowerCase())
         : true
     );
 

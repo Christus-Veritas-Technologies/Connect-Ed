@@ -24,6 +24,7 @@ import {
   useDeleteNotification,
   type Notification,
 } from "@/lib/hooks/use-notifications";
+import { DashboardBreadcrumbs } from "@/components/dashboard";
 
 function getInitials(name?: string): string {
   if (!name) return "?";
@@ -252,11 +253,14 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs items={[{ label: "Notifications" }]} />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mt-6 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
+          <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`

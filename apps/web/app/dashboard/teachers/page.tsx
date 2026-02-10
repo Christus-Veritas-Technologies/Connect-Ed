@@ -133,9 +133,8 @@ function TeacherCard({
     >
       <Card
         hover
-        className={`h-full cursor-pointer transition-all ${
-          isSelected ? "ring-2 ring-brand shadow-lg" : ""
-        }`}
+        className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+          }`}
         onClick={onSelect}
       >
         <CardContent className="p-4">
@@ -275,36 +274,36 @@ export default function TeachersPage() {
   const filteredTeachers =
     filterTab === "all"
       ? allTeachers.filter((t) =>
-          debouncedSearch
-            ? t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-              t.email.toLowerCase().includes(debouncedSearch.toLowerCase())
-            : true
-        )
+        debouncedSearch
+          ? t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          t.email.toLowerCase().includes(debouncedSearch.toLowerCase())
+          : true
+      )
       : filterTab === "active"
         ? allTeachers.filter(
-            (t) =>
-              t.isActive &&
-              (debouncedSearch
-                ? t.name
-                    .toLowerCase()
-                    .includes(debouncedSearch.toLowerCase()) ||
-                  t.email
-                    .toLowerCase()
-                    .includes(debouncedSearch.toLowerCase())
-                : true)
-          )
+          (t) =>
+            t.isActive &&
+            (debouncedSearch
+              ? t.name
+                .toLowerCase()
+                .includes(debouncedSearch.toLowerCase()) ||
+              t.email
+                .toLowerCase()
+                .includes(debouncedSearch.toLowerCase())
+              : true)
+        )
         : allTeachers.filter(
-            (t) =>
-              !t.isActive &&
-              (debouncedSearch
-                ? t.name
-                    .toLowerCase()
-                    .includes(debouncedSearch.toLowerCase()) ||
-                  t.email
-                    .toLowerCase()
-                    .includes(debouncedSearch.toLowerCase())
-                : true)
-          );
+          (t) =>
+            !t.isActive &&
+            (debouncedSearch
+              ? t.name
+                .toLowerCase()
+                .includes(debouncedSearch.toLowerCase()) ||
+              t.email
+                .toLowerCase()
+                .includes(debouncedSearch.toLowerCase())
+              : true)
+        );
 
   // Recent 8 for top grid (only when not searching)
   const recentTeachers = !debouncedSearch ? filteredTeachers.slice(0, 8) : [];
@@ -694,8 +693,8 @@ export default function TeachersPage() {
                     <TableCell className="text-sm">
                       {teacher.classesTeaching?.length > 0
                         ? teacher.classesTeaching
-                            .map((tc) => tc.class.name)
-                            .join(", ")
+                          .map((tc) => tc.class.name)
+                          .join(", ")
                         : "—"}
                     </TableCell>
                     <TableCell>
@@ -779,8 +778,8 @@ export default function TeachersPage() {
                       <span>
                         {teacher.classesTeaching?.length > 0
                           ? teacher.classesTeaching
-                              .map((tc) => tc.class.name)
-                              .join(", ")
+                            .map((tc) => tc.class.name)
+                            .join(", ")
                           : "No classes"}
                       </span>
                     </div>
@@ -936,16 +935,15 @@ export default function TeachersPage() {
                               ...formData,
                               subjectIds: isSelected
                                 ? formData.subjectIds.filter(
-                                    (id) => id !== subject.id
-                                  )
+                                  (id) => id !== subject.id
+                                )
                                 : [...formData.subjectIds, subject.id],
                             });
                           }}
-                          className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${
-                            isSelected
+                          className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
                               ? "bg-brand/10 text-brand border border-brand/30"
                               : "hover:bg-muted"
-                          }`}
+                            }`}
                         >
                           <span>{subject.name}</span>
                           {isSelected && (
@@ -998,17 +996,16 @@ export default function TeachersPage() {
                                 ...formData,
                                 classIds: isSelected
                                   ? formData.classIds.filter(
-                                      (id) => id !== cls.id
-                                    )
+                                    (id) => id !== cls.id
+                                  )
                                   : [...formData.classIds, cls.id],
                               });
                               setClassSearch("");
                             }}
-                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${
-                              isSelected
+                            className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${isSelected
                                 ? "bg-brand/10"
                                 : "hover:bg-muted cursor-pointer"
-                            }`}
+                              }`}
                           >
                             <span className="text-sm">
                               {cls.name}
@@ -1032,10 +1029,10 @@ export default function TeachersPage() {
                         .toLowerCase()
                         .includes(classSearch.toLowerCase())
                     ).length === 0 && (
-                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                        No classes match
-                      </div>
-                    )}
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                          No classes match
+                        </div>
+                      )}
                   </div>
                 )}
               </div>
