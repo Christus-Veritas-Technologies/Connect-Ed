@@ -19,6 +19,12 @@ import {
     X,
     Loader2,
     Users,
+    Folder,
+    Check,
+    ChevronRight,
+    Home,
+    MoreVertical,
+    Filter,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -76,7 +82,26 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? "PM" : "AM";
+        const hour12 = hours % 12 || 12;
+        return `Today, ${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+    } else if (diffDays < 30) {
+        return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    }
+    return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -468,6 +493,9 @@ function FileCard({
     onShare,
     onDelete,
     canDelete,
+    isSelected,
+    onSelect,
+    variant = "default",
 }: {
     file: SharedFile;
     onView: () => void;
@@ -475,9 +503,120 @@ function FileCard({
     onShare: () => void;
     onDelete: () => void;
     canDelete: boolean;
+    isSelected?: boolean;
+    onSelect?: () => void;
+    variant?: "default" | "compact";
 }) {
     const Icon = getFileIcon(file.mimeType);
     const colorClasses = getFileColor(file.mimeType);
+    const uploaderName = getUploaderName(file);
+    const avatars = file.recipients
+        ?.slice(0, 3)
+        .map((r) => {
+            if (r.recipientType === "ROLE") return { name: r.recipientRole || "?" };
+            if (r.recipientUser) return { name: r.recipientUser.name };
+            if (r.recipientStudent)
+                return { name: `${r.recipientStudent.firstName} ${r.recipientStudent.lastName}` };
+            if (r.recipientParent) return { name: r.recipientParent.name };
+            return { name: "?" };
+        }) || [];
+
+    if (variant === "compact") {
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                layout
+                className="relative group"
+            >
+                <Card
+                    hover
+                    className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+                        }`}
+                    onClick={onSelect}
+                >
+                    <CardContent className="p-4">
+                        {/* Selection Checkbox */}
+                        {isSelected && (
+                            <div className="absolute top-3 right-3 size-5 rounded-md bg-brand flex items-center justify-center z-10">
+                                <Check className="size-3.5 text-white" strokeWidth={3} />
+                            </div>
+                        )}
+
+                        {/* Icon */}
+                        <div className={`w-full aspect-square rounded-lg ${colorClasses} flex items-center justify-center mb-3`}>
+                            <Icon className="size-12" />
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="font-medium text-sm truncate mb-1">{file.title}</h3>
+
+                        {/* Meta */}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <span>{formatFileSize(file.size)}</span>
+                            <span>·</span>
+                            <span>{file.recipients?.length || 0} Members</span>
+                        </div>
+
+                        {/* Avatars */}
+                        <div className="flex items-center gap-1">
+                            {avatars.map((avatar, i) => (
+                                <div
+                                    key={i}
+                                    className="size-6 rounded-full bg-brand/10 flex items-center justify-center text-[10px] font-medium text-brand border-2 border-white"
+                                    style={{ marginLeft: i > 0 ? "-8px" : 0, zIndex: avatars.length - i }}
+                                >
+                                    {avatar.name.charAt(0).toUpperCase()}
+                                </div>
+                            ))}
+                            {(file.recipients?.length || 0) > 3 && (
+                                <div
+                                    className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-medium text-gray-600 border-2 border-white"
+                                    style={{ marginLeft: "-8px" }}
+                                >
+                                    +{(file.recipients?.length || 0) - 3}
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Actions Menu */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-3 right-3 size-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <MoreVertical className="size-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={onView}>
+                            <Eye className="size-4" />
+                            View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={onDownload}>
+                            <Download className="size-4" />
+                            Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={onShare}>
+                            <Share2 className="size-4" />
+                            Share
+                        </DropdownMenuItem>
+                        {canDelete && (
+                            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                                <Trash2 className="size-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </motion.div>
+        );
+    }
 
     return (
         <motion.div
@@ -511,9 +650,7 @@ function FileCard({
                     </div>
 
                     {/* Uploader */}
-                    <div className="text-xs text-muted-foreground">
-                        by {getUploaderName(file)}
-                    </div>
+                    <div className="text-xs text-muted-foreground">by {uploaderName}</div>
 
                     {/* Recipients badges */}
                     {file.recipients && file.recipients.length > 0 && (
@@ -582,6 +719,9 @@ export default function SharedFilesPage() {
     const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
     const [uploadOpen, setUploadOpen] = useState(false);
     const [shareFile, setShareFile] = useState<SharedFile | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+    const [filterTab, setFilterTab] = useState<"all" | "folders" | "files">("all");
+    const [sortBy, setSortBy] = useState<"date" | "name" | "size">("date");
     const searchTimer = useRef<ReturnType<typeof setTimeout>>();
 
     const { data, isLoading } = useSharedFiles(page, debouncedSearch);
@@ -633,81 +773,68 @@ export default function SharedFilesPage() {
         return user?.role === "ADMIN" || file.uploadedByUser?.id === user?.id;
     };
 
+    const toggleFileSelection = (fileId: string) => {
+        setSelectedFiles((prev) => {
+            const next = new Set(prev);
+            if (next.has(fileId)) {
+                next.delete(fileId);
+            } else {
+                next.add(fileId);
+            }
+            return next;
+        });
+    };
+
     const files = data?.files || [];
     const pagination = data?.pagination;
+    const recentFiles = files.slice(0, 8);
+    const allFiles = files;
 
     return (
         <div className="space-y-6">
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Home className="size-4" />
+                <ChevronRight className="size-4" />
+                <span className="text-foreground font-medium">Shared Files</span>
+            </div>
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">Shared Files</h1>
-                    <p className="text-muted-foreground text-sm">
-                        Upload, share, and manage files across your school
+                    <h1 className="text-3xl font-bold">Shared</h1>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        Manage and share files across your school
                     </p>
                 </div>
-                <Button onClick={() => setUploadOpen(true)}>
-                    <Plus className="size-4" />
-                    Upload File
-                </Button>
-            </div>
-
-            {/* Search + View Toggle */}
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input
-                        value={search}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        placeholder="Search files..."
-                        className="pl-9"
-                    />
-                </div>
-                <div className="flex items-center border rounded-lg">
-                    <button
-                        onClick={() => setViewMode("grid")}
-                        className={`p-2 rounded-l-lg transition-colors ${viewMode === "grid" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"
-                            }`}
-                    >
-                        <LayoutGrid className="size-4" />
-                    </button>
-                    <button
-                        onClick={() => setViewMode("table")}
-                        className={`p-2 rounded-r-lg transition-colors ${viewMode === "table" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"
-                            }`}
-                    >
-                        <List className="size-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Loading */}
-            {isLoading && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="size-8 animate-spin text-brand" />
-                </div>
-            )}
-
-            {/* Empty State */}
-            {!isLoading && files.length === 0 && (
-                <div className="text-center py-20">
-                    <FileIcon className="mx-auto size-12 text-muted-foreground/40" />
-                    <h3 className="mt-4 font-semibold">No files yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Upload your first file to get started
-                    </p>
-                    <Button className="mt-4" onClick={() => setUploadOpen(true)}>
-                        <Upload className="size-4" />
-                        Upload File
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 sm:flex-initial sm:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <Input
+                            value={search}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            placeholder="Search in Shared Files"
+                            className="pl-9"
+                        />
+                    </div>
+                    <Button variant="ghost" size="icon">
+                        <Filter className="size-4" />
+                    </Button>
+                    <Button onClick={() => setUploadOpen(true)}>
+                        <Plus className="size-4" />
+                        Upload
                     </Button>
                 </div>
-            )}
+            </div>
 
-            {/* Grid View */}
-            {!isLoading && files.length > 0 && viewMode === "grid" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <AnimatePresence mode="popLayout">
-                        {files.map((file) => (
+            {/* Recent Items */}
+            {!isLoading && recentFiles.length > 0 && !debouncedSearch && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">Recent Items</h2>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {recentFiles.map((file) => (
                             <FileCard
                                 key={file.id}
                                 file={file}
@@ -716,148 +843,270 @@ export default function SharedFilesPage() {
                                 onShare={() => setShareFile(file)}
                                 onDelete={() => handleDelete(file)}
                                 canDelete={canDelete(file)}
+                                variant="compact"
+                                isSelected={selectedFiles.has(file.id)}
+                                onSelect={() => toggleFileSelection(file.id)}
                             />
                         ))}
-                    </AnimatePresence>
-                </div>
-            )}
-
-            {/* Table View */}
-            {!isLoading && files.length > 0 && viewMode === "table" && (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>File</TableHead>
-                            <TableHead>Size</TableHead>
-                            <TableHead>Uploaded By</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Shared With</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {files.map((file) => {
-                            const Icon = getFileIcon(file.mimeType);
-                            const colorClasses = getFileColor(file.mimeType);
-
-                            return (
-                                <TableRow key={file.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-1.5 rounded-lg ${colorClasses}`}>
-                                                <Icon className="size-4" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{file.title}</p>
-                                                <p className="text-xs text-muted-foreground">{file.originalName}</p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm">{formatFileSize(file.size)}</TableCell>
-                                    <TableCell className="text-sm">{getUploaderName(file)}</TableCell>
-                                    <TableCell className="text-sm">{formatDate(file.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-wrap gap-1">
-                                            {file.recipients?.slice(0, 2).map((r) => (
-                                                <Badge key={r.id} variant="secondary" className="text-[10px] h-5">
-                                                    {r.recipientType === "ROLE"
-                                                        ? `${r.recipientRole}s`
-                                                        : r.recipientUser?.name ||
-                                                        (r.recipientStudent
-                                                            ? `${r.recipientStudent.firstName}`
-                                                            : r.recipientParent?.name || "?")}
-                                                </Badge>
-                                            ))}
-                                            {(file.recipients?.length || 0) > 2 && (
-                                                <Badge variant="secondary" className="text-[10px] h-5">
-                                                    +{(file.recipients?.length || 0) - 2}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 text-xs"
-                                                onClick={() => handleView(file)}
-                                            >
-                                                <Eye className="size-3.5" />
-                                                View
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 text-xs"
-                                                onClick={() => handleDownload(file)}
-                                            >
-                                                <Download className="size-3.5" />
-                                                Download
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm" className="size-7 p-0">
-                                                        <span className="text-sm leading-none">⋯</span>
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => setShareFile(file)}>
-                                                        <Share2 className="size-4" />
-                                                        Share
-                                                    </DropdownMenuItem>
-                                                    {canDelete(file) && (
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDelete(file)}
-                                                            className="text-destructive"
-                                                        >
-                                                            <Trash2 className="size-4" />
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            )}
-
-            {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                        Showing {(pagination.page - 1) * pagination.limit + 1}–
-                        {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                        {pagination.total} files
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === 1}
-                            onClick={() => setPage((p) => p - 1)}
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === pagination.totalPages}
-                            onClick={() => setPage((p) => p + 1)}
-                        >
-                            Next
-                        </Button>
                     </div>
                 </div>
             )}
 
+            {/* Shared Items Section */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Shared Items</h2>
+                </div>
+
+                {/* Filters and Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant={filterTab === "all" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setFilterTab("all")}
+                        >
+                            All
+                        </Button>
+                        <Button
+                            variant={filterTab === "folders" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setFilterTab("folders")}
+                        >
+                            Folders
+                        </Button>
+                        <Button
+                            variant={filterTab === "files" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setFilterTab("files")}
+                        >
+                            Files
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Sort by:</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSortBy(sortBy === "date" ? "name" : "date")}
+                                className="h-8"
+                            >
+                                {sortBy === "date" ? "Date" : "Name"}
+                                <ChevronRight className="size-3 ml-1" />
+                            </Button>
+                        </div>
+                        <div className="flex items-center border rounded-lg">
+                            <button
+                                onClick={() => setViewMode("grid")}
+                                className={`p-2 rounded-l-lg transition-colors ${viewMode === "grid"
+                                    ? "bg-brand text-white"
+                                    : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                            >
+                                <LayoutGrid className="size-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode("table")}
+                                className={`p-2 rounded-r-lg transition-colors ${viewMode === "table"
+                                    ? "bg-brand text-white"
+                                    : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                            >
+                                <List className="size-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Loading */}
+                {isLoading && (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="size-8 animate-spin text-brand" />
+                    </div>
+                )}
+
+                {/* Empty State */}
+                {!isLoading && files.length === 0 && (
+                    <div className="text-center py-20 border-2 border-dashed rounded-xl">
+                        <FileIcon className="mx-auto size-12 text-muted-foreground/40" />
+                        <h3 className="mt-4 font-semibold">No files yet</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Upload your first file to get started
+                        </p>
+                        <Button className="mt-4" onClick={() => setUploadOpen(true)}>
+                            <Upload className="size-4" />
+                            Upload File
+                        </Button>
+                    </div>
+                )}
+
+                {/* Grid View */}
+                {!isLoading && files.length > 0 && viewMode === "grid" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <AnimatePresence mode="popLayout">
+                            {allFiles.map((file) => (
+                                <FileCard
+                                    key={file.id}
+                                    file={file}
+                                    onView={() => handleView(file)}
+                                    onDownload={() => handleDownload(file)}
+                                    onShare={() => setShareFile(file)}
+                                    onDelete={() => handleDelete(file)}
+                                    canDelete={canDelete(file)}
+                                    variant="compact"
+                                    isSelected={selectedFiles.has(file.id)}
+                                    onSelect={() => toggleFileSelection(file.id)}
+                                />
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
+
+                {/* Table View */}
+                {!isLoading && files.length > 0 && viewMode === "table" && (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>File</TableHead>
+                                <TableHead>Size</TableHead>
+                                <TableHead>Uploaded By</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Shared With</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {files.map((file) => {
+                                const Icon = getFileIcon(file.mimeType);
+                                const colorClasses = getFileColor(file.mimeType);
+
+                                return (
+                                    <TableRow key={file.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-1.5 rounded-lg ${colorClasses}`}>
+                                                    <Icon className="size-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">{file.title}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {file.originalName}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm">{formatFileSize(file.size)}</TableCell>
+                                        <TableCell className="text-sm">{getUploaderName(file)}</TableCell>
+                                        <TableCell className="text-sm">{formatDate(file.createdAt)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-1">
+                                                {file.recipients?.slice(0, 2).map((r) => (
+                                                    <Badge key={r.id} variant="secondary" className="text-[10px] h-5">
+                                                        {r.recipientType === "ROLE"
+                                                            ? `${r.recipientRole}s`
+                                                            : r.recipientUser?.name ||
+                                                            (r.recipientStudent
+                                                                ? `${r.recipientStudent.firstName}`
+                                                                : r.recipientParent?.name || "?")}
+                                                    </Badge>
+                                                ))}
+                                                {(file.recipients?.length || 0) > 2 && (
+                                                    <Badge variant="secondary" className="text-[10px] h-5">
+                                                        +{(file.recipients?.length || 0) - 2}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => handleView(file)}
+                                                >
+                                                    <Eye className="size-3.5" />
+                                                    View
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => handleDownload(file)}
+                                                >
+                                                    <Download className="size-3.5" />
+                                                    Download
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="size-7 p-0">
+                                                            <span className="text-sm leading-none">⋯</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => setShareFile(file)}>
+                                                            <Share2 className="size-4" />
+                                                            Share
+                                                        </DropdownMenuItem>
+                                                        {canDelete(file) && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDelete(file)}
+                                                                className="text-destructive"
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                )}
+
+                {/* Pagination */}
+                {pagination && pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Showing {(pagination.page - 1) * pagination.limit + 1}–
+                            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+                            {pagination.total} files
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page === 1}
+                                onClick={() => setPage((p) => p - 1)}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={page === pagination.totalPages}
+                                onClick={() => setPage((p) => p + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* Dialogs */}
             <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
-            <ShareDialog file={shareFile} open={!!shareFile} onOpenChange={(open) => !open && setShareFile(null)} />
+            <ShareDialog
+                file={shareFile}
+                open={!!shareFile}
+                onOpenChange={(open) => !open && setShareFile(null)}
+            />
         </div>
     );
 }
