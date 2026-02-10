@@ -15,25 +15,25 @@ import { Button } from "@/components/ui/button";
  */
 
 interface EmptyStateProps {
-  /** Large icon displayed at the top */
-  icon: React.ReactNode;
-  /** Main heading */
-  title: string;
-  /** Muted supporting text */
-  description?: string;
-  /** CTA button or element */
-  action?: React.ReactNode;
+    /** Large icon displayed at the top */
+    icon: React.ReactNode;
+    /** Main heading */
+    title: string;
+    /** Muted supporting text */
+    description?: string;
+    /** CTA button or element */
+    action?: React.ReactNode;
 }
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
-  return (
-    <div className="text-center py-20 border-2 border-dashed rounded-xl">
-      <div className="mx-auto text-muted-foreground/40">{icon}</div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
-      {description && (
-        <p className="text-sm text-muted-foreground mt-1">{description}</p>
-      )}
-      {action && <div className="mt-4">{action}</div>}
-    </div>
-  );
+    return (
+        <div className="text-center py-20 border-2 border-dashed rounded-xl">
+            <div className="mx-auto text-muted-foreground/40">{icon}</div>
+            <h3 className="mt-4 font-semibold">{title}</h3>
+            {description && (
+                <p className="text-sm text-muted-foreground mt-1">{description}</p>
+            )}
+            {action && <div className="mt-4">{action}</div>}
+        </div>
+    );
 }

@@ -90,9 +90,8 @@ function StudentCard({
     >
       <Card
         hover
-        className={`h-full cursor-pointer transition-all ${
-          isSelected ? "ring-2 ring-brand shadow-lg" : ""
-        }`}
+        className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+          }`}
         onClick={onSelect}
       >
         <CardContent className="p-4">
