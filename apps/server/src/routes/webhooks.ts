@@ -35,17 +35,19 @@ webhooks.post("/dodo", async (c) => {
 
     const event = JSON.parse(payload);
 
-    console.log("Received Dodo webhook:", event.event_type);
+    // Support both SDK field names: type/metadata (correct) and event_type/custom_data (legacy)
+    const eventType = event.type || event.event_type;
+    console.log("Received Dodo webhook:", eventType);
 
-    switch (event.event_type) {
+    switch (eventType) {
       case "payment.succeeded": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData) break;
 
         const { school_id: schoolId, plan_type: planType, is_signup: isSignup } = customData;
 
         if (!schoolId || !planType) {
-          console.error("Missing custom_data in webhook");
+          console.error("Missing metadata in webhook");
           break;
         }
 
@@ -113,7 +115,7 @@ webhooks.post("/dodo", async (c) => {
       }
 
       case "payment.failed": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData?.school_id) break;
 
         // Update payment record
@@ -132,7 +134,7 @@ webhooks.post("/dodo", async (c) => {
       }
 
       case "subscription.active": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData?.school_id) break;
 
         // Update school status
@@ -150,7 +152,7 @@ webhooks.post("/dodo", async (c) => {
       case "subscription.on_hold":
       case "subscription.cancelled":
       case "subscription.expired": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData?.school_id) break;
 
         // Deactivate school
@@ -166,7 +168,7 @@ webhooks.post("/dodo", async (c) => {
       }
 
       default:
-        console.log(`Unhandled webhook event: ${event.event_type}`);
+        console.log(`Unhandled webhook event: ${eventType}`);
     }
 
     return c.json({ received: true });

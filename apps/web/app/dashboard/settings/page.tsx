@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { PRICING } from "@/lib/pricing";
+import { PRICING, getPlanAmounts } from "@/lib/pricing";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { toast } from "sonner";
 import {
   useSchoolSettings,
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Mail,
   MessageSquare,
@@ -174,6 +176,8 @@ export default function SettingsPage() {
   const prefs = notifData?.preferences;
   const profile = profileData?.user;
   const planPricing = authSchool?.plan ? PRICING[authSchool.plan] : null;
+  const schoolCurrency = (authSchool?.currency ?? "USD") as CurrencyCode;
+  const planAmounts = authSchool?.plan ? getPlanAmounts(authSchool.plan, schoolCurrency) : null;
 
   const notificationChannels = [
     {
@@ -763,10 +767,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-semibold">
-                      ${planPricing?.monthlyEstimate}/mo
+                      {planAmounts ? fmt(planAmounts.monthlyEstimate, schoolCurrency) : ""}/mo
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      (${planPricing?.perTermCost}/term)
+                      ({planAmounts ? fmt(planAmounts.perTermCost, schoolCurrency) : ""}/term)
                     </p>
                   </div>
                 </div>
@@ -846,6 +850,44 @@ export default function SettingsPage() {
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Currency Setting */}
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Currency</CardTitle>
+                <CardDescription>
+                  Choose the currency used for fees, expenses, and reports
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="max-w-xs">
+                  <Select
+                    value={schoolCurrency}
+                    onValueChange={async (value) => {
+                      try {
+                        await updateSchool.mutateAsync({ currency: value } as any);
+                        await checkAuth();
+                        toast.success("Currency updated");
+                      } catch {
+                        toast.error("Failed to update currency");
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="ZAR">ZAR (R)</SelectItem>
+                      <SelectItem value="ZIG">ZiG (ZiG)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This affects how amounts are displayed across the platform.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

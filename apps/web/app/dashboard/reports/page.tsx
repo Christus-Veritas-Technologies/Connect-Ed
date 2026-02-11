@@ -14,6 +14,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { exportDataAsCSV, exportToPDF } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,6 +117,8 @@ interface ManagerialReport {
 // ─── Main Page ───────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const { school } = useAuth();
+  const currency = (school?.currency || "USD") as CurrencyCode;
   const [activeTab, setActiveTab] = useState("financial");
   const [timePeriod, setTimePeriod] = useState("this_term");
   const [customDateFrom, setCustomDateFrom] = useState("");
@@ -181,27 +185,27 @@ export default function ReportsPage() {
     const exportData = [
       {
         metric: "Total Fees Expected",
-        value: `$${financialReport.totalFeesExpected.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesExpected, currency),
       },
       {
         metric: "Total Fees Collected",
-        value: `$${financialReport.totalFeesCollected.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesCollected, currency),
       },
       {
         metric: "Total Fees Pending",
-        value: `$${financialReport.totalFeesPending.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesPending, currency),
       },
       {
         metric: "Total Fees Overdue",
-        value: `$${financialReport.totalFeesOverdue.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesOverdue, currency),
       },
       {
         metric: "Total Expenses",
-        value: `$${financialReport.totalExpenses.toLocaleString()}`,
+        value: fmt(financialReport.totalExpenses, currency),
       },
       {
         metric: "Net Income",
-        value: `$${financialReport.netIncome.toLocaleString()}`,
+        value: fmt(financialReport.netIncome, currency),
       },
       {
         metric: "Collection Rate",
@@ -233,27 +237,27 @@ export default function ReportsPage() {
     const exportData = [
       {
         metric: "Total Fees Expected",
-        value: `$${financialReport.totalFeesExpected.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesExpected, currency),
       },
       {
         metric: "Total Fees Collected",
-        value: `$${financialReport.totalFeesCollected.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesCollected, currency),
       },
       {
         metric: "Total Fees Pending",
-        value: `$${financialReport.totalFeesPending.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesPending, currency),
       },
       {
         metric: "Total Fees Overdue",
-        value: `$${financialReport.totalFeesOverdue.toLocaleString()}`,
+        value: fmt(financialReport.totalFeesOverdue, currency),
       },
       {
         metric: "Total Expenses",
-        value: `$${financialReport.totalExpenses.toLocaleString()}`,
+        value: fmt(financialReport.totalExpenses, currency),
       },
       {
         metric: "Net Income",
-        value: `$${financialReport.netIncome.toLocaleString()}`,
+        value: fmt(financialReport.netIncome, currency),
       },
       {
         metric: "Collection Rate",
@@ -461,7 +465,7 @@ export default function ReportsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                   label="Fees Collected"
-                  value={`$${financialReport.totalFeesCollected.toLocaleString()}`}
+                  value={fmt(financialReport.totalFeesCollected, currency)}
                   icon={<TrendingUp className="size-6" />}
                   color="green"
                   meta={`${financialReport.collectionRate.toFixed(1)}% collection rate`}
@@ -469,7 +473,7 @@ export default function ReportsPage() {
                 />
                 <StatsCard
                   label="Pending Fees"
-                  value={`$${financialReport.totalFeesPending.toLocaleString()}`}
+                  value={fmt(financialReport.totalFeesPending, currency)}
                   icon={<Calendar className="size-6" />}
                   color="orange"
                   meta={`${financialReport.studentsWithPending} students`}
@@ -477,7 +481,7 @@ export default function ReportsPage() {
                 />
                 <StatsCard
                   label="Overdue Fees"
-                  value={`$${financialReport.totalFeesOverdue.toLocaleString()}`}
+                  value={fmt(financialReport.totalFeesOverdue, currency)}
                   icon={<TrendingDown className="size-6" />}
                   color="red"
                   meta={`${financialReport.studentsWithOverdue} students`}
@@ -485,10 +489,10 @@ export default function ReportsPage() {
                 />
                 <StatsCard
                   label="Net Income"
-                  value={`$${financialReport.netIncome.toLocaleString()}`}
+                  value={fmt(financialReport.netIncome, currency)}
                   icon={<DollarSign className="size-6" />}
                   color="purple"
-                  meta={`Expenses: $${financialReport.totalExpenses.toLocaleString()}`}
+                  meta={`Expenses: ${fmt(financialReport.totalExpenses, currency)}`}
                   delay={0.4}
                 />
               </div>
@@ -528,7 +532,7 @@ export default function ReportsPage() {
                               {item.count}
                             </TableCell>
                             <TableCell className="text-right font-bold">
-                              ${item.amount.toLocaleString()}
+                              {fmt(item.amount, currency)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -554,7 +558,7 @@ export default function ReportsPage() {
                                 {cat.category}
                               </span>
                               <span className="text-sm font-bold">
-                                ${cat.amount.toLocaleString()}
+                                {fmt(cat.amount, currency)}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -649,7 +653,7 @@ export default function ReportsPage() {
                                 {payment.studentsCount ?? payment.count}
                               </TableCell>
                               <TableCell className="text-right font-bold">
-                                ${payment.amount.toLocaleString()}
+                                {fmt(payment.amount, currency)}
                               </TableCell>
                             </TableRow>
                           ))}

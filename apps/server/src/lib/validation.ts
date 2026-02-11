@@ -31,6 +31,7 @@ export const resetPasswordSchema = z.object({
 
 // Onboarding schema
 export const onboardingSchema = z.object({
+  country: z.string().optional(),
   schoolName: z.string().min(2, "School name must be at least 2 characters"),
   address: z.string().min(5, "Address is required"),
   phone: z.string().min(9, "Phone number is required"),
@@ -136,6 +137,13 @@ export const createCheckoutSchema = z.object({
   email: z.string().email().optional(),
 });
 
+export const createDodoCheckoutSchema = z.object({
+  planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
+  paymentType: z.enum(["SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  email: z.string().email().optional(),
+  currency: z.enum(["ZAR"]),
+});
+
 // School settings schema
 export const updateSchoolSchema = z.object({
   name: z.string().min(2).optional(),
@@ -143,6 +151,7 @@ export const updateSchoolSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   website: z.string().url().optional().or(z.literal("")),
+  currency: z.enum(["USD", "ZAR", "ZIG"]).optional(),
 });
 
 // Fee reminders schema
@@ -197,6 +206,7 @@ export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
+export type CreateDodoCheckoutInput = z.infer<typeof createDodoCheckoutSchema>;
 export type UpdateSchoolInput = z.infer<typeof updateSchoolSchema>;
 export type SendRemindersInput = z.infer<typeof sendRemindersSchema>;
 export type StartTermInput = z.infer<typeof startTermSchema>;

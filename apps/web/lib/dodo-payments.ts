@@ -55,23 +55,22 @@ export async function createSubscriptionCheckout(options: CreateCheckoutOptions)
           quantity: 1,
         },
       ],
-      success_url: `${returnUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${returnUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       customer: {
         email,
         name: email, // Will be updated after onboarding
       },
-      custom_data: {
+      metadata: {
         school_id: schoolId,
         user_id: userId,
         plan_type: planType,
         is_signup: isSignup.toString(),
       },
-      payment_link: true,
     });
 
     return {
-      checkoutUrl: session.url,
-      sessionId: session.checkout_session_id,
+      checkoutUrl: session.checkout_url,
+      sessionId: session.session_id,
     };
   } catch (error) {
     console.error("Failed to create checkout session:", error);

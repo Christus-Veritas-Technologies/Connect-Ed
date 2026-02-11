@@ -48,6 +48,8 @@ settings.get("/school", requireRole(Role.ADMIN), async (c) => {
         termStartDate: true,
         currentPeriodType: true,
         holidayStartDate: true,
+        country: true,
+        currency: true,
         notifyEmail: true,
         notifyWhatsapp: true,
         notifySms: true,
@@ -80,6 +82,7 @@ settings.patch("/school", requireRole(Role.ADMIN), zValidator("json", updateScho
         phone: data.phone,
         email: data.email || undefined,
         website: data.website || undefined,
+        currency: data.currency || undefined,
       },
       select: {
         id: true,
@@ -89,6 +92,8 @@ settings.patch("/school", requireRole(Role.ADMIN), zValidator("json", updateScho
         email: true,
         website: true,
         plan: true,
+        country: true,
+        currency: true,
       },
     });
 

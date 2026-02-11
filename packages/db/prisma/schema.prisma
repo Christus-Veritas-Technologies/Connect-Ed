@@ -103,6 +103,12 @@ enum StudentStatus {
   ABSENT
 }
 
+enum Currency {
+  USD
+  ZAR
+  ZIG
+}
+
 enum SchoolPeriodType {
   TERM
   HOLIDAY
@@ -119,6 +125,10 @@ model School {
   isActive           Boolean  @default(false)
   signupFeePaid      Boolean  @default(false)
   onboardingComplete Boolean  @default(false)
+
+  // Country & currency
+  country  String?   // "ZW" or "ZA"
+  currency Currency  @default(USD)
 
   // Term and period management
   termlyFee         Decimal?         @db.Decimal(10, 2)
@@ -505,6 +515,10 @@ model TeacherSubject {
 
 model OnboardingProgress {
   id String @id @default(cuid())
+
+  // Country & currency (step 0 – before school info)
+  country  String?
+  currency String?
 
   // School info (step 1)
   schoolName  String?

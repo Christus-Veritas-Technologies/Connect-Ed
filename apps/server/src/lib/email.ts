@@ -1,5 +1,6 @@
 import { db, MessageType, MessageStatus } from "@repo/db";
 import nodemailer from "nodemailer";
+import { fmtServer, type CurrencyCode } from "./currency";
 
 export type EmailType = "KIN" | "NOREPLY" | "SALES";
 
@@ -181,6 +182,7 @@ export function generatePaymentSuccessEmail(params: {
   amount: number;
   plan: string;
   transactionId: string;
+  currency?: CurrencyCode;
 }): string {
   return `
     <!DOCTYPE html>
@@ -211,7 +213,7 @@ export function generatePaymentSuccessEmail(params: {
             <div class="details">
               <div class="detail-row">
                 <strong>Amount Paid:</strong>
-                <span>$${params.amount}</span>
+                <span>${fmtServer(params.amount, params.currency)}</span>
               </div>
               <div class="detail-row">
                 <strong>Plan:</strong>
@@ -245,6 +247,7 @@ export function generatePaymentFailedEmail(params: {
   amount: number;
   plan: string;
   reason?: string;
+  currency?: CurrencyCode;
 }): string {
   return `
     <!DOCTYPE html>
@@ -272,7 +275,7 @@ export function generatePaymentFailedEmail(params: {
             <p>Hi ${params.name},</p>
             <p>Unfortunately, we were unable to process your payment for the ${params.plan} plan.</p>
             <div class="details">
-              <p><strong>Amount:</strong> $${params.amount}</p>
+              <p><strong>Amount:</strong> ${fmtServer(params.amount, params.currency)}</p>
               ${params.reason ? `<p><strong>Reason:</strong> ${params.reason}</p>` : ""}
               <p>Please try again or contact your bank if the issue persists.</p>
             </div>

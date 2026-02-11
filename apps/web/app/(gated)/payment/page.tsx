@@ -9,31 +9,39 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { PRICING } from "@/lib/pricing";
+import { PRICING, getPlanAmounts } from "@/lib/pricing";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Plan } from "@repo/db";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
+type PaymentCurrency = "USD" | "ZAR";
+
 export default function PaymentPage() {
-  const { user } = useAuth();
+  const { user, school } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
+    school?.currency === "ZAR" ? "ZAR" : "USD"
+  );
 
-  const pricing = PRICING[selectedPlan];
-  
+  const planMeta = PRICING[selectedPlan];
+  const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
+
   // If manual payment, only charge monthly. Otherwise, charge signup + monthly
-  const paymentAmount = isManualPayment 
-    ? pricing.monthlyEstimate 
-    : pricing.signupFee + pricing.monthlyEstimate;
+  const paymentAmount = isManualPayment
+    ? amounts.monthlyEstimate
+    : amounts.signupFee + amounts.monthlyEstimate;
 
   const handleManualPaymentToggle = (checked: boolean) => {
     setIsManualPayment(checked);
@@ -45,17 +53,30 @@ export default function PaymentPage() {
     setError("");
 
     try {
-      const response = await api.post<{
-        checkoutUrl: string;
-        intermediatePaymentId: string;
-      }>("/payments/create-checkout", {
-        planType: selectedPlan,
-        paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
-        email: user?.email,
-      });
-
-      // Redirect to PayNow checkout
-      window.location.href = response.checkoutUrl;
+      if (paymentCurrency === "ZAR") {
+        // Use DodoPayments for ZAR
+        const response = await api.post<{
+          checkoutUrl: string;
+          sessionId: string;
+        }>("/payments/create-dodo-checkout", {
+          planType: selectedPlan,
+          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
+          email: user?.email,
+          currency: "ZAR",
+        });
+        window.location.href = response.checkoutUrl;
+      } else {
+        // Use PayNow for USD
+        const response = await api.post<{
+          checkoutUrl: string;
+          intermediatePaymentId: string;
+        }>("/payments/create-checkout", {
+          planType: selectedPlan,
+          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
+          email: user?.email,
+        });
+        window.location.href = response.checkoutUrl;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
       setIsPaymentLoading(false);
@@ -76,6 +97,24 @@ export default function PaymentPage() {
         </p>
       </motion.div>
 
+      {/* Currency Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="flex justify-center"
+      >
+        <Tabs
+          value={paymentCurrency}
+          onValueChange={(v) => setPaymentCurrency(v as PaymentCurrency)}
+        >
+          <TabsList>
+            <TabsTrigger value="USD">USD ($)</TabsTrigger>
+            <TabsTrigger value="ZAR">ZAR (R)</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </motion.div>
+
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -85,7 +124,8 @@ export default function PaymentPage() {
       {/* Plan Cards */}
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map((plan, index) => {
-          const planPricing = PRICING[plan];
+          const planInfo = PRICING[plan];
+          const planAmounts = getPlanAmounts(plan, paymentCurrency);
           const isSelected = selectedPlan === plan;
           const isPopular = plan === "GROWTH";
 
@@ -99,11 +139,10 @@ export default function PaymentPage() {
               <Card
                 hover
                 onClick={() => setSelectedPlan(plan)}
-                className={`relative cursor-pointer transition-all ${
-                  isSelected 
-                    ? "bg-brand border-brand ring-4 ring-brand/20" 
+                className={`relative cursor-pointer transition-all ${isSelected
+                    ? "bg-brand border-brand ring-4 ring-brand/20"
                     : "bg-muted/40"
-                }`}
+                  }`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -113,10 +152,10 @@ export default function PaymentPage() {
 
                 <CardHeader className="text-center pb-4">
                   <CardTitle className={`text-xl ${isSelected ? "text-white" : ""}`}>
-                    {planPricing.name}
+                    {planInfo.name}
                   </CardTitle>
                   <CardDescription className={isSelected ? "text-blue-100" : ""}>
-                    {planPricing.description}
+                    {planInfo.description}
                   </CardDescription>
                 </CardHeader>
 
@@ -124,30 +163,28 @@ export default function PaymentPage() {
                   <div className="text-center">
                     <div className="flex items-baseline justify-center gap-1">
                       <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                        ${planPricing.signupFee}
+                        {fmt(planAmounts.signupFee, paymentCurrency)}
                       </span>
                       <span className={isSelected ? "text-blue-100" : "text-muted-foreground"}>
                         signup
                       </span>
                     </div>
-                    <p className={`text-sm mt-1 ${
-                      isSelected 
-                        ? "text-blue-100" 
+                    <p className={`text-sm mt-1 ${isSelected
+                        ? "text-blue-100"
                         : "text-muted-foreground"
-                    }`}>
-                      + ${planPricing.perTermCost}/term (~${planPricing.monthlyEstimate}/mo)
+                      }`}>
+                      + {fmt(planAmounts.perTermCost, paymentCurrency)}/term (~{fmt(planAmounts.monthlyEstimate, paymentCurrency)}/mo)
                     </p>
                   </div>
 
                   <ul className="space-y-3">
-                    {planPricing.features.slice(0, 6).map((feature, i) => (
+                    {planInfo.features.slice(0, 6).map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <HugeiconsIcon
                           icon={CheckmarkCircle02Icon}
                           size={18}
-                          className={`shrink-0 mt-0.5 ${
-                            isSelected ? "text-blue-200" : "text-success"
-                          }`}
+                          className={`shrink-0 mt-0.5 ${isSelected ? "text-blue-200" : "text-success"
+                            }`}
                         />
                         <span className={isSelected ? "text-white" : ""}>
                           {feature}
@@ -158,11 +195,10 @@ export default function PaymentPage() {
 
                   <Button
                     variant={isSelected ? "secondary" : "outline"}
-                    className={`w-full ${
-                      isSelected 
-                        ? "bg-white text-brand hover:bg-white/90" 
+                    className={`w-full ${isSelected
+                        ? "bg-white text-brand hover:bg-white/90"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => setSelectedPlan(plan)}
                   >
                     {isSelected ? "Selected" : "Select Plan"}
@@ -188,19 +224,19 @@ export default function PaymentPage() {
             {!isManualPayment && (
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b">
-                  <span>Signup Fee ({pricing.name})</span>
-                  <span className="font-semibold">${pricing.signupFee}</span>
+                  <span>Signup Fee ({planMeta.name})</span>
+                  <span className="font-semibold">{fmt(amounts.signupFee, paymentCurrency)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span>First Month</span>
-                  <span className="font-semibold">${pricing.monthlyEstimate}</span>
+                  <span className="font-semibold">{fmt(amounts.monthlyEstimate, paymentCurrency)}</span>
                 </div>
               </div>
             )}
 
             <div className="flex justify-between py-2 text-lg font-bold">
               <span>Total Due Today</span>
-              <span className="text-brand">${paymentAmount}</span>
+              <span className="text-brand">{fmt(paymentAmount, paymentCurrency)}</span>
             </div>
 
             {/* Manual Payment Option */}
@@ -232,14 +268,16 @@ export default function PaymentPage() {
             >
               {!isPaymentLoading && (
                 <>
-                  Pay ${paymentAmount} Now
+                  Pay {fmt(paymentAmount, paymentCurrency)} Now
                   <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
                 </>
               )}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              Secure payment powered by PayNow
+              {paymentCurrency === "ZAR"
+                ? "Secure payment powered by Dodo Payments"
+                : "Secure payment powered by PayNow"}
             </p>
           </CardContent>
         </Card>

@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { DashboardBreadcrumbs } from "@/components/dashboard";
 import { canEditEntity } from "@/lib/roles";
 import { api, ApiError } from "@/lib/api";
@@ -215,7 +216,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-green-100">Total Fees</p>
-              <p className="text-3xl font-semibold mt-2">${totalFees.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">{fmt(totalFees, school?.currency as CurrencyCode)}</p>
             </div>
           </div>
         </motion.div>
@@ -227,7 +228,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Paid</p>
-              <p className="text-3xl font-semibold mt-2">${totalPaid.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">{fmt(totalPaid, school?.currency as CurrencyCode)}</p>
             </div>
           </div>
         </motion.div>
@@ -239,7 +240,7 @@ export default function StudentDetailPage() {
             </div>
             <div className="relative z-10">
               <p className="text-sm font-medium text-orange-100">Balance</p>
-              <p className="text-3xl font-semibold mt-2">${balance.toFixed(2)}</p>
+              <p className="text-3xl font-semibold mt-2">{fmt(balance, school?.currency as CurrencyCode)}</p>
             </div>
           </div>
         </motion.div>

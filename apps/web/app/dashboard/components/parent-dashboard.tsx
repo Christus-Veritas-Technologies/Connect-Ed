@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ interface ParentDashboardData {
   };
 }
 
-const feeColumns: ColumnDef<Fee>[] = [
+const getFeeColumns = (currency?: CurrencyCode): ColumnDef<Fee>[] => [
   {
     accessorKey: "studentName",
     header: "Child",
@@ -88,12 +89,12 @@ const feeColumns: ColumnDef<Fee>[] = [
   {
     accessorKey: "amount",
     header: "Amount",
-    cell: ({ row }) => `$${row.original.amount.toLocaleString()}`,
+    cell: ({ row }) => fmt(row.original.amount, currency),
   },
   {
     accessorKey: "paidAmount",
     header: "Paid",
-    cell: ({ row }) => `$${row.original.paidAmount.toLocaleString()}`,
+    cell: ({ row }) => fmt(row.original.paidAmount, currency),
   },
   {
     accessorKey: "dueDate",
@@ -111,7 +112,7 @@ const feeColumns: ColumnDef<Fee>[] = [
   },
 ];
 
-const paymentColumns: ColumnDef<Payment>[] = [
+const getPaymentColumns = (currency?: CurrencyCode): ColumnDef<Payment>[] => [
   {
     accessorKey: "date",
     header: "Date",
@@ -128,7 +129,7 @@ const paymentColumns: ColumnDef<Payment>[] = [
   {
     accessorKey: "amount",
     header: "Amount",
-    cell: ({ row }) => `$${row.original.amount.toLocaleString()}`,
+    cell: ({ row }) => fmt(row.original.amount, currency),
   },
   {
     accessorKey: "method",
@@ -147,6 +148,9 @@ const paymentColumns: ColumnDef<Payment>[] = [
 export function ParentDashboard() {
   const { user, school } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  const currency = school?.currency as CurrencyCode;
+  const feeColumns = useMemo(() => getFeeColumns(currency), [currency]);
+  const paymentColumns = useMemo(() => getPaymentColumns(currency), [currency]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard", "parent"],
@@ -216,7 +220,7 @@ export function ParentDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Balance</p>
-                  <p className="text-3xl font-semibold">${data.summary.totalBalance.toLocaleString()}</p>
+                  <p className="text-3xl font-semibold">{fmt(data.summary.totalBalance, school?.currency as CurrencyCode)}</p>
                   <p className="text-xs text-muted-foreground">Outstanding fees</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gradient-to-br from-warning to-orange-600">
@@ -235,7 +239,7 @@ export function ParentDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground">Overdue</p>
                     <p className="text-3xl font-semibold text-destructive">
-                      ${data.summary.totalOverdue.toLocaleString()}
+                      {fmt(data.summary.totalOverdue, school?.currency as CurrencyCode)}
                     </p>
                     <p className="text-xs text-destructive">Requires attention</p>
                   </div>
@@ -295,16 +299,16 @@ export function ParentDashboard() {
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-xs text-muted-foreground">Total Fees</p>
-                      <p className="font-semibold">${child.totalFees.toLocaleString()}</p>
+                      <p className="font-semibold">{fmt(child.totalFees, school?.currency as CurrencyCode)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Paid</p>
-                      <p className="font-semibold text-success">${child.totalPaid.toLocaleString()}</p>
+                      <p className="font-semibold text-success">{fmt(child.totalPaid, school?.currency as CurrencyCode)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Balance</p>
                       <p className={`font-semibold ${child.balance > 0 ? "text-destructive" : ""}`}>
-                        ${child.balance.toLocaleString()}
+                        {fmt(child.balance, school?.currency as CurrencyCode)}
                       </p>
                     </div>
                   </div>

@@ -1,5 +1,7 @@
 import type { Plan } from "@repo/db";
+import type { CurrencyCode } from "./currency";
 
+// USD pricing (default)
 export const PRICING = {
   LITE: {
     name: "Lite",
@@ -83,18 +85,63 @@ export const PRICING = {
   },
 } as const;
 
+// ZAR pricing (~20x conversion factor)
+export const PRICING_ZAR: Record<Plan, { signupFee: number; perTermCost: number; monthlyEstimate: number }> = {
+  LITE: {
+    signupFee: 7500,
+    perTermCost: 950,
+    monthlyEstimate: 750,
+  },
+  GROWTH: {
+    signupFee: 14000,
+    perTermCost: 1700,
+    monthlyEstimate: 1400,
+  },
+  ENTERPRISE: {
+    signupFee: 22000,
+    perTermCost: 2800,
+    monthlyEstimate: 2200,
+  },
+};
+
+// ZiG pricing
+export const PRICING_ZIG: Record<Plan, { signupFee: number; perTermCost: number; monthlyEstimate: number }> = {
+  LITE: {
+    signupFee: 5400,
+    perTermCost: 675,
+    monthlyEstimate: 540,
+  },
+  GROWTH: {
+    signupFee: 10125,
+    perTermCost: 1215,
+    monthlyEstimate: 1012,
+  },
+  ENTERPRISE: {
+    signupFee: 16200,
+    perTermCost: 2025,
+    monthlyEstimate: 1620,
+  },
+};
+
+/** Get the numeric pricing amounts for a given plan and currency */
+export function getPlanAmounts(plan: Plan, currency: CurrencyCode = "USD") {
+  if (currency === "ZAR") return PRICING_ZAR[plan];
+  if (currency === "ZIG") return PRICING_ZIG[plan];
+  const p = PRICING[plan];
+  return { signupFee: p.signupFee, perTermCost: p.perTermCost, monthlyEstimate: p.monthlyEstimate };
+}
+
 export type PlanPricing = (typeof PRICING)[Plan];
 
 export function getPlanPricing(plan: Plan): PlanPricing {
   return PRICING[plan];
 }
 
-export function calculateSignupTotal(plan: Plan): number {
-  const pricing = PRICING[plan];
-  // Signup fee + first month
-  return pricing.signupFee + pricing.monthlyEstimate;
+export function calculateSignupTotal(plan: Plan, currency: CurrencyCode = "USD"): number {
+  const amounts = getPlanAmounts(plan, currency);
+  return amounts.signupFee + amounts.monthlyEstimate;
 }
 
-export function calculateMonthlyPayment(plan: Plan): number {
-  return PRICING[plan].monthlyEstimate;
+export function calculateMonthlyPayment(plan: Plan, currency: CurrencyCode = "USD"): number {
+  return getPlanAmounts(plan, currency).monthlyEstimate;
 }

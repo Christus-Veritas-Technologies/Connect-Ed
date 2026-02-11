@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import {
   Building01Icon,
   BookOpen01Icon,
@@ -43,6 +44,7 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
       const totalTeachers = data.step2?.subjects.length || 1;
 
       const payload = {
+        country: data.country || undefined,
         schoolName: data.step1?.schoolName || "",
         address: data.step1?.address || "",
         phone: data.step1?.isLandline
@@ -195,8 +197,8 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
             <div className="flex justify-between">
               <span className="text-slate-600">Fee per student per term:</span>
               <span className="font-medium text-lg">
-                ${data.step4?.termlyFee
-                  ? parseFloat(data.step4.termlyFee).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                {data.step4?.termlyFee
+                  ? fmt(parseFloat(data.step4.termlyFee), (data.currency || "USD") as CurrencyCode)
                   : "Not set"}
               </span>
             </div>

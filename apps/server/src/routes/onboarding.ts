@@ -67,6 +67,8 @@ onboarding.post("/", async (c) => {
         where: { id: schoolId },
         data: {
           name: data.schoolName,
+          country: data.country || null,
+          currency: data.country === "ZA" ? "ZAR" : "USD",
           teacherCount: data.teacherCount,
           studentCount: data.studentCount,
           onboardingComplete: true,

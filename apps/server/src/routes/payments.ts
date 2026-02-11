@@ -2,10 +2,12 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan, PaymentType, PaymentStatus, PaymentMethod, Prisma } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { createCheckoutSchema } from "../lib/validation";
+import { createCheckoutSchema, createDodoCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { PLAN_FEATURES } from "../lib/auth";
 import { Paynow } from "paynow";
+import DodoPayments from "dodopayments";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
@@ -41,6 +43,50 @@ const PRICING = {
     monthlyEstimate: 120,
   },
 } as const;
+
+// ZAR pricing (~20x conversion factor, matching apps/web/lib/pricing.ts)
+const PRICING_ZAR = {
+  LITE: {
+    signupFee: 7500,
+    perTermCost: 950,
+    monthlyEstimate: 750,
+  },
+  GROWTH: {
+    signupFee: 14000,
+    perTermCost: 1700,
+    monthlyEstimate: 1400,
+  },
+  ENTERPRISE: {
+    signupFee: 22000,
+    perTermCost: 2800,
+    monthlyEstimate: 2200,
+  },
+} as const;
+
+// DodoPayments product IDs
+const DODO_PRODUCTS = {
+  LITE: {
+    productId: process.env.DODO_PRODUCT_LITE || "prod_lite",
+    signupProductId: process.env.DODO_SIGNUP_LITE || "prod_lite_signup",
+  },
+  GROWTH: {
+    productId: process.env.DODO_PRODUCT_GROWTH || "prod_growth",
+    signupProductId: process.env.DODO_SIGNUP_GROWTH || "prod_growth_signup",
+  },
+  ENTERPRISE: {
+    productId: process.env.DODO_PRODUCT_ENTERPRISE || "prod_enterprise",
+    signupProductId: process.env.DODO_SIGNUP_ENTERPRISE || "prod_enterprise_signup",
+  },
+} as const;
+
+// Initialize DodoPayments client
+const initializeDodoPayments = () => {
+  const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+  if (!apiKey) {
+    throw new Error("DodoPayments credentials not configured - set DODO_PAYMENTS_API_KEY");
+  }
+  return new DodoPayments({ bearerToken: apiKey });
+};
 
 // POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
@@ -123,6 +169,89 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
   }
 });
 
+// POST /payments/create-dodo-checkout - Create DodoPayments checkout session (ZAR)
+payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDodoCheckoutSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const userId = c.get("userId");
+    const data = c.req.valid("json");
+
+    const planPricing = PRICING_ZAR[data.planType];
+    const isSignup = data.paymentType === "SIGNUP";
+    const amount = isSignup
+      ? planPricing.signupFee + planPricing.monthlyEstimate
+      : planPricing.monthlyEstimate;
+
+    // Create intermediate payment record
+    const intermediatePayment = await db.intermediatePayment.create({
+      data: {
+        userId,
+        schoolId,
+        amount: new Prisma.Decimal(amount),
+        plan: data.planType,
+        paid: false,
+      },
+    });
+
+    // In development mode, redirect to mock checkout
+    if (process.env.NODE_ENV !== "production" && !process.env.DODO_PAYMENTS_API_KEY) {
+      const baseUrl = process.env.APP_URL || "http://localhost:3000";
+      return successResponse(c, {
+        checkoutUrl: `${baseUrl}/payment/mock-checkout?amount=${amount}&plan=${data.planType}&schoolId=${schoolId}&currency=ZAR`,
+        sessionId: `dev_${intermediatePayment.id}`,
+      });
+    }
+
+    // Initialize DodoPayments
+    const dodo = initializeDodoPayments();
+
+    const planConfig = DODO_PRODUCTS[data.planType];
+    const productId = isSignup ? planConfig.signupProductId : planConfig.productId;
+    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+
+    // Create DodoPayments checkout session
+    const session = await dodo.checkoutSessions.create({
+      product_cart: [
+        {
+          product_id: productId,
+          quantity: 1,
+        },
+      ],
+      return_url: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+      customer: {
+        email: data.email || "",
+        name: data.email || "",
+      },
+      metadata: {
+        school_id: schoolId,
+        user_id: userId,
+        plan_type: data.planType,
+        is_signup: isSignup.toString(),
+        intermediate_payment_id: intermediatePayment.id,
+      },
+    });
+
+    // Save the session ID as the reference
+    await db.intermediatePayment.update({
+      where: { id: intermediatePayment.id },
+      data: { reference: session.session_id },
+    });
+
+    return successResponse(c, {
+      checkoutUrl: session.checkout_url,
+      sessionId: session.session_id,
+    });
+  } catch (error) {
+    console.error("Create Dodo checkout error:", error);
+    console.error("Full error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error,
+    });
+    return errors.internalError(c);
+  }
+});
+
 // POST /payments/callback - PayNow webhook callback
 payments.post("/callback", async (c) => {
   try {
@@ -169,7 +298,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Received",
-        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan has been successfully processed.`,
+        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan has been successfully processed.`,
         type: "PAYMENT_SUCCESS",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -192,6 +321,7 @@ payments.post("/callback", async (c) => {
             amount: Number(intermediatePayment.amount),
             plan: intermediatePayment.plan,
             transactionId: intermediatePaymentId,
+            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
           }),
           schoolId: intermediatePayment.schoolId,
           type: "SALES",
@@ -202,7 +332,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Failed",
-        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan failed to process.`,
+        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan failed to process.`,
         type: "PAYMENT_FAILED",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -224,6 +354,7 @@ payments.post("/callback", async (c) => {
             name: intermediatePayment.user.name,
             amount: Number(intermediatePayment.amount),
             plan: intermediatePayment.plan,
+            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
           }),
           schoolId: intermediatePayment.schoolId,
           type: "SALES",

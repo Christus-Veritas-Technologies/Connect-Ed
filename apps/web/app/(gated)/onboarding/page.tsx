@@ -16,18 +16,20 @@ import { OnboardingStep4 } from "./step-4";
 import { OnboardingStep5 } from "./step-5";
 import { OnboardingStep6 } from "./step-6";
 import { OnboardingStep7 } from "./step-7";
+import { StepCountry } from "./step-country";
 import { TeacherOnboarding } from "./teacher-onboarding";
 import { ParentOnboarding } from "./parent-onboarding";
 import { StudentOnboarding } from "./student-onboarding";
 
 const STEPS = [
-  { number: 1, title: "School Details", description: "Let's get to know your school" },
-  { number: 2, title: "Learning", description: "Tell us about your programs" },
-  { number: 3, title: "Students", description: "Student body information" },
-  { number: 4, title: "Termly Fees", description: "Set your fee structure" },
-  { number: 5, title: "Current Term", description: "Configure your academic calendar" },
-  { number: 6, title: "Grading", description: "Define grading scales per subject" },
-  { number: 7, title: "Review", description: "Confirm your information" },
+  { number: 1, title: "Country", description: "Where is your school?" },
+  { number: 2, title: "School Details", description: "Let's get to know your school" },
+  { number: 3, title: "Learning", description: "Tell us about your programs" },
+  { number: 4, title: "Students", description: "Student body information" },
+  { number: 5, title: "Termly Fees", description: "Set your fee structure" },
+  { number: 6, title: "Current Term", description: "Configure your academic calendar" },
+  { number: 7, title: "Grading", description: "Define grading scales per subject" },
+  { number: 8, title: "Review", description: "Confirm your information" },
 ];
 
 function AdminOnboardingContent() {
@@ -109,12 +111,11 @@ function AdminOnboardingContent() {
                 <div
                   className={`
                     size-10 rounded-full flex items-center justify-center font-semibold transition-all text-sm
-                    ${
-                      isCompleted
-                        ? "bg-success text-white"
-                        : isActive
-                          ? "bg-brand text-white ring-4 ring-brand/20"
-                          : "bg-slate-200 text-slate-600"
+                    ${isCompleted
+                      ? "bg-success text-white"
+                      : isActive
+                        ? "bg-brand text-white ring-4 ring-brand/20"
+                        : "bg-slate-200 text-slate-600"
                     }
                   `}
                 >
@@ -135,9 +136,8 @@ function AdminOnboardingContent() {
                 {/* Connecting Line */}
                 {index < STEPS.length - 1 && (
                   <div
-                    className={`absolute left-[calc(50%+20px)] w-12 h-0.5 top-5 ${
-                      isCompleted ? "bg-success" : isActive ? "bg-brand" : "bg-slate-200"
-                    }`}
+                    className={`absolute left-[calc(50%+20px)] w-12 h-0.5 top-5 ${isCompleted ? "bg-success" : isActive ? "bg-brand" : "bg-slate-200"
+                      }`}
                   />
                 )}
               </motion.div>
@@ -164,23 +164,24 @@ function AdminOnboardingContent() {
           </div>
 
           {/* Step Components — all steps now support skip via handleSkip */}
-          {currentStep === 0 && <OnboardingStep1 onNext={handleNext} onSkip={handleSkip} />}
-          {currentStep === 1 && (
+          {currentStep === 0 && <StepCountry onNext={handleNext} onSkip={handleSkip} />}
+          {currentStep === 1 && <OnboardingStep1 onNext={handleNext} onSkip={handleSkip} />}
+          {currentStep === 2 && (
             <OnboardingStep2 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
-          {currentStep === 2 && (
+          {currentStep === 3 && (
             <OnboardingStep3 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <OnboardingStep4 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <OnboardingStep5 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
-          {currentStep === 5 && (
+          {currentStep === 6 && (
             <OnboardingStep7 onBack={handleBack} onNext={handleNext} onSkip={handleSkip} />
           )}
-          {currentStep === 6 && <OnboardingStep6 onBack={handleBack} />}
+          {currentStep === 7 && <OnboardingStep6 onBack={handleBack} />}
         </motion.div>
       </div>
     </div>

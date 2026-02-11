@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,7 @@ interface StudentDashboardData {
   fees: Fee[];
 }
 
-const feeColumns: ColumnDef<Fee>[] = [
+const getFeeColumns = (currency?: CurrencyCode): ColumnDef<Fee>[] => [
   {
     accessorKey: "description",
     header: "Description",
@@ -73,12 +75,12 @@ const feeColumns: ColumnDef<Fee>[] = [
   {
     accessorKey: "amount",
     header: "Amount",
-    cell: ({ row }) => `$${row.original.amount.toLocaleString()}`,
+    cell: ({ row }) => fmt(row.original.amount, currency),
   },
   {
     accessorKey: "paidAmount",
     header: "Paid",
-    cell: ({ row }) => `$${row.original.paidAmount.toLocaleString()}`,
+    cell: ({ row }) => fmt(row.original.paidAmount, currency),
   },
   {
     accessorKey: "balance",
@@ -87,7 +89,7 @@ const feeColumns: ColumnDef<Fee>[] = [
       const balance = row.original.balance;
       return (
         <span className={balance > 0 ? "text-destructive font-medium" : "text-success"}>
-          ${balance.toLocaleString()}
+          {fmt(balance, currency)}
         </span>
       );
     },
@@ -110,6 +112,8 @@ const feeColumns: ColumnDef<Fee>[] = [
 
 export function StudentDashboard() {
   const { user, school } = useAuth();
+  const currency = school?.currency as CurrencyCode;
+  const feeColumns = useMemo(() => getFeeColumns(currency), [currency]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard", "student"],
@@ -259,20 +263,20 @@ export function StudentDashboard() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-semibold">${data.summary.totalFees.toLocaleString()}</p>
+                <p className="text-2xl font-semibold">{fmt(data.summary.totalFees, school?.currency as CurrencyCode)}</p>
                 <p className="text-xs text-muted-foreground">Total Fees</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-success/10">
-                <p className="text-2xl font-semibold text-success">${data.summary.totalPaid.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-success">{fmt(data.summary.totalPaid, school?.currency as CurrencyCode)}</p>
                 <p className="text-xs text-muted-foreground">Paid</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-warning/10">
-                <p className="text-2xl font-semibold text-warning">${data.summary.balance.toLocaleString()}</p>
+                <p className="text-2xl font-semibold text-warning">{fmt(data.summary.balance, school?.currency as CurrencyCode)}</p>
                 <p className="text-xs text-muted-foreground">Balance</p>
               </div>
               {data.summary.overdueFees > 0 && (
                 <div className="text-center p-4 rounded-lg bg-destructive/10">
-                  <p className="text-2xl font-semibold text-destructive">${data.summary.overdueFees.toLocaleString()}</p>
+                  <p className="text-2xl font-semibold text-destructive">{fmt(data.summary.overdueFees, school?.currency as CurrencyCode)}</p>
                   <p className="text-xs text-muted-foreground">Overdue</p>
                 </div>
               )}

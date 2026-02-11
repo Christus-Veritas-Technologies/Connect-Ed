@@ -45,6 +45,12 @@ export const SchoolPeriodType = {
   HOLIDAY: "HOLIDAY" as const,
 } as const;
 
+export const Currency = {
+  USD: "USD" as const,
+  ZAR: "ZAR" as const,
+  ZIG: "ZIG" as const,
+} as const;
+
 export const ChatMessageType = {
   TEXT: "TEXT" as const,
   EXAM_RESULT: "EXAM_RESULT" as const,

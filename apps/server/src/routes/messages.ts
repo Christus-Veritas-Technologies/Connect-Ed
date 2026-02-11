@@ -4,6 +4,7 @@ import { db, MessageType, MessageStatus, FeeStatus } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { sendRemindersSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
 
 const messages = new Hono();
 
@@ -66,6 +67,7 @@ messages.post("/send-reminders", zValidator("json", sendRemindersSchema), async 
     const school = await db.school.findUnique({
       where: { id: schoolId },
       select: {
+        currency: true,
         emailQuota: true,
         whatsappQuota: true,
         smsQuota: true,
@@ -147,7 +149,7 @@ messages.post("/send-reminders", zValidator("json", sendRemindersSchema), async 
             type: channel.toUpperCase() as MessageType,
             recipient,
             subject: `Fee Reminder for ${studentName}`,
-            content: `Dear Parent/Guardian,\n\nThis is a reminder that ${studentName} has an outstanding fee of $${amountDue} due on ${fee.dueDate.toLocaleDateString()}.\n\nPlease make the payment at your earliest convenience.`,
+            content: `Dear Parent/Guardian,\n\nThis is a reminder that ${studentName} has an outstanding fee of ${fmtServer(amountDue, (school.currency || "USD") as CurrencyCode)} due on ${fee.dueDate.toLocaleDateString()}.\n\nPlease make the payment at your earliest convenience.`,
             status: MessageStatus.SENT, // Would be PENDING until confirmed
             feeId: fee.id,
           },

@@ -19,6 +19,7 @@ import { useFees, useFeeStats, useRecordPayment } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { AddFeeDialog } from "@/components/dialogs/add-fee-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,9 +275,9 @@ export default function FeesPage() {
     const exportData = filteredFees.map((fee) => ({
       student: `${fee.student.firstName} ${fee.student.lastName}`,
       description: fee.description,
-      amount: `$${fee.amount.toLocaleString()}`,
-      paid: `$${fee.paidAmount.toLocaleString()}`,
-      outstanding: `$${(fee.amount - fee.paidAmount).toLocaleString()}`,
+      amount: fmt(fee.amount, school?.currency as CurrencyCode),
+      paid: fmt(fee.paidAmount, school?.currency as CurrencyCode),
+      outstanding: fmt(fee.amount - fee.paidAmount, school?.currency as CurrencyCode),
       status: fee.status,
     }));
     exportToPDF(
@@ -320,7 +321,7 @@ export default function FeesPage() {
       student: `${s.firstName} ${s.lastName}`,
       admissionNumber: s.admissionNumber,
       className: s.className,
-      totalOwed: `$${s.totalOwed.toLocaleString()}`,
+      totalOwed: fmt(s.totalOwed, school?.currency as CurrencyCode),
     }));
     exportToPDF(
       exportData,
@@ -379,7 +380,7 @@ export default function FeesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           label="Paid This Term"
-          value={`$${(feeStats?.feesPaidThisTerm || 0).toLocaleString()}`}
+          value={fmt(feeStats?.feesPaidThisTerm || 0, school?.currency as CurrencyCode)}
           icon={<CheckCircle className="size-6" />}
           color="green"
           meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
@@ -390,7 +391,7 @@ export default function FeesPage() {
         />
         <StatsCard
           label="Unpaid This Term"
-          value={`$${(feeStats?.unpaidFeesThisTerm || 0).toLocaleString()}`}
+          value={fmt(feeStats?.unpaidFeesThisTerm || 0, school?.currency as CurrencyCode)}
           icon={<Clock className="size-6" />}
           color="orange"
           meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
@@ -398,7 +399,7 @@ export default function FeesPage() {
         />
         <StatsCard
           label="Paid This Year"
-          value={`$${(feeStats?.feesPaidThisYear || 0).toLocaleString()}`}
+          value={fmt(feeStats?.feesPaidThisYear || 0, school?.currency as CurrencyCode)}
           icon={<DollarSign className="size-6" />}
           color="blue"
           meta={feeStats ? `${feeStats.currentYear}` : undefined}
@@ -406,7 +407,7 @@ export default function FeesPage() {
         />
         <StatsCard
           label="Unpaid This Year"
-          value={`$${(feeStats?.unpaidFeesThisYear || 0).toLocaleString()}`}
+          value={fmt(feeStats?.unpaidFeesThisYear || 0, school?.currency as CurrencyCode)}
           icon={<AlertCircle className="size-6" />}
           color="red"
           meta={feeStats ? `${feeStats.currentYear}` : undefined}

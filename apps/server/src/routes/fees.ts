@@ -4,6 +4,7 @@ import { db, FeeStatus, PaymentMethod, NotificationType, NotificationPriority } 
 import { requireAuth } from "../middleware/auth";
 import { createFeeSchema, recordPaymentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { createNotification } from "./notifications";
 
 const fees = new Hono();
@@ -332,7 +333,9 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
     const studentName = fee.student
       ? `${fee.student.firstName} ${fee.student.lastName}`
       : "Unknown Student";
-    const amountFormatted = Number(data.amount).toLocaleString();
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { currency: true } });
+    const cur = (school?.currency || "USD") as CurrencyCode;
+    const amountFormatted = fmtServer(data.amount, cur);
     const notifications: Promise<unknown>[] = [];
 
     // 1. Notify all admins about the fee payment
@@ -347,7 +350,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           type: NotificationType.PAYMENT_SUCCESS,
           priority: NotificationPriority.MEDIUM,
           title: "Fee Payment Received",
-          message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
+          message: `A payment of ${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
           actionUrl: `/dashboard/fees`,
           schoolId,
           userId: admin.id,
@@ -369,7 +372,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
             type: NotificationType.PAYMENT_SUCCESS,
             priority: NotificationPriority.HIGH,
             title: "Fee Payment Recorded",
-            message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+            message: `A payment of ${amountFormatted} has been recorded for ${studentName}. Remaining balance: ${fmtServer(Math.max(0, Number(fee.amount) - newTotal), cur)}.`,
             actionUrl: `/dashboard/fees`,
             schoolId,
             metadata: { parentId: parent.id, studentId: fee.student.id },
@@ -386,7 +389,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           type: NotificationType.PAYMENT_SUCCESS,
           priority: NotificationPriority.MEDIUM,
           title: "Fee Payment Recorded",
-          message: `A payment of ₦${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+          message: `A payment of ${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ${fmtServer(Math.max(0, Number(fee.amount) - newTotal), cur)}.`,
           actionUrl: `/dashboard/fees`,
           schoolId,
           metadata: { studentId: fee.student.id },
