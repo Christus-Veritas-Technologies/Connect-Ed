@@ -14,7 +14,7 @@ import {
   useUpdateProfile,
   useSchoolUsers,
 } from "@/lib/hooks";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -42,7 +42,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { DashboardBreadcrumbs } from "@/components/dashboard";
+import { DashboardBreadcrumbs, FilterTabs } from "@/components/dashboard";
 
 const PLAN_SEAT_LIMITS = {
   LITE: 10,
@@ -74,6 +74,9 @@ export default function SettingsPage() {
   const updateSchool = useUpdateSchool();
   const updateNotifPrefs = useUpdateNotificationPrefs();
   const updateProfile = useUpdateProfile();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>(isAdmin ? "school" : "profile");
 
   // School form state
   const [schoolForm, setSchoolForm] = useState({
@@ -282,34 +285,22 @@ export default function SettingsPage() {
       </div>
 
       <Tabs
-        defaultValue={isAdmin ? "school" : "profile"}
+        value={activeTab}
+        onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="bg-muted/50">
-          {isAdmin && (
-            <>
-              <TabsTrigger value="school">
-                School
-              </TabsTrigger>
-              <TabsTrigger value="notifications">
-                Notifications
-              </TabsTrigger>
-            </>
-          )}
-          <TabsTrigger value="profile">
-            Profile
-          </TabsTrigger>
-          {isAdmin && (
-            <>
-              <TabsTrigger value="billing">
-                Billing
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                Users
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
+        {/* Tab Navigation */}
+        <FilterTabs
+          tabs={[
+            ...(isAdmin ? [{ key: "school", label: "School" }] : []),
+            ...(isAdmin ? [{ key: "notifications", label: "Notifications" }] : []),
+            { key: "profile", label: "Profile" },
+            ...(isAdmin ? [{ key: "billing", label: "Billing" }] : []),
+            ...(isAdmin ? [{ key: "users", label: "Users" }] : []),
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
         {/* =============================================
             School Data Tab (Admin only)

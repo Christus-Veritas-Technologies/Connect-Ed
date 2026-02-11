@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -42,6 +42,7 @@ import {
   DashboardBreadcrumbs,
   PageHeader,
   StatsCard,
+  FilterTabs,
 } from "@/components/dashboard";
 import { toast } from "sonner";
 
@@ -448,10 +449,14 @@ export default function ReportsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="financial">Financial</TabsTrigger>
-          <TabsTrigger value="managerial">Managerial</TabsTrigger>
-        </TabsList>
+        <FilterTabs
+          tabs={[
+            { key: "financial", label: "Financial" },
+            { key: "managerial", label: "Managerial" },
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
         {/* ── Financial Report Tab ── */}
         <TabsContent value="financial" className="space-y-6">
