@@ -11,8 +11,6 @@ import {
   Mail,
   Trash2,
   MoreVertical,
-  Download,
-  FileDown,
   LayoutGrid,
   List,
   Table as TableIcon,
@@ -25,7 +23,6 @@ import {
   useDeleteReceptionist,
 } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
-import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +55,6 @@ import {
   FilterTabs,
   ViewToggle,
   EmptyState,
-  BulkActions,
   Pagination,
 } from "@/components/dashboard";
 import { toast } from "sonner";
@@ -101,8 +97,8 @@ function ReceptionistCard({
           onSelect(receptionist.id);
         }}
         className={`absolute top-3 left-3 z-10 size-5 rounded border-2 flex items-center justify-center transition-all ${isSelected
-            ? "bg-brand border-brand text-white"
-            : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+          ? "bg-brand border-brand text-white"
+          : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
           }`}
       >
         {isSelected && <Check className="size-3" />}
@@ -295,45 +291,7 @@ export default function ReceptionistsPage() {
     });
   };
 
-  // ── Export helpers ──
-  const handleExportCSV = () => {
-    const data = filteredReceptionists.map((r) => ({
-      name: r.name,
-      email: r.email,
-      status: r.isActive ? "Active" : "Inactive",
-      addedOn: new Date(r.createdAt).toLocaleDateString(),
-    }));
-    exportToCSV(
-      data,
-      [
-        { key: "name", label: "Name" },
-        { key: "email", label: "Email" },
-        { key: "status", label: "Status" },
-        { key: "addedOn", label: "Added On" },
-      ],
-      `receptionists-${new Date().toISOString().split("T")[0]}`
-    );
-  };
 
-  const handleExportPDF = () => {
-    const data = filteredReceptionists.map((r) => ({
-      name: r.name,
-      email: r.email,
-      status: r.isActive ? "Active" : "Inactive",
-      addedOn: new Date(r.createdAt).toLocaleDateString(),
-    }));
-    exportToPDF(
-      data,
-      [
-        { key: "name", label: "Name" },
-        { key: "email", label: "Email" },
-        { key: "status", label: "Status" },
-        { key: "addedOn", label: "Added On" },
-      ],
-      `receptionists-${new Date().toISOString().split("T")[0]}`,
-      "Receptionists Report"
-    );
-  };
 
   // ── Bulk delete ──
   const handleBulkDelete = () => {
@@ -359,184 +317,275 @@ export default function ReceptionistsPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search by name or email..."
         action={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleExportCSV}
-              title="Export CSV"
-              disabled={filteredReceptionists.length === 0}
-            >
-              <Download className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleExportPDF}
-              title="Export PDF"
-              disabled={filteredReceptionists.length === 0}
-            >
-              <FileDown className="size-4" />
-            </Button>
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="size-4" />
+            Add Receptionist
+          </Button>
+        }
+      />
+      Add Receptionist
+    </Button>
+
+
+      {/* Stats */ }
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <StatsCard
+      label="Total Receptionists"
+      value={receptionists.length}
+      icon={<Users className="size-6" />}
+      color="brand"
+      delay={0.1}
+    />
+    <StatsCard
+      label="Active"
+      value={activeCount}
+      icon={<UserCheck className="size-6" />}
+      color="green"
+      delay={0.2}
+    />
+    <StatsCard
+      label="Inactive"
+      value={inactiveCount}
+      icon={<UserX className="size-6" />}
+      color="orange"
+      delay={0.3}
+    />
+  </div>
+
+  {/* Filter Tabs + View Toggle */ }
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <FilterTabs
+      tabs={[
+        { key: "all", label: "All", count: receptionists.length },
+        { key: "active", label: "Active", count: activeCount },
+        { key: "inactive", label: "Inactive", count: inactiveCount },
+      ]}
+      active={filter}
+      onChange={(key) => {
+        setFilter(key);
+        setSelectedIds(new Set());
+      }}
+    />
+    <ViewToggle view={view} onViewChange={setView} />
+  </div>
+
+  {/* Content */ }
+  {
+    isLoading ? (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    ) : filteredReceptionists.length === 0 ? (
+      <EmptyState
+        icon={Users}
+        title={search ? "No receptionists found" : "No receptionists yet"}
+        description={
+          search
+            ? "Try a different search term."
+            : "Add your first receptionist to help manage your school."
+        }
+        action={
+          !search ? (
             <Button onClick={() => setShowAddModal(true)}>
               <Plus className="size-4" />
               Add Receptionist
             </Button>
-          </div>
+          ) : undefined
         }
       />
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatsCard
-          label="Total Receptionists"
-          value={receptionists.length}
-          icon={<Users className="size-6" />}
-          color="brand"
-          delay={0.1}
-        />
-        <StatsCard
-          label="Active"
-          value={activeCount}
-          icon={<UserCheck className="size-6" />}
-          color="green"
-          delay={0.2}
-        />
-        <StatsCard
-          label="Inactive"
-          value={inactiveCount}
-          icon={<UserX className="size-6" />}
-          color="orange"
-          delay={0.3}
-        />
+    ) : view === "grid" ? (
+      // ── Grid view ──
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <AnimatePresence>
+          {filteredReceptionists.map((r, index) => (
+            <motion.div
+              key={r.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <ReceptionistCard
+                receptionist={r}
+                isSelected={selectedIds.has(r.id)}
+                onSelect={toggleSelect}
+                onDelete={handleDeleteReceptionist}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
+    ) : view === "list" ? (
+      // ── List view ──
+      <div className="space-y-2">
+        <AnimatePresence>
+          {filteredReceptionists.map((r, index) => (
+            <motion.div
+              key={r.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <Card
+                hover
+                className="relative group"
+              >
+                <CardContent className="p-3 flex items-center gap-4">
+                  {/* Selection */}
+                  <button
+                    onClick={() => toggleSelect(r.id)}
+                    className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${selectedIds.has(r.id)
+                      ? "bg-brand border-brand text-white"
+                      : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+                      }`}
+                  >
+                    {selectedIds.has(r.id) && <Check className="size-3" />}
+                  </button>
 
-      {/* Filter Tabs + View Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <FilterTabs
-          tabs={[
-            { key: "all", label: "All", count: receptionists.length },
-            { key: "active", label: "Active", count: activeCount },
-            { key: "inactive", label: "Inactive", count: inactiveCount },
-          ]}
-          active={filter}
-          onChange={(key) => {
-            setFilter(key);
-            setSelectedIds(new Set());
-          }}
-        />
-        <ViewToggle view={view} onViewChange={setView} />
+                  {/* Avatar */}
+                  <div className="size-9 rounded-full bg-linear-to-br from-brand to-purple-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+                    {r.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 flex items-center gap-6">
+                    <span className="font-medium text-sm w-40 truncate">
+                      {r.name}
+                    </span>
+                    <span className="text-sm text-muted-foreground truncate hidden sm:block">
+                      {r.email}
+                    </span>
+                  </div>
+
+                  <Badge
+                    variant={r.isActive ? "default" : "secondary"}
+                    className="text-xs shrink-0"
+                  >
+                    {r.isActive ? "Active" : "Inactive"}
+                  </Badge>
+
+                  <span className="text-xs text-muted-foreground shrink-0 hidden md:block">
+                    {new Date(r.createdAt).toLocaleDateString()}
+                  </span>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 shrink-0"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDeleteReceptionist(r)}
+                      >
+                        <Trash2 className="size-4" />
+                        Remove
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="size-8 animate-spin text-brand" />
-        </div>
-      ) : filteredReceptionists.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={search ? "No receptionists found" : "No receptionists yet"}
-          description={
-            search
-              ? "Try a different search term."
-              : "Add your first receptionist to help manage your school."
-          }
-          action={
-            !search ? (
-              <Button onClick={() => setShowAddModal(true)}>
-                <Plus className="size-4" />
-                Add Receptionist
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : view === "grid" ? (
-        // ── Grid view ──
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <AnimatePresence>
-            {filteredReceptionists.map((r, index) => (
-              <motion.div
-                key={r.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <ReceptionistCard
-                  receptionist={r}
-                  isSelected={selectedIds.has(r.id)}
-                  onSelect={toggleSelect}
-                  onDelete={handleDeleteReceptionist}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : view === "list" ? (
-        // ── List view ──
-        <div className="space-y-2">
-          <AnimatePresence>
-            {filteredReceptionists.map((r, index) => (
-              <motion.div
-                key={r.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Card
-                  hover
-                  className="relative group"
+    ) : (
+      // ── Table view ──
+      <div className="border rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <button
+                  onClick={toggleSelectAll}
+                  className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.size === filteredReceptionists.length &&
+                    filteredReceptionists.length > 0
+                    ? "bg-brand border-brand text-white"
+                    : "border-muted-foreground/30 hover:border-brand"
+                    }`}
                 >
-                  <CardContent className="p-3 flex items-center gap-4">
-                    {/* Selection */}
+                  {selectedIds.size === filteredReceptionists.length &&
+                    filteredReceptionists.length > 0 && (
+                      <Check className="size-3" />
+                    )}
+                </button>
+              </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Added</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <AnimatePresence>
+              {filteredReceptionists.map((r, index) => (
+                <motion.tr
+                  key={r.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="group hover:bg-muted/50"
+                >
+                  <TableCell>
                     <button
                       onClick={() => toggleSelect(r.id)}
-                      className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${selectedIds.has(r.id)
-                          ? "bg-brand border-brand text-white"
-                          : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+                      className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.has(r.id)
+                        ? "bg-brand border-brand text-white"
+                        : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
                         }`}
                     >
-                      {selectedIds.has(r.id) && <Check className="size-3" />}
+                      {selectedIds.has(r.id) && (
+                        <Check className="size-3" />
+                      )}
                     </button>
-
-                    {/* Avatar */}
-                    <div className="size-9 rounded-full bg-linear-to-br from-brand to-purple-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
-                      {r.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="size-9 rounded-full bg-linear-to-br from-brand to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {r.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)}
+                      </div>
+                      <span className="font-medium">{r.name}</span>
                     </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0 flex items-center gap-6">
-                      <span className="font-medium text-sm w-40 truncate">
-                        {r.name}
-                      </span>
-                      <span className="text-sm text-muted-foreground truncate hidden sm:block">
-                        {r.email}
-                      </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="size-3.5" />
+                      {r.email}
                     </div>
-
+                  </TableCell>
+                  <TableCell>
                     <Badge
                       variant={r.isActive ? "default" : "secondary"}
-                      className="text-xs shrink-0"
                     >
                       {r.isActive ? "Active" : "Inactive"}
                     </Badge>
-
-                    <span className="text-xs text-muted-foreground shrink-0 hidden md:block">
-                      {new Date(r.createdAt).toLocaleDateString()}
-                    </span>
-
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7 shrink-0"
+                          className="size-7"
                         >
                           <MoreVertical className="size-4" />
                         </Button>
@@ -551,261 +600,149 @@ export default function ReceptionistsPage() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        // ── Table view ──
-        <div className="border rounded-xl overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <button
-                    onClick={toggleSelectAll}
-                    className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.size === filteredReceptionists.length &&
-                        filteredReceptionists.length > 0
-                        ? "bg-brand border-brand text-white"
-                        : "border-muted-foreground/30 hover:border-brand"
-                      }`}
-                  >
-                    {selectedIds.size === filteredReceptionists.length &&
-                      filteredReceptionists.length > 0 && (
-                        <Check className="size-3" />
-                      )}
-                  </button>
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Added</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {filteredReceptionists.map((r, index) => (
-                  <motion.tr
-                    key={r.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group hover:bg-muted/50"
-                  >
-                    <TableCell>
-                      <button
-                        onClick={() => toggleSelect(r.id)}
-                        className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.has(r.id)
-                            ? "bg-brand border-brand text-white"
-                            : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
-                          }`}
-                      >
-                        {selectedIds.has(r.id) && (
-                          <Check className="size-3" />
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-full bg-linear-to-br from-brand to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-                          {r.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
-                        <span className="font-medium">{r.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Mail className="size-3.5" />
-                        {r.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={r.isActive ? "default" : "secondary"}
-                      >
-                        {r.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(r.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                          >
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeleteReceptionist(r)}
-                          >
-                            <Trash2 className="size-4" />
-                            Remove
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
 
-      {/* Bulk Actions */}
-      <BulkActions
-        selectedCount={selectedIds.size}
-        onClear={() => setSelectedIds(new Set())}
-        onDelete={handleBulkDelete}
-        onExport={handleExportCSV}
-      />
 
-      {/* Add Receptionist Dialog */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="size-5 text-brand" />
-              Add Receptionist
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddReceptionist} className="space-y-4">
-            {formError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm"
-              >
-                {formError}
-              </motion.div>
-            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  placeholder="e.g., Jane"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, firstName: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="e.g., Doe"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lastName: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
+  {/* Add Receptionist Dialog */ }
+  <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Plus className="size-5 text-brand" />
+          Add Receptionist
+        </DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleAddReceptionist} className="space-y-4">
+        {formError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm"
+          >
+            {formError}
+          </motion.div>
+        )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="e.g., jane.doe@school.com"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                A password will be auto-generated and sent via email along with
-                login instructions.
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowAddModal(false);
-                  setFormError("");
-                  setFormData({ firstName: "", lastName: "", email: "" });
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? "Adding..." : "Add Receptionist"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="size-5" />
-              Remove Receptionist
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              Are you sure you want to remove{" "}
-              <strong className="text-foreground">
-                {selectedReceptionist?.name}
-              </strong>
-              ? This action cannot be undone and they will lose access to the
-              system.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setSelectedReceptionist(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={confirmDeleteReceptionist}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? "Removing..." : "Remove"}
-              </Button>
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              placeholder="e.g., Jane"
+              value={formData.firstName}
+              onChange={(e) =>
+                setFormData({ ...formData, firstName: e.target.value })
+              }
+              required
+            />
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <div className="space-y-2">
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              placeholder="e.g., Doe"
+              value={formData.lastName}
+              onChange={(e) =>
+                setFormData({ ...formData, lastName: e.target.value })
+              }
+              required
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="e.g., jane.doe@school.com"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            A password will be auto-generated and sent via email along with
+            login instructions.
+          </p>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setShowAddModal(false);
+              setFormError("");
+              setFormData({ firstName: "", lastName: "", email: "" });
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="flex-1"
+            disabled={createMutation.isPending}
+          >
+            {createMutation.isPending ? "Adding..." : "Add Receptionist"}
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+
+  {/* Delete Confirmation Dialog */ }
+  <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-destructive">
+          <Trash2 className="size-5" />
+          Remove Receptionist
+        </DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <p className="text-muted-foreground">
+          Are you sure you want to remove{" "}
+          <strong className="text-foreground">
+            {selectedReceptionist?.name}
+          </strong>
+          ? This action cannot be undone and they will lose access to the
+          system.
+        </p>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setShowDeleteModal(false);
+              setSelectedReceptionist(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            className="flex-1"
+            onClick={confirmDeleteReceptionist}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? "Removing..." : "Remove"}
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+    </div >
   );
 }

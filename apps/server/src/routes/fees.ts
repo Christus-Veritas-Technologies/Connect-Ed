@@ -410,6 +410,67 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
   }
 });
 
+// DELETE /fees/payments/:paymentId - Delete fee payment
+fees.delete("/payments/:paymentId", async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const paymentId = c.req.param("paymentId");
+
+    const payment = await db.feePayment.findFirst({
+      where: { id: paymentId, schoolId },
+      include: {
+        fee: {
+          include: { payments: true },
+        },
+      },
+    });
+
+    if (!payment) {
+      return errors.notFound(c, "Fee payment");
+    }
+
+    const fee = payment.fee;
+    const remainingPayments = fee.payments.filter((p) => p.id !== paymentId);
+    const remainingPaid = remainingPayments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0
+    );
+
+    let newStatus: FeeStatus;
+    if (remainingPaid >= Number(fee.amount)) {
+      newStatus = FeeStatus.PAID;
+    } else if (remainingPaid > 0) {
+      newStatus = FeeStatus.PARTIAL;
+    } else {
+      newStatus = fee.dueDate < new Date() ? FeeStatus.OVERDUE : FeeStatus.PENDING;
+    }
+
+    const newPaidAt = newStatus === FeeStatus.PAID ? fee.paidAt ?? new Date() : null;
+
+    await db.$transaction(async (tx) => {
+      await tx.feePayment.delete({ where: { id: paymentId } });
+      await tx.fee.update({
+        where: { id: fee.id },
+        data: {
+          status: newStatus,
+          paidAmount: remainingPaid,
+          paidAt: newPaidAt,
+        },
+      });
+    });
+
+    return successResponse(c, {
+      message: "Fee payment deleted successfully",
+      feeId: fee.id,
+      status: newStatus,
+      paidAmount: remainingPaid,
+    });
+  } catch (error) {
+    console.error("Delete fee payment error:", error);
+    return errors.internalError(c);
+  }
+});
+
 // GET /fees/:id - Get single fee
 fees.get("/:id", async (c) => {
   try {

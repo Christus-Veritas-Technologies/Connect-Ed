@@ -404,10 +404,8 @@ students.delete("/:id", async (c) => {
       return errors.notFound(c, "Student");
     }
 
-    // Soft delete by setting isActive to false
-    await db.student.update({
+    await db.student.delete({
       where: { id },
-      data: { isActive: false },
     });
 
     return successResponse(c, { message: "Student deleted successfully" });

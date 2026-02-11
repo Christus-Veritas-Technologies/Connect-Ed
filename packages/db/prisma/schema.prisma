@@ -616,7 +616,7 @@ model FeePayment {
   fee   Fee    @relation(fields: [feeId], references: [id], onDelete: Cascade)
 
   receivedById String
-  receivedBy   User   @relation("ReceivedBy", fields: [receivedById], references: [id])
+  receivedBy   User   @relation("ReceivedBy", fields: [receivedById], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([feeId])
@@ -640,7 +640,7 @@ model Expense {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   recordedById String
-  recordedBy   User   @relation("RecordedBy", fields: [recordedById], references: [id])
+  recordedBy   User   @relation("RecordedBy", fields: [recordedById], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([date])
