@@ -10,6 +10,9 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar, Footer } from "@/components/marketing-layout";
+import { PRICING } from "@/lib/pricing";
+import { fmt } from "@/lib/currency";
+import type { Plan } from "@repo/db";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -50,66 +53,7 @@ function AnimatedSection({
 const patternBg =
     "bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[24px_24px]";
 
-const plans = [
-    {
-        name: "Lite",
-        description: "Perfect for small schools with less than 500 students.",
-        price: 50,
-        period: "/term",
-        features: [
-            "Up to 500 students",
-            "Admin & Receptionist access",
-            "Student management",
-            "Fee tracking & reminders",
-            "Expense tracking",
-            "Detailed reports (PDF export)",
-            "150 GB cloud storage",
-            "200 emails/month",
-            "200 WhatsApp messages/month",
-            "100 SMS/month",
-            "Basic support",
-        ],
-    },
-    {
-        name: "Growth",
-        description: "Ideal for mid-size schools with 500 to 1,200 students.",
-        price: 90,
-        period: "/term",
-        popular: true,
-        includedFrom: "Lite",
-        features: [
-            "500–1,200 students",
-            "Teacher portal & management",
-            "Class management",
-            "Class teacher assignments",
-            "Class communication channels",
-            "Shared files & resources",
-            "400 GB cloud storage",
-            "500 emails/month",
-            "500 WhatsApp messages/month",
-            "300 SMS/month",
-            "Premium support",
-        ],
-    },
-    {
-        name: "Enterprise",
-        description: "Built for large institutions with 2,000 to 3,000 students.",
-        price: 150,
-        period: "/term",
-        includedFrom: "Growth",
-        features: [
-            "2,000–3,000 students",
-            "Student & parent portals",
-            "Online fee payments for parents",
-            "Exam & report card system",
-            "1,000 GB cloud storage",
-            "1,500 emails/month",
-            "1,500 WhatsApp messages/month",
-            "750 SMS/month",
-            "24/7 dedicated support",
-        ],
-    },
-];
+const planOrder: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 const faqs = [
     {
@@ -177,76 +121,89 @@ export default function PricingPage() {
             <section className="py-20">
                 <div className="mx-auto max-w-6xl px-6">
                     <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
-                        {plans.map((plan, i) => (
-                            <motion.div
-                                key={plan.name}
-                                variants={fadeUp}
-                                custom={i}
-                                className={`relative rounded-2xl border bg-card overflow-hidden ${plan.popular
+                        {planOrder.map((planKey, i) => {
+                            const plan = PRICING[planKey];
+                            const isPopular = planKey === "GROWTH";
+                            const includedFrom = planKey === "GROWTH" ? "Lite" : planKey === "ENTERPRISE" ? "Growth" : null;
+
+                            return (
+                                <motion.div
+                                    key={planKey}
+                                    variants={fadeUp}
+                                    custom={i}
+                                    className={`relative rounded-2xl border bg-card overflow-hidden ${isPopular
                                         ? "border-brand ring-1 ring-brand/20"
                                         : "border-border/60"
-                                    }`}
-                            >
-                                {plan.popular && (
-                                    <div className="absolute -top-px left-1/2 -translate-x-1/2 translate-y-0">
-                                        <Badge variant="brand" size="sm" className="rounded-t-none">
-                                            Recommended
-                                        </Badge>
+                                        }`}
+                                >
+                                    {isPopular && (
+                                        <div className="absolute -top-px left-1/2 -translate-x-1/2 translate-y-0">
+                                            <Badge variant="brand" size="sm" className="rounded-t-none">
+                                                Recommended
+                                            </Badge>
+                                        </div>
+                                    )}
+
+                                    <div className="p-6 pb-0">
+                                        <h3 className="text-xl font-bold text-foreground">
+                                            {plan.name}
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                                            {plan.description}
+                                        </p>
+
+                                        <div className="mt-6 mb-2">
+                                            <div className="flex items-baseline gap-1 justify-center">
+                                                <span className="text-sm font-medium text-muted-foreground">
+                                                    {fmt(plan.signupFee, "USD")}
+                                                </span>
+                                                <span className="text-sm text-muted-foreground">
+                                                    setup
+                                                </span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1 justify-center mt-1">
+                                                <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                                                    {fmt(plan.monthlyEstimate, "USD")}
+                                                </span>
+                                                <span className="text-sm text-muted-foreground">
+                                                    /month
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            variant={isPopular ? "default" : "outline"}
+                                            className="w-full mt-4"
+                                            asChild
+                                        >
+                                            <Link href="/auth/signup">Get Started</Link>
+                                        </Button>
                                     </div>
-                                )}
 
-                                <div className="p-6 pb-0">
-                                    <h3 className="text-xl font-bold text-foreground">
-                                        {plan.name}
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                                        {plan.description}
-                                    </p>
-
-                                    <div className="mt-6 mb-6 flex items-baseline gap-1">
-                                        <span className="text-sm font-medium text-muted-foreground align-super">
-                                            $
-                                        </span>
-                                        <span className="text-5xl font-bold tracking-tight text-foreground italic">
-                                            {plan.price}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground ml-0.5">
-                                            {plan.period}
-                                        </span>
+                                    <div className="p-6 pt-5 mt-5 border-t border-border/40">
+                                        <p className="text-sm font-semibold text-foreground mb-4">
+                                            {includedFrom
+                                                ? `Everything in ${includedFrom}, plus:`
+                                                : "What\u2019s included:"}
+                                        </p>
+                                        <ul className="space-y-2.5">
+                                            {plan.features.map((f) => (
+                                                <li
+                                                    key={f}
+                                                    className="flex items-start gap-2 text-sm text-muted-foreground"
+                                                >
+                                                    <HugeiconsIcon
+                                                        icon={CheckmarkCircle02Icon}
+                                                        className="size-4 text-brand shrink-0 mt-0.5"
+                                                    />
+                                                    {f}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-
-                                    <Button
-                                        variant={plan.popular ? "default" : "outline"}
-                                        className="w-full"
-                                        asChild
-                                    >
-                                        <Link href="/auth/signup">Get Started</Link>
-                                    </Button>
-                                </div>
-
-                                <div className="p-6 pt-5 mt-5 border-t border-border/40">
-                                    <p className="text-sm font-semibold text-foreground mb-4">
-                                        {plan.includedFrom
-                                            ? `Everything in ${plan.includedFrom}, plus:`
-                                            : "What\u2019s included:"}
-                                    </p>
-                                    <ul className="space-y-2.5">
-                                        {plan.features.map((f) => (
-                                            <li
-                                                key={f}
-                                                className="flex items-start gap-2 text-sm text-muted-foreground"
-                                            >
-                                                <HugeiconsIcon
-                                                    icon={CheckmarkCircle02Icon}
-                                                    className="size-4 text-brand shrink-0 mt-0.5"
-                                                />
-                                                {f}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            );
+                        })}
                     </AnimatedSection>
                 </div>
             </section>

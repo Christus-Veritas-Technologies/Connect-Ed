@@ -1,24 +1,24 @@
 import type { PlanType, PlanAmounts, CurrencyCode } from "./types.js";
 
-/** USD pricing (default) */
+/** USD pricing (default) - monthly recurring */
 export const PRICING_USD: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 400, perTermCost: 50, monthlyEstimate: 40 },
-  GROWTH: { signupFee: 750, perTermCost: 90, monthlyEstimate: 75 },
-  ENTERPRISE: { signupFee: 1200, perTermCost: 150, monthlyEstimate: 120 },
+  LITE: { signupFee: 200, perTermCost: 60, monthlyEstimate: 20 },
+  GROWTH: { signupFee: 750, perTermCost: 225, monthlyEstimate: 75 },
+  ENTERPRISE: { signupFee: 1200, perTermCost: 360, monthlyEstimate: 120 },
 };
 
-/** ZAR pricing (~20x conversion factor) */
+/** ZAR pricing (~20x conversion factor) - monthly recurring */
 export const PRICING_ZAR: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 7500, perTermCost: 950, monthlyEstimate: 750 },
-  GROWTH: { signupFee: 14000, perTermCost: 1700, monthlyEstimate: 1400 },
-  ENTERPRISE: { signupFee: 22000, perTermCost: 2800, monthlyEstimate: 2200 },
+  LITE: { signupFee: 4000, perTermCost: 1200, monthlyEstimate: 400 },
+  GROWTH: { signupFee: 15000, perTermCost: 4500, monthlyEstimate: 1500 },
+  ENTERPRISE: { signupFee: 24000, perTermCost: 7200, monthlyEstimate: 2400 },
 };
 
-/** ZiG pricing */
+/** ZiG pricing (~13.5x conversion factor) - monthly recurring */
 export const PRICING_ZIG: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 5400, perTermCost: 675, monthlyEstimate: 540 },
-  GROWTH: { signupFee: 10125, perTermCost: 1215, monthlyEstimate: 1012 },
-  ENTERPRISE: { signupFee: 16200, perTermCost: 2025, monthlyEstimate: 1620 },
+  LITE: { signupFee: 2700, perTermCost: 810, monthlyEstimate: 270 },
+  GROWTH: { signupFee: 10125, perTermCost: 3037, monthlyEstimate: 1012 },
+  ENTERPRISE: { signupFee: 16200, perTermCost: 4860, monthlyEstimate: 1620 },
 };
 
 /** Get numeric pricing for a plan + currency */
