@@ -63,21 +63,8 @@ const PRICING_ZAR = {
   },
 } as const;
 
-// DodoPayments product IDs
-const DODO_PRODUCTS = {
-  LITE: {
-    productId: process.env.DODO_PRODUCT_LITE || "prod_lite",
-    signupProductId: process.env.DODO_SIGNUP_LITE || "prod_lite_signup",
-  },
-  GROWTH: {
-    productId: process.env.DODO_PRODUCT_GROWTH || "prod_growth",
-    signupProductId: process.env.DODO_SIGNUP_GROWTH || "prod_growth_signup",
-  },
-  ENTERPRISE: {
-    productId: process.env.DODO_PRODUCT_ENTERPRISE || "prod_enterprise",
-    signupProductId: process.env.DODO_SIGNUP_ENTERPRISE || "prod_enterprise_signup",
-  },
-} as const;
+// Single generic DodoPayments product (amount set dynamically per checkout)
+const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID || "";
 
 // Initialize DodoPayments client
 const initializeDodoPayments = () => {
@@ -193,31 +180,24 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
       },
     });
 
-    // In development mode, redirect to mock checkout
-    if (process.env.NODE_ENV !== "production" && !process.env.DODO_PAYMENTS_API_KEY) {
-      const baseUrl = process.env.APP_URL || "http://localhost:3000";
-      return successResponse(c, {
-        checkoutUrl: `${baseUrl}/payment/mock-checkout?amount=${amount}&plan=${data.planType}&schoolId=${schoolId}&currency=ZAR`,
-        sessionId: `dev_${intermediatePayment.id}`,
-      });
-    }
-
     // Initialize DodoPayments
     const dodo = initializeDodoPayments();
-
-    const planConfig = DODO_PRODUCTS[data.planType];
-    const productId = isSignup ? planConfig.signupProductId : planConfig.productId;
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
 
-    // Create DodoPayments checkout session
-    const session = await dodo.checkoutSessions.create({
+    // Create a dynamic payment link (like PayNow's payment.add)
+    // Amount is in smallest currency unit (cents), so multiply by 100
+    const payment = await dodo.payments.create({
+      payment_link: true,
       product_cart: [
         {
-          product_id: productId,
+          product_id: DODO_PRODUCT_ID,
           quantity: 1,
+          amount: amount * 100, // ZAR cents
         },
       ],
-      return_url: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+      billing: {
+        country: "ZA",
+      },
       customer: {
         email: data.email || "",
         name: data.email || "",
@@ -229,17 +209,18 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
         is_signup: isSignup.toString(),
         intermediate_payment_id: intermediatePayment.id,
       },
+      return_url: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
     });
 
-    // Save the session ID as the reference
+    // Save the payment ID as the reference (used by webhook to find this record)
     await db.intermediatePayment.update({
       where: { id: intermediatePayment.id },
-      data: { reference: session.session_id },
+      data: { reference: payment.payment_id },
     });
 
     return successResponse(c, {
-      checkoutUrl: session.checkout_url,
-      sessionId: session.session_id,
+      checkoutUrl: payment.payment_link,
+      paymentId: payment.payment_id,
     });
   } catch (error) {
     console.error("Create Dodo checkout error:", error);

@@ -57,7 +57,7 @@ export default function PaymentPage() {
         // Use DodoPayments for ZAR
         const response = await api.post<{
           checkoutUrl: string;
-          sessionId: string;
+          paymentId: string;
         }>("/payments/create-dodo-checkout", {
           planType: selectedPlan,
           paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
