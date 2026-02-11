@@ -1,79 +1,21 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan, PaymentType, PaymentStatus, PaymentMethod, Prisma } from "@repo/db";
+import {
+  getPlanAmounts,
+  createPaynowCheckout,
+  createDodoPaymentLink,
+  type PlanType,
+} from "@repo/payments";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { createCheckoutSchema, createDodoCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { PLAN_FEATURES } from "../lib/auth";
-import { Paynow } from "paynow";
-import DodoPayments from "dodopayments";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
 const payments = new Hono();
-
-// Initialize PayNow (using environment variables)
-const initializePaynow = () => {
-  const integrationId = process.env.PAYNOW_INTEGRATION_ID;
-  const integrationKey = process.env.PAYNOW_INTEGRATION_KEY;
-  
-  if (!integrationId || !integrationKey) {
-    throw new Error("PayNow credentials not configured - set PAYNOW_INTEGRATION_ID and PAYNOW_INTEGRATION_KEY");
-  }
-  
-  return new Paynow(integrationId, integrationKey);
-};
-
-// Pricing configuration
-const PRICING = {
-  LITE: {
-    signupFee: 400,
-    perTermCost: 50,
-    monthlyEstimate: 40,
-  },
-  GROWTH: {
-    signupFee: 750,
-    perTermCost: 90,
-    monthlyEstimate: 75,
-  },
-  ENTERPRISE: {
-    signupFee: 1200,
-    perTermCost: 150,
-    monthlyEstimate: 120,
-  },
-} as const;
-
-// ZAR pricing (~20x conversion factor, matching apps/web/lib/pricing.ts)
-const PRICING_ZAR = {
-  LITE: {
-    signupFee: 7500,
-    perTermCost: 950,
-    monthlyEstimate: 750,
-  },
-  GROWTH: {
-    signupFee: 14000,
-    perTermCost: 1700,
-    monthlyEstimate: 1400,
-  },
-  ENTERPRISE: {
-    signupFee: 22000,
-    perTermCost: 2800,
-    monthlyEstimate: 2200,
-  },
-} as const;
-
-// Single generic DodoPayments product (amount set dynamically per checkout)
-const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID || "";
-
-// Initialize DodoPayments client
-const initializeDodoPayments = () => {
-  const apiKey = process.env.DODO_PAYMENTS_API_KEY;
-  if (!apiKey) {
-    throw new Error("DodoPayments credentials not configured - set DODO_PAYMENTS_API_KEY");
-  }
-  return new DodoPayments({ bearerToken: apiKey });
-};
 
 // POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
@@ -82,7 +24,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
     const userId = c.get("userId");
     const data = c.req.valid("json");
 
-    const planPricing = PRICING[data.planType];
+    const planPricing = getPlanAmounts(data.planType as PlanType);
     const amount = data.paymentType === "SIGNUP"
       ? planPricing.signupFee + planPricing.monthlyEstimate
       : planPricing.monthlyEstimate;
@@ -98,45 +40,31 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       },
     });
 
-    // Get PayNow instance
-    const paynow = initializePaynow();
-
-    // Set PayNow URLs
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
-    paynow.resultUrl = `${baseUrl}/api/payments/callback`;
-    paynow.returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`;
-
-    // Create PayNow payment
-    const payment = paynow.createPayment(`Invoice-${intermediatePayment.id}`, data.email);
-    payment.add(data.planType, amount);
-
-    console.log("PayNow payment created:", {
-      reference: `Invoice-${intermediatePayment.id}`,
-      email: data.email,
-      amount,
-      plan: planPricing.name,
-    });
 
     try {
-      const response = await paynow.send(payment);
-      
-      console.log("PayNow response:", response);
-      
-      if (response.success) {
-        // Save the poll URL for webhook verification
-        await db.intermediatePayment.update({
-          where: { id: intermediatePayment.id },
-          data: { reference: response.pollUrl },
-        });
+      const result = await createPaynowCheckout({
+        integrationId: process.env.PAYNOW_INTEGRATION_ID || "",
+        integrationKey: process.env.PAYNOW_INTEGRATION_KEY || "",
+        amount,
+        planType: data.planType,
+        email: data.email || "",
+        reference: `Invoice-${intermediatePayment.id}`,
+        resultUrl: `${baseUrl}/api/payments/callback`,
+        returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+      });
 
-        return successResponse(c, {
-          checkoutUrl: response.redirectUrl,
-          intermediatePaymentId: intermediatePayment.id,
-          pollUrl: response.pollUrl,
-        });
-      } else {
-        return errors.internalError(c, { error: response.error });
-      }
+      // Save the poll URL for webhook verification
+      await db.intermediatePayment.update({
+        where: { id: intermediatePayment.id },
+        data: { reference: result.pollUrl },
+      });
+
+      return successResponse(c, {
+        checkoutUrl: result.redirectUrl,
+        intermediatePaymentId: intermediatePayment.id,
+        pollUrl: result.pollUrl,
+      });
     } catch (paynowError) {
       console.error("PayNow error:", paynowError);
       console.error("PayNow error details:", {
@@ -163,7 +91,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     const userId = c.get("userId");
     const data = c.req.valid("json");
 
-    const planPricing = PRICING_ZAR[data.planType];
+    const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
     const isSignup = data.paymentType === "SIGNUP";
     const amount = isSignup
       ? planPricing.signupFee + planPricing.monthlyEstimate
@@ -180,28 +108,13 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
       },
     });
 
-    // Initialize DodoPayments
-    const dodo = initializeDodoPayments();
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
 
-    // Create a dynamic payment link (like PayNow's payment.add)
-    // Amount is in smallest currency unit (cents), so multiply by 100
-    const payment = await dodo.payments.create({
-      payment_link: true,
-      product_cart: [
-        {
-          product_id: DODO_PRODUCT_ID,
-          quantity: 1,
-          amount: amount * 100, // ZAR cents
-        },
-      ],
-      billing: {
-        country: "ZA",
-      },
-      customer: {
-        email: data.email || "",
-        name: data.email || "",
-      },
+    const result = await createDodoPaymentLink({
+      apiKey: process.env.DODO_PAYMENTS_API_KEY || "",
+      productId: process.env.DODO_PRODUCT_ID || "",
+      amount,
+      email: data.email || "",
       metadata: {
         school_id: schoolId,
         user_id: userId,
@@ -209,18 +122,19 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
         is_signup: isSignup.toString(),
         intermediate_payment_id: intermediatePayment.id,
       },
-      return_url: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+      returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+      billingCountry: "ZA",
     });
 
     // Save the payment ID as the reference (used by webhook to find this record)
     await db.intermediatePayment.update({
       where: { id: intermediatePayment.id },
-      data: { reference: payment.payment_id },
+      data: { reference: result.paymentId },
     });
 
     return successResponse(c, {
-      checkoutUrl: payment.payment_link,
-      paymentId: payment.payment_id,
+      checkoutUrl: result.paymentLink,
+      paymentId: result.paymentId,
     });
   } catch (error) {
     console.error("Create Dodo checkout error:", error);
@@ -415,10 +329,12 @@ payments.post("/confirm-manual-payment", requireAuth, async (c) => {
       return errors.validationError(c, { plan: ["Plan is required"] });
     }
 
-    const planPricing = PRICING[plan as keyof typeof PRICING];
-    if (!planPricing) {
+    const validPlans = ["LITE", "GROWTH", "ENTERPRISE"];
+    if (!validPlans.includes(plan)) {
       return errors.validationError(c, { plan: ["Invalid plan"] });
     }
+
+    const planPricing = getPlanAmounts(plan as PlanType);
 
     // Mark once-off payment as paid, only monthly remains
     const planPayment = await db.planPayment.upsert({
@@ -468,10 +384,12 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
       });
     }
 
-    const planPricing = PRICING[planType as keyof typeof PRICING];
-    if (!planPricing) {
+    const validPlans = ["LITE", "GROWTH", "ENTERPRISE"];
+    if (!validPlans.includes(planType)) {
       return errors.validationError(c, { planType: ["Invalid plan type"] });
     }
+
+    const planPricing = getPlanAmounts(planType as PlanType);
 
     const amount = paymentType === "SIGNUP"
       ? planPricing.signupFee + planPricing.monthlyEstimate
