@@ -3,9 +3,8 @@ import type { DodoPaymentLinkResult } from "./types.js";
 
 export interface DodoPaymentLinkParams {
   apiKey: string;
-  productId: string;
-  /** Payment amount in the currency's main unit (e.g. 8250 ZAR). Converted to cents internally. */
-  amount: number;
+  /** Array of DodoPayments product IDs to add to cart */
+  productIds: string[];
   /** Customer email */
   email: string;
   /** Arbitrary metadata passed through to webhooks */
@@ -17,9 +16,9 @@ export interface DodoPaymentLinkParams {
 }
 
 /**
- * Create a DodoPayments dynamic payment link.
- * Uses `payments.create` with `payment_link: true` and a single generic
- * product whose amount is overridden dynamically (pay-what-you-want).
+ * Create a DodoPayments payment link with one or more products.
+ * Uses `payments.create` with `payment_link: true` and a product_cart.
+ * Each product in the cart must be pre-configured with its price in the DodoPayments dashboard.
  */
 export async function createDodoPaymentLink(
   params: DodoPaymentLinkParams,
@@ -28,13 +27,10 @@ export async function createDodoPaymentLink(
 
   const payment = await dodo.payments.create({
     payment_link: true,
-    product_cart: [
-      {
-        product_id: params.productId,
-        quantity: 1,
-        amount: params.amount * 100, // convert to smallest currency unit (cents)
-      },
-    ],
+    product_cart: params.productIds.map((product_id) => ({
+      product_id,
+      quantity: 1,
+    })),
     billing: {
       country: (params.billingCountry || "ZA") as any,
     },

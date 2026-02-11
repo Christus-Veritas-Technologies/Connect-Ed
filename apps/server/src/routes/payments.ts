@@ -91,11 +91,46 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     const userId = c.get("userId");
     const data = c.req.valid("json");
 
+    // Get school to check if one-time fee is already paid
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+    });
+
+    if (!school) {
+      return errors.notFound(c, { error: "School not found" });
+    }
+
     const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
     const isSignup = data.paymentType === "SIGNUP";
-    const amount = isSignup
-      ? planPricing.signupFee + planPricing.monthlyEstimate
-      : planPricing.monthlyEstimate;
+    const hasOneTimeFee = !school.signupFeePaid;
+
+    // Calculate total amount for intermediate payment record
+    const amount = (hasOneTimeFee ? planPricing.signupFee : 0) + planPricing.monthlyEstimate;
+
+    // Select appropriate product IDs based on plan type and whether one-time fee is needed
+    const productIds: string[] = [];
+    const planType = data.planType as PlanType;
+    
+    // Add one-time product if needed
+    if (hasOneTimeFee) {
+      const onetimeKey = `DODO_PRODUCT_${planType}_ONETIME`;
+      const onetimeProductId = process.env[onetimeKey];
+      if (onetimeProductId) {
+        productIds.push(onetimeProductId);
+      }
+    }
+    
+    // Always add the monthly product
+    const monthlyKey = `DODO_PRODUCT_${planType}_MONTHLY`;
+    const monthlyProductId = process.env[monthlyKey];
+    if (monthlyProductId) {
+      productIds.push(monthlyProductId);
+    }
+
+    if (productIds.length === 0) {
+      console.error("No product IDs found for plan:", planType);
+      return errors.internalError(c);
+    }
 
     // Create intermediate payment record
     const intermediatePayment = await db.intermediatePayment.create({
@@ -112,14 +147,14 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
 
     const result = await createDodoPaymentLink({
       apiKey: process.env.DODO_PAYMENTS_API_KEY || "",
-      productId: process.env.DODO_PRODUCT_ID || "",
-      amount,
+      productIds,
       email: data.email || "",
       metadata: {
         school_id: schoolId,
         user_id: userId,
         plan_type: data.planType,
         is_signup: isSignup.toString(),
+        has_onetime_fee: hasOneTimeFee.toString(),
         intermediate_payment_id: intermediatePayment.id,
       },
       returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
