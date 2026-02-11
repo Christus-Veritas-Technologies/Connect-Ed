@@ -41,6 +41,7 @@ import studentReports from "./routes/student-reports";
 import receptionists from "./routes/receptionists";
 import chat from "./routes/chat";
 import sharedFiles from "./routes/shared-files";
+import billing from "./routes/billing";
 import { initR2 } from "@repo/upload";
 
 // Bun WebSocket helper for Hono
@@ -112,6 +113,7 @@ app.route("/student-reports", studentReports);
 app.route("/receptionists", receptionists);
 app.route("/chat", chat);
 app.route("/shared-files", sharedFiles);
+app.route("/billing", billing);
 
 // ─── WebSocket upgrade endpoint ─────────────────────────────
 // URL: /ws/chat?token=<JWT>&classId=<classId>

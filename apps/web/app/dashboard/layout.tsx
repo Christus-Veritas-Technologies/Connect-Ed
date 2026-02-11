@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLogout } from "@/lib/hooks";
 import { useNotificationCounts } from "@/lib/hooks/use-notifications";
 import { DashboardGuard } from "@/components/auth-guard";
+import { BillingGuard } from "@/components/billing-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -224,33 +225,35 @@ export default function DashboardLayout({
 
   return (
     <DashboardGuard>
-      <SidebarProvider defaultOpen={true}>
-        <div className="flex min-h-screen w-full bg-muted/30">
-          {user && school && (
-            <AppSidebar
-              pathname={pathname}
-              user={user}
-              school={school}
-              logout={handleLogout}
-            />
-          )}
+      <BillingGuard>
+        <SidebarProvider defaultOpen={true}>
+          <div className="flex min-h-screen w-full bg-muted/30">
+            {user && school && (
+              <AppSidebar
+                pathname={pathname}
+                user={user}
+                school={school}
+                logout={handleLogout}
+              />
+            )}
 
-          {/* Main Content */}
-          <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
-          </main>
-        </div>
-      </SidebarProvider>
+            {/* Main Content */}
+            <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pathname}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </main>
+          </div>
+        </SidebarProvider>
+      </BillingGuard>
     </DashboardGuard>
   );
 }

@@ -37,6 +37,7 @@ interface School {
   termStartDate: string | null;
   currentPeriodType: "TERM" | "HOLIDAY";
   holidayStartDate: string | null;
+  nextPaymentDate: string | null;
   address?: string | null;
   phone?: string | null;
   email?: string | null;

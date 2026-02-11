@@ -373,6 +373,150 @@ export function generateWelcomeEmailWithCredentials(params: {
   `;
 }
 
+// ─── Billing / Grace Period Email Templates ──────────────────
+
+const billingEmailStyles = `
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6; }
+  .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .header { color: white; padding: 40px 30px; text-align: center; }
+  .header h1 { margin: 0; font-size: 24px; }
+  .content { padding: 30px; }
+  .cta { display: inline-block; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; }
+  .detail-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+  .footer { background: #f9fafb; padding: 20px 30px; text-align: center; color: #6b7280; font-size: 13px; }
+`;
+
+/**
+ * Grace-period reminder (sent during the 3 grace days).
+ */
+export function generateGraceReminderEmail(params: {
+  name: string;
+  schoolName: string;
+  graceDay: number;
+  dueDate: Date;
+  plan: string;
+}): string {
+  const daysLeft = 3 - params.graceDay;
+  const paymentUrl = `${process.env.APP_URL || "http://localhost:3000"}/payment`;
+
+  return `<!DOCTYPE html><html><head><style>${billingEmailStyles}</style></head><body>
+<div style="padding:20px;">
+<div class="container">
+  <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+    <div style="font-size:48px; margin-bottom:12px;">⏰</div>
+    <h1>Payment Reminder – Day ${params.graceDay} of 3</h1>
+  </div>
+  <div class="content">
+    <p>Hi ${params.name},</p>
+    <p>This is a friendly reminder that the monthly payment for <strong>${params.schoolName}</strong> was due on <strong>${params.dueDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>.</p>
+
+    <div class="detail-box">
+      <p style="margin:0;"><strong>Plan:</strong> ${params.plan}</p>
+      <p style="margin:8px 0 0;"><strong>Grace days remaining:</strong> ${daysLeft}</p>
+    </div>
+
+    ${daysLeft > 0
+      ? `<p>You have <strong>${daysLeft} day${daysLeft > 1 ? "s" : ""}</strong> left before access is suspended for all users at your school. Please make your payment as soon as possible.</p>`
+      : `<p style="color:#dc2626;"><strong>This is your last grace day.</strong> If payment is not received by tomorrow, access will be suspended for all users at your school.</p>`
+    }
+
+    <div style="text-align:center; margin:28px 0;">
+      <a href="${paymentUrl}" class="cta" style="background:#f59e0b; color:white;">Make Payment Now</a>
+    </div>
+
+    <p style="color:#6b7280; font-size:14px;">If you've already made a payment, please allow a few minutes for it to be processed. You can ignore this email.</p>
+  </div>
+  <div class="footer">
+    <p>Connect-Ed School Management System</p>
+    <p>Questions? Contact <a href="mailto:sales@connect-ed.co.zw" style="color:#3b82f6;">sales@connect-ed.co.zw</a></p>
+  </div>
+</div>
+</div></body></html>`;
+}
+
+/**
+ * Lockdown email — sent on day 4 when access is suspended.
+ */
+export function generateLockdownEmail(params: {
+  name: string;
+  schoolName: string;
+  plan: string;
+}): string {
+  const paymentUrl = `${process.env.APP_URL || "http://localhost:3000"}/payment`;
+
+  return `<!DOCTYPE html><html><head><style>${billingEmailStyles}</style></head><body>
+<div style="padding:20px;">
+<div class="container">
+  <div class="header" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+    <div style="font-size:48px; margin-bottom:12px;">🔒</div>
+    <h1>Access Suspended</h1>
+  </div>
+  <div class="content">
+    <p>Hi ${params.name},</p>
+    <p>The 3-day grace period for <strong>${params.schoolName}</strong> has ended and your monthly payment has not been received.</p>
+
+    <div class="detail-box" style="border-left: 4px solid #ef4444;">
+      <p style="margin:0; color:#dc2626; font-weight:600;">All users (admins, teachers, students, and parents) have been locked out of the platform.</p>
+    </div>
+
+    <p>To restore access immediately, simply complete your payment. Access will be restored automatically once the payment is confirmed.</p>
+
+    <div style="text-align:center; margin:28px 0;">
+      <a href="${paymentUrl}" class="cta" style="background:#ef4444; color:white;">Pay Now to Restore Access</a>
+    </div>
+
+    <p style="color:#6b7280; font-size:14px;">If you're experiencing payment difficulties, please reach out to our sales team – we're happy to help find a solution.</p>
+  </div>
+  <div class="footer">
+    <p>Connect-Ed School Management System</p>
+    <p>Contact <a href="mailto:sales@connect-ed.co.zw" style="color:#3b82f6;">sales@connect-ed.co.zw</a></p>
+  </div>
+</div>
+</div></body></html>`;
+}
+
+/**
+ * Final warning email — sent ~7 days after due date. Warns about school removal.
+ */
+export function generateFinalWarningEmail(params: {
+  name: string;
+  schoolName: string;
+  plan: string;
+}): string {
+  const paymentUrl = `${process.env.APP_URL || "http://localhost:3000"}/payment`;
+
+  return `<!DOCTYPE html><html><head><style>${billingEmailStyles}</style></head><body>
+<div style="padding:20px;">
+<div class="container">
+  <div class="header" style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%);">
+    <div style="font-size:48px; margin-bottom:12px;">🚨</div>
+    <h1>Final Notice – School Removal</h1>
+  </div>
+  <div class="content">
+    <p>Hi ${params.name},</p>
+    <p>This is a <strong>final notice</strong> regarding the overdue payment for <strong>${params.schoolName}</strong>.</p>
+
+    <div class="detail-box" style="border-left: 4px solid #7f1d1d; background: #fef2f2;">
+      <p style="margin:0; color:#7f1d1d; font-weight:600;">Your school's data will be scheduled for removal from the Connect-Ed platform if payment is not received within the next few days.</p>
+      <p style="margin:12px 0 0; color:#991b1b;">This action is irreversible. All school data, student records, and configurations will be permanently deleted.</p>
+    </div>
+
+    <p>To prevent this, please make your payment immediately:</p>
+
+    <div style="text-align:center; margin:28px 0;">
+      <a href="${paymentUrl}" class="cta" style="background:#7f1d1d; color:white;">Make Payment Immediately</a>
+    </div>
+
+    <p>If you no longer wish to use Connect-Ed, no action is required. Your data will be removed as scheduled.</p>
+    <p style="color:#6b7280; font-size:14px;">If you believe this is an error or need assistance, please contact us urgently at <a href="mailto:sales@connect-ed.co.zw" style="color:#3b82f6;">sales@connect-ed.co.zw</a>.</p>
+  </div>
+  <div class="footer">
+    <p>Connect-Ed School Management System</p>
+  </div>
+</div>
+</div></body></html>`;
+}
+
 // Generate period change email (term start/end, holiday start)
 export function generatePeriodChangeEmail(params: {
   name: string;

@@ -87,6 +87,7 @@ webhooks.post("/dodo", async (c) => {
             data: {
               signupFeePaid: true,
               plan: intermediatePayment.plan,
+              nextPaymentDate: (() => { const d = new Date(); d.setDate(d.getDate() + 31); return d; })(),
               emailQuota: planFeatures.emailQuota,
               whatsappQuota: planFeatures.whatsappQuota,
               smsQuota: planFeatures.smsQuota,

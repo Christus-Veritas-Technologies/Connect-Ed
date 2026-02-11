@@ -15,11 +15,23 @@ export default function GatedLayout({
   const router = useRouter();
 
   // Redirect to dashboard if both school and user onboarding are complete
+  // BUT don't redirect if the school is billing-locked (let them stay on /payment)
   useEffect(() => {
     if (!user || !school) return;
     const schoolDone = school.isActive && school.onboardingComplete;
     const userDone = user.onboardingComplete || user.role === "RECEPTIONIST";
-    if (schoolDone && userDone) {
+
+    // Check if billing-locked (>3 days overdue)
+    const isBillingLocked = (() => {
+      if (!school.nextPaymentDate) return false;
+      const due = new Date(school.nextPaymentDate);
+      const now = new Date();
+      if (now <= due) return false;
+      const daysOverdue = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+      return daysOverdue > 3;
+    })();
+
+    if (schoolDone && userDone && !isBillingLocked) {
       router.push("/dashboard");
     }
   }, [user, school, router]);

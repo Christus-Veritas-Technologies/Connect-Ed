@@ -17,6 +17,13 @@ import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } fr
 
 const payments = new Hono();
 
+/** Set next payment due date to 31 days from now */
+function getNextPaymentDate(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 31);
+  return d;
+}
+
 // POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
   try {
@@ -217,6 +224,7 @@ payments.post("/callback", async (c) => {
           data: {
             signupFeePaid: true,
             plan: intermediatePayment.plan,
+            nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
             smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
@@ -328,6 +336,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
           data: {
             signupFeePaid: true,
             plan: intermediatePayment.plan,
+            nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
             smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
@@ -444,7 +453,9 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
         },
       });
 
-      const updateData: any = {};
+      const updateData: any = {
+        nextPaymentDate: getNextPaymentDate(),
+      };
       if (paymentType === "SIGNUP") {
         updateData.signupFeePaid = true;
         updateData.plan = planType;
@@ -532,6 +543,7 @@ payments.post("/test-complete/:intermediatePaymentId", async (c) => {
         data: {
           signupFeePaid: true,
           plan: intermediatePayment.plan,
+          nextPaymentDate: getNextPaymentDate(),
           emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
           whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
           smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
