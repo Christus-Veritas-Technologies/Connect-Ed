@@ -140,8 +140,8 @@ export default function PaymentPage() {
                 hover
                 onClick={() => setSelectedPlan(plan)}
                 className={`relative cursor-pointer transition-all ${isSelected
-                    ? "bg-brand border-brand ring-4 ring-brand/20"
-                    : "bg-muted/40"
+                  ? "bg-brand border-brand ring-4 ring-brand/20"
+                  : "bg-muted/40"
                   }`}
               >
                 {isPopular && (
@@ -170,8 +170,8 @@ export default function PaymentPage() {
                       </span>
                     </div>
                     <p className={`text-sm mt-1 ${isSelected
-                        ? "text-blue-100"
-                        : "text-muted-foreground"
+                      ? "text-blue-100"
+                      : "text-muted-foreground"
                       }`}>
                       + {fmt(planAmounts.perTermCost, paymentCurrency)}/term (~{fmt(planAmounts.monthlyEstimate, paymentCurrency)}/mo)
                     </p>
@@ -196,8 +196,8 @@ export default function PaymentPage() {
                   <Button
                     variant={isSelected ? "secondary" : "outline"}
                     className={`w-full ${isSelected
-                        ? "bg-white text-brand hover:bg-white/90"
-                        : ""
+                      ? "bg-white text-brand hover:bg-white/90"
+                      : ""
                       }`}
                     onClick={() => setSelectedPlan(plan)}
                   >
