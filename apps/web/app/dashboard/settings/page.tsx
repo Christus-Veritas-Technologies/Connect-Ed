@@ -108,7 +108,6 @@ export default function SettingsPage() {
 
   // Grade form state
   const [gradeForm, setGradeForm] = useState({
-    subjectId: "",
     name: "",
     minMark: "",
     maxMark: "",
@@ -201,7 +200,7 @@ export default function SettingsPage() {
 
   const handleCreateGrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gradeForm.subjectId || !gradeForm.name || !gradeForm.minMark || !gradeForm.maxMark) {
+    if (!gradeForm.name || !gradeForm.minMark || !gradeForm.maxMark) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -221,15 +220,13 @@ export default function SettingsPage() {
 
     try {
       await createGrade.mutateAsync({
-        subjectId: gradeForm.subjectId,
         name: gradeForm.name,
         minMark,
         maxMark,
         isPass: gradeForm.isPass,
-      });
+      } as any);
       toast.success("Grade created successfully");
       setGradeForm({
-        subjectId: "",
         name: "",
         minMark: "",
         maxMark: "",
@@ -560,7 +557,7 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="text-base font-semibold">Grading System</h3>
                   <p className="text-sm text-muted-foreground">
-                    Define grade ranges and pass/fail criteria for each subject
+                    Define grade ranges and pass/fail criteria that apply across all subjects in your school
                   </p>
                 </div>
               </div>
@@ -576,7 +573,7 @@ export default function SettingsPage() {
                       <div>
                         <CardTitle>Grade Definitions</CardTitle>
                         <CardDescription>
-                          Configure grade ranges (e.g., A: 90-100, B: 80-89) for each subject
+                          Configure grade ranges (e.g., A: 90-100, B: 80-89) that apply to all subjects across your school
                         </CardDescription>
                       </div>
                       <Button
@@ -592,27 +589,6 @@ export default function SettingsPage() {
                     {showGradeForm && (
                       <form onSubmit={handleCreateGrade} className="space-y-4 p-4 border rounded-lg bg-muted/30">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="gradeSubject">Subject</Label>
-                            <Select
-                              value={gradeForm.subjectId}
-                              onValueChange={(value) =>
-                                setGradeForm({ ...gradeForm, subjectId: value })
-                              }
-                            >
-                              <SelectTrigger id="gradeSubject">
-                                <SelectValue placeholder="Select subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {subjectsData?.subjects?.map((subject: any) => (
-                                  <SelectItem key={subject.id} value={subject.id}>
-                                    {subject.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
                           <div className="space-y-2">
                             <Label htmlFor="gradeName">Grade Symbol</Label>
                             <Input
@@ -657,19 +633,22 @@ export default function SettingsPage() {
                               className="bg-background"
                             />
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id="gradePass"
-                            checked={gradeForm.isPass}
-                            onCheckedChange={(checked) =>
-                              setGradeForm({ ...gradeForm, isPass: checked })
-                            }
-                          />
-                          <Label htmlFor="gradePass" className="cursor-pointer">
-                            Mark as passing grade
-                          </Label>
+                          <div className="space-y-2">
+                            <Label htmlFor="gradePass">Status</Label>
+                            <div className="flex items-center gap-2 pt-2">
+                              <Switch
+                                id="gradePass"
+                                checked={gradeForm.isPass}
+                                onCheckedChange={(checked) =>
+                                  setGradeForm({ ...gradeForm, isPass: checked })
+                                }
+                              />
+                              <Label htmlFor="gradePass" className="cursor-pointer text-sm">
+                                {gradeForm.isPass ? "Passing grade" : "Failing grade"}
+                              </Label>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="flex justify-end gap-2">
@@ -700,65 +679,48 @@ export default function SettingsPage() {
                         <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                         <p className="text-sm font-medium mb-1">No grades defined yet</p>
                         <p className="text-xs text-muted-foreground mb-4">
-                          Create grade ranges to enable automatic grading
+                          Create grade ranges to enable automatic grading across all subjects
                         </p>
                         <Button onClick={() => setShowGradeForm(true)} size="sm">
                           Add Your First Grade
                         </Button>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {/* Group grades by subject */}
-                        {Object.entries(
-                          (gradesData?.grades || []).reduce((acc: Record<string, Grade[]>, grade: Grade) => {
-                            const subjectName = grade.subject?.name || "Unknown Subject";
-                            if (!acc[subjectName]) acc[subjectName] = [];
-                            acc[subjectName].push(grade);
-                            return acc;
-                          }, {})
-                        ).map(([subjectName, subjectGrades]) => (
-                          <div key={subjectName} className="space-y-3">
-                            <h4 className="font-medium text-sm text-muted-foreground">
-                              {subjectName}
-                            </h4>
-                            <div className="space-y-2">
-                              {(subjectGrades as Grade[])
-                                .sort((a, b) => b.minMark - a.minMark)
-                                .map((grade) => (
-                                  <div
-                                    key={grade.id}
-                                    className="flex items-center justify-between p-3 border rounded-lg bg-background hover:bg-muted/50 transition-colors"
-                                  >
-                                    <div className="flex items-center gap-4 flex-1">
-                                      <div className="font-bold text-lg text-brand min-w-[40px]">
-                                        {grade.name}
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm">
-                                        <span className="text-muted-foreground">Range:</span>
-                                        <span className="font-medium">
-                                          {grade.minMark}% - {grade.maxMark}%
-                                        </span>
-                                      </div>
-                                      <Badge
-                                        variant={grade.isPass ? "success" : "destructive"}
-                                        className="text-xs"
-                                      >
-                                        {grade.isPass ? "Pass" : "Fail"}
-                                      </Badge>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteGrade(grade.id)}
-                                      className="text-destructive hover:text-destructive"
-                                    >
-                                      Delete
-                                    </Button>
-                                  </div>
-                                ))}
+                      <div className="space-y-2">
+                        {(gradesData?.grades || [])
+                          .sort((a: Grade, b: Grade) => b.minMark - a.minMark)
+                          .map((grade: Grade) => (
+                            <div
+                              key={grade.id}
+                              className="flex items-center justify-between p-3 border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="font-bold text-lg text-brand min-w-10">
+                                  {grade.name}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">Range:</span>
+                                  <span className="font-medium">
+                                    {grade.minMark}% - {grade.maxMark}%
+                                  </span>
+                                </div>
+                                <Badge
+                                  variant={grade.isPass ? "success" : "destructive"}
+                                  className="text-xs"
+                                >
+                                  {grade.isPass ? "Pass" : "Fail"}
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteGrade(grade.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                Delete
+                              </Button>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     )}
                   </CardContent>
