@@ -20,7 +20,7 @@ import { exportDataAsCSV, exportToPDF } from "@/lib/export-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
@@ -413,7 +413,7 @@ export default function ReportsPage() {
 
       {/* Custom Date Range */}
       {timePeriod === "custom" && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="py-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
@@ -504,9 +504,12 @@ export default function ReportsPage() {
 
               {/* Payment Status & Expense Categories */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment Status Distribution</CardTitle>
+                <Card className="border-border/60">
+                  <CardHeader className="space-y-1">
+                    <CardTitle className="text-lg">Payment Status Distribution</CardTitle>
+                    <CardDescription>
+                      Breakdown of fee statuses across all students
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -546,9 +549,12 @@ export default function ReportsPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Top Expense Categories</CardTitle>
+                <Card className="border-border/60">
+                  <CardHeader className="space-y-1">
+                    <CardTitle className="text-lg">Top Expense Categories</CardTitle>
+                    <CardDescription>
+                      Highest spending categories for this period
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -586,9 +592,12 @@ export default function ReportsPage() {
               </div>
 
               {/* Student Payment Overview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Student Payment Overview</CardTitle>
+              <Card className="border-border/60">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Student Payment Overview</CardTitle>
+                  <CardDescription>
+                    Summary of student payment statuses
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -631,9 +640,12 @@ export default function ReportsPage() {
               {/* Payments by Period */}
               {financialReport.paymentsByPeriod &&
                 financialReport.paymentsByPeriod.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Payments by Period</CardTitle>
+                  <Card className="border-border/60">
+                    <CardHeader className="space-y-1">
+                      <CardTitle className="text-lg">Payments by Period</CardTitle>
+                      <CardDescription>
+                        Payment collections grouped by time period
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Table>
@@ -724,9 +736,12 @@ export default function ReportsPage() {
 
               {/* Class Distribution & Teacher Workload */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Class Distribution</CardTitle>
+                <Card className="border-border/60">
+                  <CardHeader className="space-y-1">
+                    <CardTitle className="text-lg">Class Distribution</CardTitle>
+                    <CardDescription>
+                      Student enrollment across all classes
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -760,9 +775,12 @@ export default function ReportsPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Teacher Workload</CardTitle>
+                <Card className="border-border/60">
+                  <CardHeader className="space-y-1">
+                    <CardTitle className="text-lg">Teacher Workload</CardTitle>
+                    <CardDescription>
+                      Classes and students assigned to each teacher
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -798,9 +816,12 @@ export default function ReportsPage() {
               </div>
 
               {/* Gender Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Students by Gender</CardTitle>
+              <Card className="border-border/60">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Students by Gender</CardTitle>
+                  <CardDescription>
+                    Gender distribution of enrolled students
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
@@ -835,9 +856,12 @@ export default function ReportsPage() {
               {/* Recent Enrollments */}
               {managerialReport.recentEnrollments &&
                 managerialReport.recentEnrollments.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Enrollments</CardTitle>
+                  <Card className="border-border/60">
+                    <CardHeader className="space-y-1">
+                      <CardTitle className="text-lg">Recent Enrollments</CardTitle>
+                      <CardDescription>
+                        Most recently enrolled students
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Table>
