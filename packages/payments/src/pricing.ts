@@ -2,21 +2,21 @@ import type { PlanType, PlanAmounts, CurrencyCode } from "./types.js";
 
 /** USD pricing (default) - monthly recurring */
 export const PRICING_USD: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 400, perTermCost: 120, monthlyEstimate: 20 },
+  LITE: { signupFee: 400, perTermCost: 240, monthlyEstimate: 40 },
   GROWTH: { signupFee: 750, perTermCost: 225, monthlyEstimate: 75 },
   ENTERPRISE: { signupFee: 1200, perTermCost: 360, monthlyEstimate: 120 },
 };
 
 /** ZAR pricing (~20x conversion factor) - monthly recurring */
 export const PRICING_ZAR: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 4000, perTermCost: 1200, monthlyEstimate: 400 },
+  LITE: { signupFee: 4000, perTermCost: 2400, monthlyEstimate: 800 },
   GROWTH: { signupFee: 15000, perTermCost: 4500, monthlyEstimate: 1500 },
   ENTERPRISE: { signupFee: 24000, perTermCost: 7200, monthlyEstimate: 2400 },
 };
 
 /** ZiG pricing (~13.5x conversion factor) - monthly recurring */
 export const PRICING_ZIG: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 2700, perTermCost: 810, monthlyEstimate: 270 },
+  LITE: { signupFee: 2700, perTermCost: 1620, monthlyEstimate: 540 },
   GROWTH: { signupFee: 10125, perTermCost: 3037, monthlyEstimate: 1012 },
   ENTERPRISE: { signupFee: 16200, perTermCost: 4860, monthlyEstimate: 1620 },
 };
