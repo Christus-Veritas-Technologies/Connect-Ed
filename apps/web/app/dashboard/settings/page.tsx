@@ -14,6 +14,13 @@ import {
   useUpdateProfile,
   useSchoolUsers,
 } from "@/lib/hooks";
+import { useSubjects } from "@/lib/hooks/use-subjects";
+import {
+  useGrades,
+  useCreateGrade,
+  useDeleteGrade,
+  type Grade,
+} from "@/lib/hooks/use-exams";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Card,
@@ -71,11 +78,15 @@ export default function SettingsPage() {
   const { data: notifData, isLoading: notifLoading } = useNotificationPrefs();
   const { data: profileData, isLoading: profileLoading } = useUserProfile();
   const { data: usersData } = useSchoolUsers();
+  const { data: subjectsData } = useSubjects();
+  const { data: gradesData, isLoading: gradesLoading } = useGrades();
 
   // Mutations
   const updateSchool = useUpdateSchool();
   const updateNotifPrefs = useUpdateNotificationPrefs();
   const updateProfile = useUpdateProfile();
+  const createGrade = useCreateGrade();
+  const deleteGrade = useDeleteGrade();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<string>(isAdmin ? "school" : "profile");
@@ -94,6 +105,16 @@ export default function SettingsPage() {
     name: "",
     phone: "",
   });
+
+  // Grade form state
+  const [gradeForm, setGradeForm] = useState({
+    subjectId: "",
+    name: "",
+    minMark: "",
+    maxMark: "",
+    isPass: true,
+  });
+  const [showGradeForm, setShowGradeForm] = useState(false);
 
   // Copy ID state
   const [copied, setCopied] = useState(false);
@@ -175,6 +196,58 @@ export default function SettingsPage() {
       setCopied(true);
       toast.success("School ID copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCreateGrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gradeForm.subjectId || !gradeForm.name || !gradeForm.minMark || !gradeForm.maxMark) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const minMark = parseInt(gradeForm.minMark);
+    const maxMark = parseInt(gradeForm.maxMark);
+
+    if (minMark < 0 || minMark > 100 || maxMark < 0 || maxMark > 100) {
+      toast.error("Marks must be between 0 and 100");
+      return;
+    }
+
+    if (minMark > maxMark) {
+      toast.error("Starting mark cannot be greater than ending mark");
+      return;
+    }
+
+    try {
+      await createGrade.mutateAsync({
+        subjectId: gradeForm.subjectId,
+        name: gradeForm.name,
+        minMark,
+        maxMark,
+        isPass: gradeForm.isPass,
+      });
+      toast.success("Grade created successfully");
+      setGradeForm({
+        subjectId: "",
+        name: "",
+        minMark: "",
+        maxMark: "",
+        isPass: true,
+      });
+      setShowGradeForm(false);
+    } catch (error) {
+      toast.error("Failed to create grade");
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId: string) => {
+    if (!confirm("Delete this grade? This cannot be undone.")) return;
+    try {
+      await deleteGrade.mutateAsync(gradeId);
+      toast.success("Grade deleted");
+    } catch (error) {
+      toast.error("Failed to delete grade");
     }
   };
 
@@ -295,6 +368,7 @@ export default function SettingsPage() {
         <FilterTabs
           tabs={[
             ...(isAdmin ? [{ key: "school", label: "School" }] : []),
+            ...(isAdmin ? [{ key: "marks", label: "Marks" }] : []),
             ...(isAdmin ? [{ key: "notifications", label: "Notifications" }] : []),
             { key: "profile", label: "Profile" },
             ...(isAdmin ? [{ key: "billing", label: "Billing" }] : []),
@@ -469,6 +543,227 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* =============================================
+            Marks/Grades Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="marks" className="space-y-8">
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Grading System</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Define grade ranges and pass/fail criteria for each subject
+                  </p>
+                </div>
+              </div>
+
+              {gradesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-brand" />
+                </div>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Grade Definitions</CardTitle>
+                        <CardDescription>
+                          Configure grade ranges (e.g., A: 90-100, B: 80-89) for each subject
+                        </CardDescription>
+                      </div>
+                      <Button
+                        onClick={() => setShowGradeForm(!showGradeForm)}
+                        size="sm"
+                      >
+                        {showGradeForm ? "Cancel" : "Add Grade"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Add Grade Form */}
+                    {showGradeForm && (
+                      <form onSubmit={handleCreateGrade} className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="gradeSubject">Subject</Label>
+                            <Select
+                              value={gradeForm.subjectId}
+                              onValueChange={(value) =>
+                                setGradeForm({ ...gradeForm, subjectId: value })
+                              }
+                            >
+                              <SelectTrigger id="gradeSubject">
+                                <SelectValue placeholder="Select subject" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {subjectsData?.subjects?.map((subject: any) => (
+                                  <SelectItem key={subject.id} value={subject.id}>
+                                    {subject.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="gradeName">Grade Symbol</Label>
+                            <Input
+                              id="gradeName"
+                              value={gradeForm.name}
+                              onChange={(e) =>
+                                setGradeForm({ ...gradeForm, name: e.target.value })
+                              }
+                              placeholder="e.g., A, B+, C"
+                              className="bg-background"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="gradeMin">Starting Mark (%)</Label>
+                            <Input
+                              id="gradeMin"
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={gradeForm.minMark}
+                              onChange={(e) =>
+                                setGradeForm({ ...gradeForm, minMark: e.target.value })
+                              }
+                              placeholder="e.g., 90"
+                              className="bg-background"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="gradeMax">Ending Mark (%)</Label>
+                            <Input
+                              id="gradeMax"
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={gradeForm.maxMark}
+                              onChange={(e) =>
+                                setGradeForm({ ...gradeForm, maxMark: e.target.value })
+                              }
+                              placeholder="e.g., 100"
+                              className="bg-background"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id="gradePass"
+                            checked={gradeForm.isPass}
+                            onCheckedChange={(checked) =>
+                              setGradeForm({ ...gradeForm, isPass: checked })
+                            }
+                          />
+                          <Label htmlFor="gradePass" className="cursor-pointer">
+                            Mark as passing grade
+                          </Label>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowGradeForm(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={createGrade.isPending}>
+                            {createGrade.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Creating...
+                              </>
+                            ) : (
+                              "Create Grade"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Grades List by Subject */}
+                    {(!gradesData?.grades || gradesData.grades.length === 0) && !showGradeForm ? (
+                      <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-sm font-medium mb-1">No grades defined yet</p>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Create grade ranges to enable automatic grading
+                        </p>
+                        <Button onClick={() => setShowGradeForm(true)} size="sm">
+                          Add Your First Grade
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* Group grades by subject */}
+                        {Object.entries(
+                          (gradesData?.grades || []).reduce((acc: Record<string, Grade[]>, grade: Grade) => {
+                            const subjectName = grade.subject?.name || "Unknown Subject";
+                            if (!acc[subjectName]) acc[subjectName] = [];
+                            acc[subjectName].push(grade);
+                            return acc;
+                          }, {})
+                        ).map(([subjectName, subjectGrades]) => (
+                          <div key={subjectName} className="space-y-3">
+                            <h4 className="font-medium text-sm text-muted-foreground">
+                              {subjectName}
+                            </h4>
+                            <div className="space-y-2">
+                              {(subjectGrades as Grade[])
+                                .sort((a, b) => b.minMark - a.minMark)
+                                .map((grade) => (
+                                  <div
+                                    key={grade.id}
+                                    className="flex items-center justify-between p-3 border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-4 flex-1">
+                                      <div className="font-bold text-lg text-brand min-w-[40px]">
+                                        {grade.name}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-muted-foreground">Range:</span>
+                                        <span className="font-medium">
+                                          {grade.minMark}% - {grade.maxMark}%
+                                        </span>
+                                      </div>
+                                      <Badge
+                                        variant={grade.isPass ? "success" : "destructive"}
+                                        className="text-xs"
+                                      >
+                                        {grade.isPass ? "Pass" : "Fail"}
+                                      </Badge>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteGrade(grade.id)}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         )}
