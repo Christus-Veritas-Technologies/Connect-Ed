@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   CheckmarkCircle02Icon,
   ArrowRight01Icon,
+  InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
@@ -241,8 +242,13 @@ export default function PaymentPage() {
             </div>
 
             {!isManualPayment && (
-              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                ℹ️ Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is <strong>charged only once</strong>. You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month after that.
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded">
+                <HugeiconsIcon
+                  icon={InformationCircleIcon}
+                  size={16}
+                  className="shrink-0 mt-0.5"
+                />
+                <span><strong>Setup fee:</strong> Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is charged only once. You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month after that.</span>
               </div>
             )}
 
