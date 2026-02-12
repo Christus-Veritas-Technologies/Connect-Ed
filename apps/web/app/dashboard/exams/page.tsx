@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -80,12 +81,14 @@ function ExamCard({
   exam,
   isSelected,
   onSelect,
+  onViewDetails,
   onGrade,
   onDelete,
 }: {
   exam: any;
   isSelected: boolean;
   onSelect: () => void;
+  onViewDetails: () => void;
   onGrade: () => void;
   onDelete: () => void;
 }) {
@@ -103,7 +106,7 @@ function ExamCard({
         hover
         className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
           }`}
-        onClick={onSelect}
+        onClick={onViewDetails}
       >
         <CardContent className="p-4">
           {/* Selection checkmark */}
@@ -186,6 +189,7 @@ function ExamCard({
 
 export default function ExamsPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   // ── State ──
   const [search, setSearch] = useState("");
@@ -398,6 +402,7 @@ export default function ExamsPage() {
                 exam={exam}
                 isSelected={selectedIds.has(exam.id)}
                 onSelect={() => toggleSelection(exam.id)}
+                onViewDetails={() => router.push(`/dashboard/exams/${exam.id}`)}
                 onGrade={() => setGradeExamId(exam.id)}
                 onDelete={() =>
                   deleteMutation.mutate(exam.id, {
@@ -474,6 +479,7 @@ export default function ExamsPage() {
                   exam={exam}
                   isSelected={selectedIds.has(exam.id)}
                   onSelect={() => toggleSelection(exam.id)}
+                  onViewDetails={() => router.push(`/dashboard/exams/${exam.id}`)}
                   onGrade={() => setGradeExamId(exam.id)}
                   onDelete={() =>
                     deleteMutation.mutate(exam.id, {
