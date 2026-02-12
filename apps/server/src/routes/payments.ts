@@ -152,8 +152,22 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
 
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
 
+    // Validate API key exists
+    const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+    if (!apiKey) {
+      console.error("DODO_PAYMENTS_API_KEY is not configured");
+      return errors.internalError(c);
+    }
+
+    console.log("Creating Dodo checkout with:", {
+      apiKey: apiKey.substring(0, 10) + "..." + apiKey.substring(apiKey.length - 10),
+      productIds,
+      email: data.email,
+      plan: data.planType,
+    });
+
     const result = await createDodoPaymentLink({
-      apiKey: process.env.DODO_PAYMENTS_API_KEY || "",
+      apiKey,
       productIds,
       email: data.email || "",
       metadata: {
@@ -184,6 +198,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       type: typeof error,
+      isDodoError: error instanceof Error && error.message.includes("status code"),
     });
     return errors.internalError(c);
   }

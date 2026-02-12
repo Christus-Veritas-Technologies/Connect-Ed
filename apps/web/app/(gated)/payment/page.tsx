@@ -163,14 +163,14 @@ export default function PaymentPage() {
                   <div className="text-center">
                     <div className="flex items-baseline justify-center gap-2">
                       <div>
-                        <div className="text-sm text-muted-foreground mb-1">Setup fee (one-time)</div>
+                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Setup fee (one-time)</div>
                         <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
                           {fmt(planAmounts.signupFee, paymentCurrency)}
                         </span>
                       </div>
                       <span className={`text-lg mt-6 ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>+</span>
                       <div>
-                        <div className="text-sm text-muted-foreground mb-1">Then monthly</div>
+                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Then monthly</div>
                         <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
                           {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
                         </span>

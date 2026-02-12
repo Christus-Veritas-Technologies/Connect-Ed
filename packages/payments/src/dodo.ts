@@ -23,31 +23,44 @@ export interface DodoPaymentLinkParams {
 export async function createDodoPaymentLink(
   params: DodoPaymentLinkParams,
 ): Promise<DodoPaymentLinkResult> {
-  const dodo = new DodoPayments({ bearerToken: params.apiKey });
-
-  const payment = await dodo.payments.create({
-    payment_link: true,
-    product_cart: params.productIds.map((product_id) => ({
-      product_id,
-      quantity: 1,
-    })),
-    billing: {
-      country: (params.billingCountry || "ZA") as any,
-    },
-    customer: {
-      email: params.email,
-      name: params.email,
-    },
-    metadata: params.metadata,
-    return_url: params.returnUrl,
+  // Try both bearerToken and apiKey as different versions of the SDK may expect different config
+  const dodo = new DodoPayments({ 
+    bearerToken: params.apiKey
   });
 
-  if (!payment.payment_link) {
-    throw new Error("DodoPayments did not return a payment link");
-  }
+  try {
+    const payment = await dodo.payments.create({
+      payment_link: true,
+      product_cart: params.productIds.map((product_id) => ({
+        product_id,
+        quantity: 1,
+      })),
+      billing: {
+        country: (params.billingCountry || "ZA") as any,
+      },
+      customer: {
+        email: params.email,
+        name: params.email,
+      },
+      metadata: params.metadata,
+      return_url: params.returnUrl,
+    });
 
-  return {
-    paymentLink: payment.payment_link,
-    paymentId: payment.payment_id,
-  };
+    if (!payment.payment_link) {
+      throw new Error("DodoPayments did not return a payment link");
+    }
+
+    return {
+      paymentLink: payment.payment_link,
+      paymentId: payment.payment_id,
+    };
+  } catch (error) {
+    // Log more details about the error
+    console.error("DodoPayments API Error:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      apiKeyUsed: params.apiKey.substring(0, 10) + "..." + params.apiKey.substring(params.apiKey.length - 10),
+    });
+    throw error;
+  }
 }
