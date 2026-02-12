@@ -172,7 +172,7 @@ exams.get("/", async (c) => {
         });
         const totalStudents = results.length;
         const grades = await db.grade.findMany({
-          where: { subjectId: exam.subjectId, schoolId },
+          where: { subjectId: null, schoolId },
         });
         const passGrades = grades.filter((g) => g.isPass);
         const passMarks = results.filter((r) => {
@@ -260,9 +260,9 @@ exams.get("/:id", async (c) => {
 
     if (!exam) return errors.notFound(c, "Exam");
 
-    // Get grades for this subject to determine letter grades
+    // Get grades for school to determine letter grades
     const grades = await db.grade.findMany({
-      where: { subjectId: exam.subjectId, schoolId },
+      where: { subjectId: null, schoolId },
       orderBy: { minMark: "desc" },
     });
 
