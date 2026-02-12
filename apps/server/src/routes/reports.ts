@@ -137,19 +137,33 @@ reports.get("/financial", async (c) => {
     });
 
     // Get payments by period (monthly breakdown)
-    const paymentsByPeriod = await db.$queryRaw<{ period: string; amount: number; count: number }[]>`
-      SELECT 
-        TO_CHAR(date_trunc('month', "createdAt"), 'Mon YYYY') as period,
-        COALESCE(SUM("paidAmount"), 0)::float as amount,
-        COUNT(*)::int as count
-      FROM "Fee"
-      WHERE "schoolId" = ${schoolId}
-        AND "createdAt" >= ${startDate}
-        AND "createdAt" <= ${endDate}
-        AND status = 'PAID'
-      GROUP BY date_trunc('month', "createdAt")
-      ORDER BY date_trunc('month', "createdAt")
-    `;
+    const feePayments = await db.feePayment.findMany({
+      where: {
+        fee: {
+          schoolId,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        status: "COMPLETED",
+      },
+      select: {
+        createdAt: true,
+        paidAmount: true,
+      },
+    });
+
+    // Group payments by month
+    const paymentsByPeriodMap = new Map<string, { amount: number; count: number }>();
+    feePayments.forEach((payment) => {
+      const monthKey = payment.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const existing = paymentsByPeriodMap.get(monthKey) || { amount: 0, count: 0 };
+      paymentsByPeriodMap.set(monthKey, {
+        amount: existing.amount + payment.paidAmount,
+        count: existing.count + 1,
+      });
+    });
+    const paymentsByPeriod = Array.from(paymentsByPeriodMap.entries())
+      .map(([period, data]) => ({ period, ...data }))
+      .sort((a, b) => new Date(a.period).getTime() - new Date(b.period).getTime());
 
     const totalFeesExpected = allFees._sum.amount || 0;
     const totalFeesCollected = paidFees._sum.paidAmount || 0;
@@ -240,10 +254,12 @@ reports.get("/managerial", async (c) => {
     ]);
 
     // Count parents through students
-    const totalParents = await db.student.count({
+    const uniqueParentEmails = await db.student.findMany({
       where: { schoolId, parentEmail: { not: null } },
+      select: { parentEmail: true },
       distinct: ['parentEmail'],
     });
+    const totalParents = uniqueParentEmails.length;
 
     // Get class distribution
     const classDistribution = await db.class.findMany({
