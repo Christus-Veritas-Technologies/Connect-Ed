@@ -588,7 +588,7 @@ export default function SettingsPage() {
                     {/* Add Grade Form */}
                     {showGradeForm && (
                       <form onSubmit={handleCreateGrade} className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                           <div className="space-y-2">
                             <Label htmlFor="gradeName">Grade Symbol</Label>
                             <Input
@@ -602,36 +602,38 @@ export default function SettingsPage() {
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="gradeMin">Starting Mark (%)</Label>
-                            <Input
-                              id="gradeMin"
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={gradeForm.minMark}
-                              onChange={(e) =>
-                                setGradeForm({ ...gradeForm, minMark: e.target.value })
-                              }
-                              placeholder="e.g., 90"
-                              className="bg-background"
-                            />
-                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="gradeMin">Starting Mark (%)</Label>
+                              <Input
+                                id="gradeMin"
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={gradeForm.minMark}
+                                onChange={(e) =>
+                                  setGradeForm({ ...gradeForm, minMark: e.target.value })
+                                }
+                                placeholder="e.g., 90"
+                                className="bg-background"
+                              />
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="gradeMax">Ending Mark (%)</Label>
-                            <Input
-                              id="gradeMax"
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={gradeForm.maxMark}
-                              onChange={(e) =>
-                                setGradeForm({ ...gradeForm, maxMark: e.target.value })
-                              }
-                              placeholder="e.g., 100"
-                              className="bg-background"
-                            />
+                            <div className="space-y-2">
+                              <Label htmlFor="gradeMax">Ending Mark (%)</Label>
+                              <Input
+                                id="gradeMax"
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={gradeForm.maxMark}
+                                onChange={(e) =>
+                                  setGradeForm({ ...gradeForm, maxMark: e.target.value })
+                                }
+                                placeholder="e.g., 100"
+                                className="bg-background"
+                              />
+                            </div>
                           </div>
 
                           <div className="space-y-2">
