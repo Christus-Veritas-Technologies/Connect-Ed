@@ -20,7 +20,6 @@ import {
   CheckmarkCircle02Icon,
   InformationCircleIcon,
   Clock01Icon,
-  SentIcon,
   ChevronDown,
 } from "@hugeicons/core-free-icons";
 import { AlertTriangle } from "@hugeicons/core-free-icons";
@@ -203,33 +202,15 @@ export function TeacherDashboard() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/class" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={UserGroupIcon} size={16} />
-                  <span>View My Class</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link href="/dashboard/student-reports" className="flex items-center gap-2 cursor-pointer">
                   <HugeiconsIcon icon={ChartHistogramIcon} size={16} />
-                  <span>Student Reports</span>
+                  <span>View Reports</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/announcements" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={Notification01Icon} size={16} />
-                  <span>Announcements</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/chats" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={SentIcon} size={16} />
-                  <span>Class Chat</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/shared-files" className="flex items-center gap-2 cursor-pointer">
-                  <HugeiconsIcon icon={FileAttachmentIcon} size={16} />
-                  <span>Shared Files</span>
+                <Link href="/dashboard/students" className="flex items-center gap-2 cursor-pointer">
+                  <HugeiconsIcon icon={Add01Icon} size={16} />
+                  <span>Add Student</span>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -507,8 +488,8 @@ export function TeacherDashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={`p-4 rounded-lg border transition-all ${notification.isRead
-                        ? "bg-muted/30 border-muted"
-                        : `bg-card ${colors.border} shadow-sm`
+                      ? "bg-muted/30 border-muted"
+                      : `bg-card ${colors.border} shadow-sm`
                       }`}
                   >
                     <div className="flex gap-3">
