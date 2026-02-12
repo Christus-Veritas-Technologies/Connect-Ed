@@ -143,7 +143,7 @@ export default function ReportsPage() {
           if (customDateTo) params.set("dateTo", customDateTo);
         }
         const data = await api.get(`/reports/financial?${params.toString()}`);
-        setFinancialReport(data);
+        setFinancialReport(data as FinancialReport);
       } catch (error) {
         console.error("Failed to fetch financial report:", error);
         toast.error("Failed to load financial report");
@@ -168,7 +168,7 @@ export default function ReportsPage() {
         const data = await api.get(
           `/reports/managerial?${params.toString()}`
         );
-        setManagerialReport(data);
+        setManagerialReport(data as ManagerialReport);
       } catch (error) {
         console.error("Failed to fetch managerial report:", error);
         toast.error("Failed to load managerial report");

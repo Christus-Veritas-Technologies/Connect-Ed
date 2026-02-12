@@ -41,6 +41,8 @@ import {
   MapPin,
   Copy,
   Check,
+  BarChart3,
+  User,
 } from "lucide-react";
 import { DashboardBreadcrumbs, FilterTabs } from "@/components/dashboard";
 
@@ -306,160 +308,168 @@ export default function SettingsPage() {
             School Data Tab (Admin only)
         ============================================= */}
         {isAdmin && (
-          <TabsContent value="school" className="space-y-6">
-            <Card className="border-border/60">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">School Information</CardTitle>
-                <CardDescription>
-                  Update your school&apos;s details. This information is visible
-                  to all members.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {schoolLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <form onSubmit={handleUpdateSchool} className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolName">School Name</Label>
-                        <Input
-                          id="schoolName"
-                          value={schoolForm.name}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Enter school name"
-                        />
-                      </div>
+          <TabsContent value="school" className="space-y-8">
+            {/* School Information Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <Globe className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Workspace Details</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Basic workspace info details
+                  </p>
+                </div>
+              </div>
 
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolAddress">
-                          <MapPin className="inline h-4 w-4 mr-1" />
-                          Address
-                        </Label>
-                        <Input
-                          id="schoolAddress"
-                          value={schoolForm.address}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              address: e.target.value,
-                            })
-                          }
-                          placeholder="Enter school address"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="schoolPhone">
-                          <Phone className="inline h-4 w-4 mr-1" />
-                          Phone
-                        </Label>
-                        <Input
-                          id="schoolPhone"
-                          type="tel"
-                          value={schoolForm.phone}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              phone: e.target.value,
-                            })
-                          }
-                          placeholder="+234..."
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="schoolEmail">
-                          <Mail className="inline h-4 w-4 mr-1" />
-                          Email
-                        </Label>
-                        <Input
-                          id="schoolEmail"
-                          type="email"
-                          value={schoolForm.email}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              email: e.target.value,
-                            })
-                          }
-                          placeholder="contact@school.com"
-                        />
-                      </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolWebsite">
-                          <Globe className="inline h-4 w-4 mr-1" />
-                          Website
-                        </Label>
-                        <Input
-                          id="schoolWebsite"
-                          type="url"
-                          value={schoolForm.website}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              website: e.target.value,
-                            })
-                          }
-                          placeholder="https://www.school.com"
-                        />
-                      </div>
+              {schoolLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <form onSubmit={handleUpdateSchool} className="space-y-4 max-w-2xl">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolName" className="text-sm font-medium">School Name</Label>
+                      <Input
+                        id="schoolName"
+                        value={schoolForm.name}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            name: e.target.value,
+                          })
+                        }
+                        placeholder="Enter school name"
+                        className="bg-background"
+                      />
                     </div>
-
-                    <Separator />
 
                     <div className="space-y-2">
-                      <Label>School ID</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={authSchool?.id || ""}
-                          disabled
-                          className="font-mono text-sm bg-muted"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={handleCopyId}
-                        >
-                          {copied ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Use this ID when making cash payments
-                      </p>
+                      <Label htmlFor="schoolEmail" className="text-sm font-medium">Email</Label>
+                      <Input
+                        id="schoolEmail"
+                        type="email"
+                        value={schoolForm.email}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            email: e.target.value,
+                          })
+                        }
+                        placeholder="contact@school.com"
+                        className="bg-background"
+                      />
                     </div>
 
-                    <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        disabled={updateSchool.isPending}
-                        className="gap-2"
-                      >
-                        {updateSchool.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
-                        Save Changes
-                      </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolPhone" className="text-sm font-medium">Phone</Label>
+                      <Input
+                        id="schoolPhone"
+                        type="tel"
+                        value={schoolForm.phone}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            phone: e.target.value,
+                          })
+                        }
+                        placeholder="+234..."
+                        className="bg-background"
+                      />
                     </div>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolAddress" className="text-sm font-medium">Address</Label>
+                      <Input
+                        id="schoolAddress"
+                        value={schoolForm.address}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            address: e.target.value,
+                          })
+                        }
+                        placeholder="Enter school address"
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolWebsite" className="text-sm font-medium">Website</Label>
+                      <Input
+                        id="schoolWebsite"
+                        type="url"
+                        value={schoolForm.website}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            website: e.target.value,
+                          })
+                        }
+                        placeholder="https://www.school.com"
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={updateSchool.isPending}
+                      className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+                    >
+                      {updateSchool.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      Save
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* School ID Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <Copy className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">School ID</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Use this ID when making cash payments
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-w-2xl">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={authSchool?.id || ""}
+                      disabled
+                      className="font-mono text-sm bg-muted flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopyId}
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         )}
 
@@ -467,98 +477,106 @@ export default function SettingsPage() {
             Notifications Tab (Admin only)
         ============================================= */}
         {isAdmin && (
-          <TabsContent value="notifications" className="space-y-6">
-            <Card className="border-border/60">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Notification Channels</CardTitle>
-                <CardDescription>
-                  Control which notification channels are enabled for your
-                  entire school. Disabling a channel will prevent{" "}
-                  <strong>all</strong> notifications of that type from being
-                  sent.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {notifLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="space-y-0">
-                    {notificationChannels.map((channel, index) => (
-                      <div key={channel.key}>
-                        <div className="flex items-center justify-between py-5">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                              <channel.icon className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-sm font-medium text-foreground">
-                                {channel.label}
-                              </Label>
-                              <p className="text-sm text-muted-foreground leading-snug">
-                                {channel.description}
-                              </p>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={channel.enabled}
-                            onCheckedChange={(value) =>
-                              handleToggleNotification(channel.key, value)
-                            }
-                            disabled={updateNotifPrefs.isPending}
-                          />
-                        </div>
-                        {index < notificationChannels.length - 1 && (
-                          <Separator />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="notifications" className="space-y-8">
+            {/* Notification Channels Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <BellRing className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Notification Channels</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Control which notification channels are enabled for your school
+                  </p>
+                </div>
+              </div>
 
-            {/* Quota Usage */}
+              {notifLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-0 max-w-2xl">
+                  {notificationChannels.map((channel, index) => (
+                    <div key={channel.key}>
+                      <div className="flex items-center justify-between py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                            <channel.icon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium text-foreground cursor-pointer">
+                              {channel.label}
+                            </Label>
+                            <p className="text-sm text-muted-foreground leading-snug">
+                              {channel.description}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={channel.enabled}
+                          onCheckedChange={(value) =>
+                            handleToggleNotification(channel.key, value)
+                          }
+                          disabled={updateNotifPrefs.isPending}
+                        />
+                      </div>
+                      {index < notificationChannels.length - 1 && (
+                        <Separator />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Quota Usage Section */}
             {schoolData?.school && (
-              <Card className="border-border/60">
-                <CardHeader className="space-y-1">
-                  <CardTitle className="text-lg">Notification Quota</CardTitle>
-                  <CardDescription>
-                    Your current usage for this billing period
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <QuotaItem
-                      label="Emails"
-                      used={schoolData.school.emailUsed}
-                      total={schoolData.school.emailQuota}
-                      icon={Mail}
-                    />
-                    <QuotaItem
-                      label="WhatsApp"
-                      used={schoolData.school.whatsappUsed}
-                      total={schoolData.school.whatsappQuota}
-                      icon={MessageSquare}
-                    />
-                    <QuotaItem
-                      label="SMS"
-                      used={schoolData.school.smsUsed}
-                      total={schoolData.school.smsQuota}
-                      icon={Smartphone}
-                    />
+              <div className="space-y-6">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 rounded-lg bg-muted p-2">
+                    <BarChart3 className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  {schoolData.school.quotaResetDate && (
-                    <p className="mt-4 text-xs text-muted-foreground">
-                      Quota resets on{" "}
-                      {new Date(
-                        schoolData.school.quotaResetDate
-                      ).toLocaleDateString()}
+                  <div>
+                    <h3 className="text-base font-semibold">Notification Quota</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your current usage for this billing period
                     </p>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3 max-w-3xl">
+                  <QuotaItem
+                    label="Emails"
+                    used={schoolData.school.emailUsed}
+                    total={schoolData.school.emailQuota}
+                    icon={Mail}
+                  />
+                  <QuotaItem
+                    label="WhatsApp"
+                    used={schoolData.school.whatsappUsed}
+                    total={schoolData.school.whatsappQuota}
+                    icon={MessageSquare}
+                  />
+                  <QuotaItem
+                    label="SMS"
+                    used={schoolData.school.smsUsed}
+                    total={schoolData.school.smsQuota}
+                    icon={Smartphone}
+                  />
+                </div>
+                {schoolData.school.quotaResetDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Quota resets on{" "}
+                    {new Date(
+                      schoolData.school.quotaResetDate
+                    ).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             )}
           </TabsContent>
         )}
@@ -566,163 +584,170 @@ export default function SettingsPage() {
         {/* =============================================
             Profile Tab (All users)
         ============================================= */}
-        <TabsContent value="profile" className="space-y-6">
-          <Card className="border-border/60">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">Profile Settings</CardTitle>
-              <CardDescription>
-                Manage your personal information and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {profileLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <TabsContent value="profile" className="space-y-8">
+          {/* Profile Settings Section */}
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 rounded-lg bg-muted p-2">
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">Profile Settings</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage your personal information
+                </p>
+              </div>
+            </div>
+
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-2xl">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profileName" className="text-sm font-medium">Full Name</Label>
+                    <Input
+                      id="profileName"
+                      value={profileForm.name}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Your name"
+                      className="bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profileEmail" className="text-sm font-medium">Email</Label>
+                    <Input
+                      id="profileEmail"
+                      value={profile?.email || ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Contact your admin to change your email
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profilePhone" className="text-sm font-medium">Phone</Label>
+                    <Input
+                      id="profilePhone"
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder="+234..."
+                      className="bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Role</Label>
+                    <div className="flex items-center h-10">
+                      <Badge variant="secondary" className="text-sm">
+                        {profile?.role}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="profileName">Full Name</Label>
-                      <Input
-                        id="profileName"
-                        value={profileForm.name}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            name: e.target.value,
-                          })
-                        }
-                        placeholder="Your name"
-                      />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="profileEmail">Email</Label>
-                      <Input
-                        id="profileEmail"
-                        value={profile?.email || ""}
-                        disabled
-                        className="bg-muted"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Contact your admin to change your email
-                      </p>
-                    </div>
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={updateProfile.isPending}
+                    className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+                  >
+                    {updateProfile.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
+                    Save
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="profilePhone">
-                        <Phone className="inline h-4 w-4 mr-1" />
-                        Phone
-                      </Label>
-                      <Input
-                        id="profilePhone"
-                        type="tel"
-                        value={profileForm.phone}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            phone: e.target.value,
-                          })
-                        }
-                        placeholder="+234..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Role</Label>
-                      <div className="flex items-center h-9">
-                        <Badge variant="secondary" className="text-sm">
-                          {profile?.role}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={updateProfile.isPending}
-                      className="gap-2"
-                    >
-                      {updateProfile.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      Save Profile
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+          <Separator />
 
           {/* User-level notification preferences */}
-          <Card className="border-border/60">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">My Notifications</CardTitle>
-              <CardDescription>
-                Control which notifications you personally receive. These
-                settings only affect your account.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {profileLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="space-y-0">
-                  <div className="flex items-center justify-between py-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                        <BellRing className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium text-foreground">
-                          In-App Notifications
-                        </Label>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Show notification badges and alerts in the dashboard
-                        </p>
-                      </div>
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 rounded-lg bg-muted p-2">
+                <BellRing className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">My Notifications</h3>
+                <p className="text-sm text-muted-foreground">
+                  Control which notifications you personally receive
+                </p>
+              </div>
+            </div>
+
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-0 max-w-2xl">
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                      <BellRing className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <Switch
-                      checked={profile?.notifyInApp ?? true}
-                      onCheckedChange={(value) =>
-                        handleToggleUserPref("notifyInApp", value)
-                      }
-                      disabled={updateProfile.isPending}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between py-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium text-foreground">
-                          Email Notifications
-                        </Label>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Receive email alerts for important updates
-                        </p>
-                      </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium text-foreground cursor-pointer">
+                        In-App Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground leading-snug">
+                        Show notification badges and alerts in the dashboard
+                      </p>
                     </div>
-                    <Switch
-                      checked={profile?.notifyEmail ?? true}
-                      onCheckedChange={(value) =>
-                        handleToggleUserPref("notifyEmail", value)
-                      }
-                      disabled={updateProfile.isPending}
-                    />
                   </div>
+                  <Switch
+                    checked={profile?.notifyInApp ?? true}
+                    onCheckedChange={(value) =>
+                      handleToggleUserPref("notifyInApp", value)
+                    }
+                    disabled={updateProfile.isPending}
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <Separator />
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium text-foreground cursor-pointer">
+                        Email Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground leading-snug">
+                        Receive email alerts for important updates
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={profile?.notifyEmail ?? true}
+                    onCheckedChange={(value) =>
+                      handleToggleUserPref("notifyEmail", value)
+                    }
+                    disabled={updateProfile.isPending}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* =============================================
