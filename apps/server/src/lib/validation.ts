@@ -174,7 +174,7 @@ export const createGradeSchema = z.object({
   minMark: z.number().int().min(0).max(100),
   maxMark: z.number().int().min(0).max(100),
   isPass: z.boolean(),
-  subjectId: z.string().min(1, "Subject is required"),
+  subjectId: z.string().min(1, "Subject is required").optional(),
 });
 
 export const updateGradeSchema = createGradeSchema.partial();

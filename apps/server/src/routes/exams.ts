@@ -59,7 +59,14 @@ exams.post("/grades", async (c) => {
     const data = createGradeSchema.parse(body);
 
     const grade = await db.grade.create({
-      data: { ...data, schoolId },
+      data: { 
+        name: data.name,
+        minMark: data.minMark,
+        maxMark: data.maxMark,
+        isPass: data.isPass,
+        schoolId,
+        ...(data.subjectId && { subjectId: data.subjectId }),
+      },
       include: { subject: { select: { id: true, name: true } } },
     });
     return successResponse(c, { grade }, 201);
