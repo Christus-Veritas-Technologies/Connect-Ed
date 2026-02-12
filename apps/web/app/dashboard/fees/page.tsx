@@ -54,7 +54,6 @@ import {
   StatsCard,
   FilterTabs,
 } from "@/components/dashboard";
-import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -384,10 +383,7 @@ export default function FeesPage() {
           icon={<CheckCircle className="size-6" />}
           color="green"
           meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
-              <div className="text-xs text-muted-foreground mb-4">
-          Covers Term {paymentForm.termNumber}, {paymentForm.termYear}
-        </div>
-        delay={0.1}
+          delay={0.1}
         />
         <StatsCard
           label="Unpaid This Term"
