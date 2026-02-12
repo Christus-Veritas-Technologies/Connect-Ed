@@ -362,59 +362,158 @@ dashboard.get("/teacher", requireAuth, async (c) => {
     }
 
     // Get teacher's assigned classes
-    const classes = await db.class.findMany({
-      where: {
-        schoolId,
-        classTeacherId: userId,
-        isActive: true,
-      },
-      include: {
-        students: {
-          where: { isActive: true },
-          orderBy: { lastName: "asc" },
+    const teacherClassIds = await db.class.findMany({
+      where: { schoolId, classTeacherId: userId, isActive: true },
+      select: { id: true },
+    });
+    const classIds = teacherClassIds.map((c) => c.id);
+
+    // Get teacher's classes teaching (subject assignments)
+    const teacherClassAssignments = await db.teacherClass.findMany({
+      where: { teacherId: userId },
+      select: { classId: true },
+    });
+    const allClassIds = [...new Set([...classIds, ...teacherClassAssignments.map((tc) => tc.classId)])];
+
+    // Parallel queries for stats
+    const [
+      classes,
+      totalStudents,
+      totalFiles,
+      totalExams,
+      examResults,
+      recentExams,
+    ] = await Promise.all([
+      // Full class data
+      db.class.findMany({
+        where: { schoolId, classTeacherId: userId, isActive: true },
+        include: {
+          students: {
+            where: { isActive: true },
+            orderBy: { lastName: "asc" },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              admissionNumber: true,
+              gender: true,
+              email: true,
+              phone: true,
+              dateOfBirth: true,
+              parent: { select: { name: true, email: true, phone: true } },
+            },
+          },
+          subjects: {
+            include: { subject: { select: { id: true, name: true, code: true } } },
+          },
+          _count: { select: { students: { where: { isActive: true } } } },
+        },
+      }),
+
+      // Total students across teacher's classes
+      allClassIds.length > 0
+        ? db.student.count({ where: { schoolId, classId: { in: allClassIds }, isActive: true } })
+        : Promise.resolve(0),
+
+      // Files uploaded by or shared with teacher
+      db.sharedFile.count({
+        where: {
+          schoolId,
+          OR: [
+            { uploadedByUserId: userId },
+            { recipients: { some: { recipientUserId: userId } } },
+          ],
+        },
+      }),
+
+      // Exams created by this teacher
+      db.exam.count({ where: { teacherId: userId } }),
+
+      // All exam results for teacher's exams (for pass rate calculation)
+      db.examResult.findMany({
+        where: { exam: { teacherId: userId } },
+        select: { mark: true, exam: { select: { subjectId: true } } },
+      }),
+
+      // Recent exams with results summary
+      db.exam.findMany({
+        where: { teacherId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: {
+          subject: { select: { name: true, code: true } },
+          class: { select: { name: true } },
+          results: { select: { mark: true } },
+        },
+      }),
+    ]);
+
+    // Calculate average pass rate (mark >= 50 = pass)
+    const totalResults = examResults.length;
+    const passCount = examResults.filter((r) => r.mark >= 50).length;
+    const avgPassRate = totalResults > 0 ? Math.round((passCount / totalResults) * 100) : 0;
+
+    // Best performing students: get all students with exam results for teacher's exams
+    const studentResults = await db.examResult.findMany({
+      where: { exam: { teacherId: userId } },
+      select: {
+        mark: true,
+        student: {
           select: {
             id: true,
             firstName: true,
             lastName: true,
             admissionNumber: true,
-            gender: true,
-            email: true,
-            phone: true,
-            dateOfBirth: true,
-            parent: {
-              select: { name: true, email: true, phone: true },
-            },
+            class: { select: { name: true } },
           },
-        },
-        subjects: {
-          include: {
-            subject: { select: { id: true, name: true, code: true } },
-          },
-        },
-        _count: {
-          select: { students: { where: { isActive: true } } },
         },
       },
     });
 
-    // Calculate stats
-    const totalStudents = classes.reduce((acc, c) => acc + c._count.students, 0);
-    const classesWithCapacity = classes.filter((c) => c.capacity);
-    const avgUtilization = classesWithCapacity.length > 0
-      ? Math.round(
-          classesWithCapacity.reduce(
-            (acc, c) => acc + (c._count.students / (c.capacity || 1)) * 100,
-            0
-          ) / classesWithCapacity.length
-        )
-      : 0;
+    // Group by student, compute average
+    const studentAvgMap = new Map<string, { student: any; total: number; count: number }>();
+    studentResults.forEach((r) => {
+      const existing = studentAvgMap.get(r.student.id);
+      if (existing) {
+        existing.total += r.mark;
+        existing.count += 1;
+      } else {
+        studentAvgMap.set(r.student.id, { student: r.student, total: r.mark, count: 1 });
+      }
+    });
+    const bestStudents = Array.from(studentAvgMap.values())
+      .map((s) => ({
+        id: s.student.id,
+        name: `${s.student.firstName} ${s.student.lastName}`,
+        admissionNumber: s.student.admissionNumber,
+        className: s.student.class?.name || "Unassigned",
+        averageMark: Math.round(s.total / s.count),
+        examsCount: s.count,
+      }))
+      .sort((a, b) => b.averageMark - a.averageMark)
+      .slice(0, 5);
+
+    // Format recent exams
+    const formattedRecentExams = recentExams.map((exam) => {
+      const marks = exam.results.map((r) => r.mark);
+      const avg = marks.length > 0 ? Math.round(marks.reduce((a, b) => a + b, 0) / marks.length) : 0;
+      const passRate = marks.length > 0 ? Math.round((marks.filter((m) => m >= 50).length / marks.length) * 100) : 0;
+      return {
+        id: exam.id,
+        name: exam.name,
+        subject: exam.subject.name,
+        subjectCode: exam.subject.code,
+        className: exam.class.name,
+        paper: exam.paper,
+        studentsCount: marks.length,
+        averageMark: avg,
+        passRate,
+        createdAt: exam.createdAt,
+      };
+    });
 
     // Gender breakdown
-    const genderBreakdown = {
-      male: 0,
-      female: 0,
-      other: 0,
-    };
+    const genderBreakdown = { male: 0, female: 0, other: 0 };
     classes.forEach((c) => {
       c.students.forEach((s) => {
         if (s.gender === "MALE") genderBreakdown.male++;
@@ -427,8 +526,12 @@ dashboard.get("/teacher", requireAuth, async (c) => {
       stats: {
         totalClasses: classes.length,
         totalStudents,
-        avgUtilization,
+        totalFiles,
+        totalExams,
+        avgPassRate,
       },
+      bestStudents,
+      recentExams: formattedRecentExams,
       classes: classes.map((cls) => ({
         id: cls.id,
         name: cls.name,
@@ -468,6 +571,152 @@ dashboard.get("/teacher", requireAuth, async (c) => {
     });
   } catch (error) {
     console.error("Teacher dashboard error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// ============================================
+// MY CLASS (for teachers and students)
+// ============================================
+
+// GET /dashboard/my-class - Get class data for teacher or student
+dashboard.get("/my-class", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const schoolId = c.get("schoolId");
+    const role = c.get("role");
+
+    if (role !== "TEACHER") {
+      return errors.forbidden(c, "Only teachers can access this endpoint");
+    }
+
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "12");
+    const search = c.req.query("search") || "";
+    const gender = c.req.query("gender") || "";
+    const status = c.req.query("status") || "";
+    const classId = c.req.query("classId") || "";
+
+    // Get teacher's class(es) — use specific classId if provided
+    const teacherClasses = await db.class.findMany({
+      where: {
+        schoolId,
+        classTeacherId: userId,
+        isActive: true,
+        ...(classId ? { id: classId } : {}),
+      },
+      select: { id: true, name: true, level: true, capacity: true },
+    });
+
+    if (teacherClasses.length === 0) {
+      return successResponse(c, {
+        classes: [],
+        students: [],
+        stats: { totalStudents: 0, totalMessages: 0, totalParents: 0 },
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
+    const targetClassIds = teacherClasses.map((cl) => cl.id);
+
+    // Build student filter
+    const studentWhere: any = {
+      schoolId,
+      classId: { in: targetClassIds },
+      isActive: true,
+    };
+    if (search) {
+      studentWhere.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { admissionNumber: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (gender) {
+      studentWhere.gender = gender;
+    }
+    if (status) {
+      studentWhere.status = status;
+    }
+
+    // Parallel queries
+    const [total, students, messageCount, parentCount] = await Promise.all([
+      db.student.count({ where: studentWhere }),
+      db.student.findMany({
+        where: studentWhere,
+        orderBy: { lastName: "asc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          admissionNumber: true,
+          gender: true,
+          status: true,
+          email: true,
+          phone: true,
+          dateOfBirth: true,
+          createdAt: true,
+          class: { select: { id: true, name: true } },
+          parent: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      }),
+
+      // Total chat messages across teacher's classes
+      db.chatMessage.count({
+        where: { classId: { in: targetClassIds } },
+      }),
+
+      // Unique parents across all students in teacher's classes
+      db.student.findMany({
+        where: { schoolId, classId: { in: targetClassIds }, isActive: true, parentId: { not: null } },
+        select: { parentId: true },
+        distinct: ["parentId"],
+      }).then((r) => r.length),
+    ]);
+
+    const totalStudents = await db.student.count({
+      where: { schoolId, classId: { in: targetClassIds }, isActive: true },
+    });
+
+    return successResponse(c, {
+      classes: teacherClasses,
+      students: students.map((s) => ({
+        id: s.id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        name: `${s.firstName} ${s.lastName}`,
+        admissionNumber: s.admissionNumber,
+        gender: s.gender,
+        status: s.status,
+        email: s.email,
+        phone: s.phone,
+        dateOfBirth: s.dateOfBirth,
+        createdAt: s.createdAt,
+        className: s.class?.name || "Unassigned",
+        classId: s.class?.id || null,
+        parent: s.parent ? {
+          id: s.parent.id,
+          name: s.parent.name,
+          email: s.parent.email,
+          phone: s.parent.phone,
+        } : null,
+      })),
+      stats: {
+        totalStudents,
+        totalMessages: messageCount,
+        totalParents: parentCount,
+      },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("My class error:", error);
     return errors.internalError(c);
   }
 });
