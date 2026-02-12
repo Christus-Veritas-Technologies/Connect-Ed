@@ -7,8 +7,10 @@ import {
   CheckmarkCircle02Icon,
   ArrowRight01Icon,
   InformationCircleIcon,
+  Logout01Icon,
 } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth-context";
+import { useLogout } from "@/lib/hooks";
 import { api } from "@/lib/api";
 import { PRICING, getPlanAmounts } from "@/lib/pricing";
 import { fmt, type CurrencyCode } from "@/lib/currency";
@@ -27,7 +29,8 @@ const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 type PaymentCurrency = "USD" | "ZAR";
 
 export default function PaymentPage() {
-  const { user, school, logout } = useAuth();
+  const { user, school } = useAuth();
+  const logoutMutation = useLogout();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
@@ -35,6 +38,10 @@ export default function PaymentPage() {
   const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
     school?.currency === "ZAR" ? "ZAR" : "USD"
   );
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const planMeta = PRICING[selectedPlan];
   const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
@@ -89,7 +96,13 @@ export default function PaymentPage() {
       {/* Dev Logout Button */}
       {process.env.NODE_ENV === "development" && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={logout}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <HugeiconsIcon icon={Logout01Icon} size={16} />
             Logout (Dev)
           </Button>
         </div>
