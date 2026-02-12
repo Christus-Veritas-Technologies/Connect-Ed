@@ -27,14 +27,25 @@ studentReports.get("/", requireAuth, async (c) => {
       });
       studentIds = students.map((s) => s.id);
     } else if (role === "TEACHER") {
-      // Teacher sees students from their classes
+      // Teacher sees students from their classes (both as subject teacher and class teacher)
       const teacherClasses = await db.teacherClass.findMany({
         where: { teacherId: userId },
         select: { classId: true },
       });
       const classIds = teacherClasses.map((tc) => tc.classId);
+      
+      // Also get classes where teacher is the class teacher
+      const classTeacherClasses = await db.class.findMany({
+        where: { classTeacherId: userId },
+        select: { id: true },
+      });
+      const classTeacherIds = classTeacherClasses.map((c) => c.id);
+      
+      // Combine both and remove duplicates
+      const allClassIds = [...new Set([...classIds, ...classTeacherIds])];
+      
       const students = await db.student.findMany({
-        where: { schoolId, classId: { in: classIds } },
+        where: { schoolId, classId: { in: allClassIds } },
         select: { id: true },
       });
       studentIds = students.map((s) => s.id);
