@@ -27,7 +27,7 @@ const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 type PaymentCurrency = "USD" | "ZAR";
 
 export default function PaymentPage() {
-  const { user, school } = useAuth();
+  const { user, school, logout } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
   const [isManualPayment, setIsManualPayment] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
@@ -86,6 +86,15 @@ export default function PaymentPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* Dev Logout Button */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={logout}>
+            Logout (Dev)
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
