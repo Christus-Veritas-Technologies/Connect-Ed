@@ -49,7 +49,8 @@ const navSections = [
       { href: "/dashboard", label: "Dashboard", icon: Home03Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
       { href: "/dashboard/announcements", label: "Announcements", icon: Notification01Icon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
       { href: "/dashboard/shared-files", label: "Shared Files", icon: FileAttachmentIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER", "PARENT", "STUDENT"] },
-      { href: "/dashboard/chats", label: "Chats", icon: SentIcon, roles: ["ADMIN", "TEACHER", "PARENT", "STUDENT"], plans: ["GROWTH", "ENTERPRISE"] },
+      { href: "/dashboard/chats", label: "Chats", icon: SentIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
+      { href: "/dashboard/class/chat", label: "Class Chat", icon: SentIcon, roles: ["TEACHER", "PARENT", "STUDENT"], plans: ["GROWTH", "ENTERPRISE"] },
     ],
   },
   {
@@ -58,7 +59,7 @@ const navSections = [
       { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
       { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/receptionists", label: "Receptionists", icon: UserGroupIcon, roles: ["ADMIN"] },
-      { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN", "TEACHER"], plans: ["GROWTH", "ENTERPRISE"] },
+      { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/class", label: "My Class", icon: School01Icon, roles: ["TEACHER", "STUDENT"] },
     ],
   },
