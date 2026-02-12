@@ -23,19 +23,32 @@ export interface DodoPaymentLinkParams {
 export async function createDodoPaymentLink(
   params: DodoPaymentLinkParams,
 ): Promise<DodoPaymentLinkResult> {
+  // Strip any quotes or whitespace from the API key
+  const cleanApiKey = params.apiKey.trim().replace(/^["']|["']$/g, '');
+  
+  console.log("DodoPayments Init Debug:", {
+    originalKeyLength: params.apiKey.length,
+    cleanKeyLength: cleanApiKey.length,
+    originalKeyStart: params.apiKey.substring(0, 20),
+    cleanKeyStart: cleanApiKey.substring(0, 20),
+  });
+
   const dodo = new DodoPayments({ 
-    bearerToken: params.apiKey
+    bearerToken: cleanApiKey
   });
 
   try {
+    console.log("Creating checkout session with:", {
+      productCount: params.productIds.length,
+      products: params.productIds,
+      email: params.email,
+    });
+
     const checkoutSession = await dodo.checkoutSessions.create({
       product_cart: params.productIds.map((product_id) => ({
         product_id,
         quantity: 1,
       })),
-      billing: {
-        country: (params.billingCountry || "ZA") as any,
-      },
       customer: {
         email: params.email,
         name: params.email,
@@ -44,20 +57,25 @@ export async function createDodoPaymentLink(
       return_url: params.returnUrl,
     });
 
-    if (!checkoutSession.payment_link) {
-      throw new Error("DodoPayments did not return a payment link");
+    console.log("Checkout session created successfully:", {
+      hasCheckoutUrl: !!checkoutSession.checkout_url,
+      hasSessionId: !!checkoutSession.session_id,
+    });
+
+    if (!checkoutSession.checkout_url) {
+      throw new Error("DodoPayments did not return a checkout_url");
     }
 
     return {
-      paymentLink: checkoutSession.payment_link,
-      paymentId: checkoutSession.payment_id,
+      paymentLink: checkoutSession.checkout_url,
+      paymentId: checkoutSession.session_id,
     };
   } catch (error) {
-    // Log more details about the error
     console.error("DodoPayments API Error:", {
       error,
       message: error instanceof Error ? error.message : String(error),
-      apiKeyUsed: params.apiKey.substring(0, 10) + "..." + params.apiKey.substring(params.apiKey.length - 10),
+      status: (error as any)?.status,
+      cleanApiKeyStart: cleanApiKey.substring(0, 20),
     });
     throw error;
   }
