@@ -609,7 +609,7 @@ export default function SettingsPage() {
                                 id="gradeMin"
                                 type="number"
                                 min={0}
-                                max={100}
+                                max={99}
                                 value={gradeForm.minMark}
                                 onChange={(e) =>
                                   setGradeForm({ ...gradeForm, minMark: e.target.value })
