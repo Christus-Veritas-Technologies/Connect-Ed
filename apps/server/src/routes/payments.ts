@@ -164,23 +164,31 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
       productIds,
       email: data.email,
       plan: data.planType,
+      schoolId,
+      userId,
     });
 
-    const result = await createDodoPaymentLink({
-      apiKey,
-      productIds,
-      email: data.email || "",
-      metadata: {
-        school_id: schoolId,
-        user_id: userId,
-        plan_type: data.planType,
-        is_signup: isSignup.toString(),
-        has_onetime_fee: hasOneTimeFee.toString(),
-        intermediate_payment_id: intermediatePayment.id,
-      },
-      returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
-      billingCountry: "ZA",
-    });
+    let result;
+    try {
+      result = await createDodoPaymentLink({
+        apiKey,
+        productIds,
+        email: data.email || "",
+        metadata: {
+          school_id: schoolId,
+          user_id: userId,
+          plan_type: data.planType,
+          is_signup: isSignup.toString(),
+          has_onetime_fee: hasOneTimeFee.toString(),
+          intermediate_payment_id: intermediatePayment.id,
+        },
+        returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`,
+        billingCountry: "ZA",
+      });
+    } catch (dodoError) {
+      console.error("DodoPayments API call failed:", dodoError);
+      throw new Error(`DodoPayments API Error: ${dodoError instanceof Error ? dodoError.message : String(dodoError)}`);
+    }
 
     // Save the payment ID as the reference (used by webhook to find this record)
     await db.intermediatePayment.update({
