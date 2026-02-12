@@ -253,12 +253,12 @@ reports.get("/managerial", async (c) => {
     ]);
 
     // Count parents through students
-    const parentEmails = await db.student.findMany({
-      where: { schoolId },
-      select: ({ parentEmail: true } as any),
+    const uniqueParents = await db.student.findMany({
+      where: { schoolId, parentId: { not: null } },
+      select: { parentId: true },
+      distinct: ['parentId'],
     });
-    const uniqueParentEmailsSet = new Set(parentEmails.map((s: any) => s.parentEmail).filter(Boolean));
-    const totalParents = uniqueParentEmailsSet.size;
+    const totalParents = uniqueParents.length;
 
     // Get class distribution
     const classDistribution = await db.class.findMany({
