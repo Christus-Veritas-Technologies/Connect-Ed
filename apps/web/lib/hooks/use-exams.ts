@@ -90,8 +90,8 @@ export function useExams() {
   return useQuery({
     queryKey: examKeys.all,
     queryFn: async () => {
-      const res = await api.get("/exams");
-      return res.data as { exams: Exam[] };
+      const data = await api.get<{ exams: Exam[] }>("/exams");
+      return data;
     },
   });
 }
@@ -100,8 +100,8 @@ export function useExamDetail(id: string) {
   return useQuery({
     queryKey: examKeys.detail(id),
     queryFn: async () => {
-      const res = await api.get(`/exams/${id}`);
-      return res.data as { exam: ExamDetail };
+      const data = await api.get<{ exam: ExamDetail }>(`/exams/${id}`);
+      return data;
     },
     enabled: !!id,
   });
@@ -111,8 +111,8 @@ export function useExamStudents(examId: string) {
   return useQuery({
     queryKey: examKeys.students(examId),
     queryFn: async () => {
-      const res = await api.get(`/exams/${examId}/students`);
-      return res.data as { students: ExamStudent[] };
+      const data = await api.get<{ students: ExamStudent[] }>(`/exams/${examId}/students`);
+      return data;
     },
     enabled: !!examId,
   });
@@ -123,7 +123,7 @@ export function useCreateExam() {
   return useMutation({
     mutationFn: async (data: { name: string; paper: string; subjectId: string; classId: string }) => {
       const res = await api.post("/exams", data);
-      return res.data;
+      return res;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: examKeys.all }),
   });
@@ -134,7 +134,7 @@ export function useDeleteExam() {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await api.delete(`/exams/${id}`);
-      return res.data;
+      return res;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: examKeys.all }),
   });
@@ -145,7 +145,7 @@ export function useEnterExamResults(examId: string) {
   return useMutation({
     mutationFn: async (results: Array<{ studentId: string; mark: number }>) => {
       const res = await api.post(`/exams/${examId}/results`, { results });
-      return res.data;
+      return res;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: examKeys.detail(examId) });
@@ -160,8 +160,8 @@ export function useGrades() {
   return useQuery({
     queryKey: examKeys.grades,
     queryFn: async () => {
-      const res = await api.get("/exams/grades");
-      return res.data as { grades: Grade[] };
+      const data = await api.get<{ grades: Grade[] }>("/exams/grades");
+      return data;
     },
   });
 }
@@ -170,8 +170,8 @@ export function useSubjectGrades(subjectId: string) {
   return useQuery({
     queryKey: examKeys.subjectGrades(subjectId),
     queryFn: async () => {
-      const res = await api.get(`/exams/grades/${subjectId}`);
-      return res.data as { grades: Grade[] };
+      const data = await api.get<{ grades: Grade[] }>(`/exams/grades/${subjectId}`);
+      return data;
     },
     enabled: !!subjectId,
   });
@@ -182,7 +182,7 @@ export function useCreateGrade() {
   return useMutation({
     mutationFn: async (data: { name: string; minMark: number; maxMark: number; isPass: boolean; subjectId: string }) => {
       const res = await api.post("/exams/grades", data);
-      return res.data;
+      return res;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: examKeys.grades }),
   });
@@ -193,7 +193,7 @@ export function useDeleteGrade() {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await api.delete(`/exams/grades/${id}`);
-      return res.data;
+      return res;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: examKeys.grades }),
   });
