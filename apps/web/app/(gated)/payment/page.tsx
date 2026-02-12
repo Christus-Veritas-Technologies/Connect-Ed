@@ -161,20 +161,21 @@ export default function PaymentPage() {
 
                 <CardContent className="space-y-6">
                   <div className="text-center">
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                        {fmt(planAmounts.signupFee, paymentCurrency)}
-                      </span>
-                      <span className={isSelected ? "text-blue-100" : "text-muted-foreground"}>
-                        signup
-                      </span>
+                    <div className="flex items-baseline justify-center gap-2">
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Setup fee (one-time)</div>
+                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
+                          {fmt(planAmounts.signupFee, paymentCurrency)}
+                        </span>
+                      </div>
+                      <span className={`text-lg mt-6 ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>+</span>
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Then monthly</div>
+                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
+                          {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
+                        </span>
+                      </div>
                     </div>
-                    <p className={`text-sm mt-1 ${isSelected
-                      ? "text-blue-100"
-                      : "text-muted-foreground"
-                      }`}>
-                      + {fmt(planAmounts.perTermCost, paymentCurrency)}/term (~{fmt(planAmounts.monthlyEstimate, paymentCurrency)}/mo)
-                    </p>
                   </div>
 
                   <ul className="space-y-3">
@@ -224,11 +225,11 @@ export default function PaymentPage() {
             {!isManualPayment && (
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b">
-                  <span>Signup Fee ({planMeta.name})</span>
+                  <span className="font-medium">Setup Fee ({planMeta.name}) <span className="text-xs text-muted-foreground">one-time</span></span>
                   <span className="font-semibold">{fmt(amounts.signupFee, paymentCurrency)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span>First Month</span>
+                  <span className="font-medium">First Month Charge <span className="text-xs text-muted-foreground">recurring</span></span>
                   <span className="font-semibold">{fmt(amounts.monthlyEstimate, paymentCurrency)}</span>
                 </div>
               </div>
@@ -238,6 +239,12 @@ export default function PaymentPage() {
               <span>Total Due Today</span>
               <span className="text-brand">{fmt(paymentAmount, paymentCurrency)}</span>
             </div>
+
+            {!isManualPayment && (
+              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                ℹ️ Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is <strong>charged only once</strong>. You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month after that.
+              </div>
+            )}
 
             {/* Manual Payment Option */}
             <div className="p-4 rounded-xl bg-muted border border-border">

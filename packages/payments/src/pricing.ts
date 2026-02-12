@@ -2,7 +2,7 @@ import type { PlanType, PlanAmounts, CurrencyCode } from "./types.js";
 
 /** USD pricing (default) - monthly recurring */
 export const PRICING_USD: Record<PlanType, PlanAmounts> = {
-  LITE: { signupFee: 200, perTermCost: 60, monthlyEstimate: 20 },
+  LITE: { signupFee: 400, perTermCost: 120, monthlyEstimate: 20 },
   GROWTH: { signupFee: 750, perTermCost: 225, monthlyEstimate: 75 },
   ENTERPRISE: { signupFee: 1200, perTermCost: 360, monthlyEstimate: 120 },
 };
