@@ -33,8 +33,9 @@ export async function createDodoPaymentLink(
     cleanKeyStart: cleanApiKey.substring(0, 20),
   });
 
+  // Try initializing with apiKey property instead of bearerToken
   const dodo = new DodoPayments({ 
-    bearerToken: cleanApiKey
+    apiKey: cleanApiKey
   });
 
   try {
