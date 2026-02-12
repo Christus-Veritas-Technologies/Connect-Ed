@@ -277,14 +277,13 @@ reports.get("/managerial", async (c) => {
       where: { schoolId, role: "TEACHER" },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        name: true,
         _count: {
           select: {
             classesTeaching: true,
           },
         },
-      } as any
+      },
     });
 
     // Calculate students per teacher for workload
@@ -292,18 +291,18 @@ reports.get("/managerial", async (c) => {
       teacherWorkload.map(async (teacher) => {
         // Fetch classes assigned to this teacher, then count students in those classes
         const classes = await db.class.findMany({
-          where: { schoolId, classTeacherId: teacher.id as unknown as string },
+          where: { schoolId, classTeacherId: teacher.id },
           select: { id: true },
         });
-        const classIds = classes.map((cl: { id: string }) => cl.id) as string[];
+        const classIds = classes.map((cl) => cl.id);
         const totalStudents = classIds.length
           ? await db.student.count({
               where: { schoolId, classId: { in: classIds } },
             })
           : 0;
         return {
-          id: teacher.id as unknown as string,
-          name: `${teacher.firstName} ${teacher.lastName}`,
+          id: teacher.id,
+          name: teacher.name,
           classesAssigned: classes.length,
           studentsTotal: totalStudents,
         };
