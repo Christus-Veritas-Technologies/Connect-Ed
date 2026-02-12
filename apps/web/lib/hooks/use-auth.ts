@@ -96,6 +96,7 @@ export function useSignup() {
 export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { setAuthData } = useAuth();
 
   return useMutation({
     mutationFn: async () => {
@@ -103,12 +104,14 @@ export function useLogout() {
     },
     onSuccess: () => {
       clearAccessToken();
+      setAuthData(null, null, null);
       queryClient.clear();
       router.push("/auth/login");
     },
     onError: () => {
       // Clear anyway on error
       clearAccessToken();
+      setAuthData(null, null, null);
       queryClient.clear();
       router.push("/auth/login");
     },
