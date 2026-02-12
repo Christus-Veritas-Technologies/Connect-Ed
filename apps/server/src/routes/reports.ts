@@ -143,11 +143,10 @@ reports.get("/financial", async (c) => {
           schoolId,
           createdAt: { gte: startDate, lte: endDate },
         },
-        status: "COMPLETED",
       },
       select: {
         createdAt: true,
-        paidAmount: true,
+        amount: true,
       },
     });
 
@@ -157,7 +156,7 @@ reports.get("/financial", async (c) => {
       const monthKey = payment.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       const existing = paymentsByPeriodMap.get(monthKey) || { amount: 0, count: 0 };
       paymentsByPeriodMap.set(monthKey, {
-        amount: existing.amount + payment.paidAmount,
+        amount: existing.amount + payment.amount.toNumber(),
         count: existing.count + 1,
       });
     });
@@ -165,11 +164,11 @@ reports.get("/financial", async (c) => {
       .map(([period, data]) => ({ period, ...data }))
       .sort((a, b) => new Date(a.period).getTime() - new Date(b.period).getTime());
 
-    const totalFeesExpected = allFees._sum.amount || 0;
-    const totalFeesCollected = paidFees._sum.paidAmount || 0;
-    const totalFeesPending = (pendingFees._sum.amount || 0) - (pendingFees._sum.paidAmount || 0);
-    const totalFeesOverdue = (overdueFees._sum.amount || 0) - (overdueFees._sum.paidAmount || 0);
-    const totalExpenses = expenses._sum.amount || 0;
+    const totalFeesExpected = (allFees._sum.amount?.toNumber() || 0);
+    const totalFeesCollected = (paidFees._sum.paidAmount?.toNumber() || 0);
+    const totalFeesPending = (pendingFees._sum.amount?.toNumber() || 0) - (pendingFees._sum.paidAmount?.toNumber() || 0);
+    const totalFeesOverdue = (overdueFees._sum.amount?.toNumber() || 0) - (overdueFees._sum.paidAmount?.toNumber() || 0);
+    const totalExpenses = (expenses._sum.amount?.toNumber() || 0);
     const netIncome = totalFeesCollected - totalExpenses;
     const collectionRate = totalFeesExpected > 0 ? Math.round((totalFeesCollected / totalFeesExpected) * 100) : 0;
 
@@ -254,12 +253,12 @@ reports.get("/managerial", async (c) => {
     ]);
 
     // Count parents through students
-    const uniqueParentEmails = await db.student.findMany({
-      where: { schoolId, parentEmail: { not: null } },
-      select: { parentEmail: true },
-      distinct: ['parentEmail'],
+    const parentEmails = await db.student.findMany({
+      where: { schoolId },
+      select: ({ parentEmail: true } as any),
     });
-    const totalParents = uniqueParentEmails.length;
+    const uniqueParentEmailsSet = new Set(parentEmails.map((s: any) => s.parentEmail).filter(Boolean));
+    const totalParents = uniqueParentEmailsSet.size;
 
     // Get class distribution
     const classDistribution = await db.class.findMany({
@@ -285,25 +284,27 @@ reports.get("/managerial", async (c) => {
             classesTeaching: true,
           },
         },
-      },
-      orderBy: { lastName: "asc" },
+      } as any
     });
 
     // Calculate students per teacher for workload
     const teacherWorkloadWithStudents = await Promise.all(
       teacherWorkload.map(async (teacher) => {
-        const totalStudents = await db.student.count({
-          where: {
-            schoolId,
-            class: {
-              classTeacherId: teacher.id,
-            },
-          },
+        // Fetch classes assigned to this teacher, then count students in those classes
+        const classes = await db.class.findMany({
+          where: { schoolId, classTeacherId: teacher.id as unknown as string },
+          select: { id: true },
         });
+        const classIds = classes.map((cl: { id: string }) => cl.id) as string[];
+        const totalStudents = classIds.length
+          ? await db.student.count({
+              where: { schoolId, classId: { in: classIds } },
+            })
+          : 0;
         return {
-          id: teacher.id,
+          id: teacher.id as unknown as string,
           name: `${teacher.firstName} ${teacher.lastName}`,
-          classesAssigned: teacher._count.classesTeaching,
+          classesAssigned: classes.length,
           studentsTotal: totalStudents,
         };
       })
@@ -391,7 +392,7 @@ reports.post("/export-pdf", async (c) => {
     const { title, subtitle, headers, rows, footer } = body;
 
     if (!title || !headers || !rows) {
-      return errors.badRequest(c, "Missing required fields: title, headers, rows");
+      return c.json({ error: "Missing required fields: title, headers, rows" }, 400);
     }
 
     const schoolId = c.get("schoolId");
