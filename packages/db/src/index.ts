@@ -1,6 +1,6 @@
 // Re-export Prisma client and types
 export { db, PrismaClient } from "./client.js";
-export * from "@prisma/client";
+export { Prisma } from "./generated/prisma/client.js";
 
 // Re-export enums as constants for runtime use
 export const Role = {
