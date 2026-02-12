@@ -23,26 +23,23 @@ export interface DodoPaymentLinkParams {
 export async function createDodoPaymentLink(
   params: DodoPaymentLinkParams,
 ): Promise<DodoPaymentLinkResult> {
-  // Strip any quotes or whitespace from the API key
   const cleanApiKey = params.apiKey.trim().replace(/^["']|["']$/g, '');
   
-  console.log("DodoPayments Init Debug:", {
-    originalKeyLength: params.apiKey.length,
-    cleanKeyLength: cleanApiKey.length,
-    originalKeyStart: params.apiKey.substring(0, 20),
-    cleanKeyStart: cleanApiKey.substring(0, 20),
+  console.log("DodoPayments Test Mode Debug:", {
+    apiKeyLength: cleanApiKey.length,
+    apiKeyStart: cleanApiKey.substring(0, 30),
+    isTestKey: cleanApiKey.includes('test') || cleanApiKey.includes('Test'),
   });
 
-  // Try initializing with apiKey property instead of bearerToken
-  const dodo = new DodoPayments({ 
-    apiKey: cleanApiKey
-  });
+  // Initialize with just the key - let SDK figure out auth
+  const dodo = new DodoPayments(cleanApiKey);
 
   try {
     console.log("Creating checkout session with:", {
       productCount: params.productIds.length,
       products: params.productIds,
       email: params.email,
+      returnUrl: params.returnUrl,
     });
 
     const checkoutSession = await dodo.checkoutSessions.create({
@@ -61,6 +58,7 @@ export async function createDodoPaymentLink(
     console.log("Checkout session created successfully:", {
       hasCheckoutUrl: !!checkoutSession.checkout_url,
       hasSessionId: !!checkoutSession.session_id,
+      checkoutUrl: checkoutSession.checkout_url?.substring(0, 50),
     });
 
     if (!checkoutSession.checkout_url) {
@@ -72,11 +70,11 @@ export async function createDodoPaymentLink(
       paymentId: checkoutSession.session_id,
     };
   } catch (error) {
-    console.error("DodoPayments API Error:", {
-      error,
+    console.error("DodoPayments API Error in Test Mode:", {
       message: error instanceof Error ? error.message : String(error),
       status: (error as any)?.status,
-      cleanApiKeyStart: cleanApiKey.substring(0, 20),
+      statusCode: (error as any)?.statusCode,
+      response: (error as any)?.response,
     });
     throw error;
   }
