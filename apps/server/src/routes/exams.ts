@@ -130,9 +130,20 @@ exams.get("/", async (c) => {
     const role = c.get("role");
     const userId = c.get("userId");
 
-    const where: any = { schoolId };
+    let where: any = { schoolId };
+    
     if (role === "TEACHER") {
-      where.teacherId = userId;
+      // Teacher sees exams they created OR exams for their classes (as class teacher)
+      const classTeacherClasses = await db.class.findMany({
+        where: { classTeacherId: userId },
+        select: { id: true },
+      });
+      const classIds = classTeacherClasses.map((c) => c.id);
+      
+      where.OR = [
+        { teacherId: userId },
+        { classId: { in: classIds } },
+      ];
     }
 
     const examsList = await db.exam.findMany({
