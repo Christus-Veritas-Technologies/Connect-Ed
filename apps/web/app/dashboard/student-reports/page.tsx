@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Send,
   Loader2,
+  PlusCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -201,16 +202,29 @@ export default function StudentReportsPage() {
         onSearchChange={handleSearchChange}
         searchPlaceholder="Search by name, admission number, or class..."
         action={
-          isAdmin && reports.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {/* Quick action for recording marks */}
             <Button
-              variant="outline"
-              onClick={handleBulkSend}
-              disabled={bulkSend.isPending}
+              variant="default"
+              className="gap-2"
+              onClick={() => window.location.href = '/dashboard/exams'}
             >
-              <Send className="size-4" />
-              {bulkSend.isPending ? "Sending..." : "Send All to Parents"}
+              <PlusCircle className="size-4" />
+              Record Marks
             </Button>
-          ) : undefined
+
+            {/* Bulk send for admin */}
+            {isAdmin && reports.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleBulkSend}
+                disabled={bulkSend.isPending}
+              >
+                <Send className="size-4" />
+                {bulkSend.isPending ? "Sending..." : "Send All to Parents"}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -237,6 +251,44 @@ export default function StudentReportsPage() {
             icon={<BarChart3 className="size-6" />}
             color="green"
             delay={0.3}
+          />
+        </div>
+      )}
+
+      {/* Teacher Insights */}
+      {isTeacher && reports.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            label="My Students"
+            value={reports.length}
+            icon={<BarChart3 className="size-6" />}
+            color="brand"
+            delay={0.1}
+          />
+          <StatsCard
+            label="Class Average"
+            value={`${Math.round(
+              reports.reduce((sum, r) => sum + r.overall.averageMark, 0) / reports.length
+            )}%`}
+            icon={<BarChart3 className="size-6" />}
+            color="blue"
+            delay={0.2}
+          />
+          <StatsCard
+            label="Class Pass Rate"
+            value={`${Math.round(
+              reports.reduce((sum, r) => sum + r.overall.passRate, 0) / reports.length
+            )}%`}
+            icon={<BarChart3 className="size-6" />}
+            color="green"
+            delay={0.3}
+          />
+          <StatsCard
+            label="Total Exams"
+            value={reports.reduce((sum, r) => sum + r.overall.totalExams, 0)}
+            icon={<BarChart3 className="size-6" />}
+            color="purple"
+            delay={0.4}
           />
         </div>
       )}
@@ -384,16 +436,23 @@ export default function StudentReportsPage() {
                             {report.student.className}
                           </p>
                         </div>
-                        <Badge
-                          variant={
-                            report.overall.averageMark >= 50
-                              ? "success"
-                              : "destructive"
-                          }
-                          className="text-xs"
-                        >
-                          {report.overall.averageMark}%
-                        </Badge>
+                        <div className="flex flex-col gap-1.5 items-end">
+                          <Badge
+                            variant={
+                              report.overall.averageMark >= 50
+                                ? "success"
+                                : "destructive"
+                            }
+                            className="text-xs"
+                          >
+                            {report.overall.averageMark}%
+                          </Badge>
+                          {report.overall.averageGrade && (
+                            <div className="text-lg font-bold bg-gradient-to-r from-brand to-blue-600 bg-clip-text text-transparent">
+                              {report.overall.averageGrade}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
