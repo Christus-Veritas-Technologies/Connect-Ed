@@ -23,14 +23,12 @@ export interface DodoPaymentLinkParams {
 export async function createDodoPaymentLink(
   params: DodoPaymentLinkParams,
 ): Promise<DodoPaymentLinkResult> {
-  // Try both bearerToken and apiKey as different versions of the SDK may expect different config
   const dodo = new DodoPayments({ 
     bearerToken: params.apiKey
   });
 
   try {
-    const payment = await dodo.payments.create({
-      payment_link: true,
+    const checkoutSession = await dodo.checkoutSessions.create({
       product_cart: params.productIds.map((product_id) => ({
         product_id,
         quantity: 1,
@@ -46,13 +44,13 @@ export async function createDodoPaymentLink(
       return_url: params.returnUrl,
     });
 
-    if (!payment.payment_link) {
+    if (!checkoutSession.payment_link) {
       throw new Error("DodoPayments did not return a payment link");
     }
 
     return {
-      paymentLink: payment.payment_link,
-      paymentId: payment.payment_id,
+      paymentLink: checkoutSession.payment_link,
+      paymentId: checkoutSession.payment_id,
     };
   } catch (error) {
     // Log more details about the error
