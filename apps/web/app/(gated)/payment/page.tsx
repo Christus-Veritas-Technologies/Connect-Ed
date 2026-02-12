@@ -55,29 +55,21 @@ export default function PaymentPage() {
 
     try {
       if (paymentCurrency === "ZAR") {
-        // Use DodoPayments for ZAR
-        const response = await api.post<{
-          checkoutUrl: string;
-          paymentId: string;
-        }>("/payments/create-dodo-checkout", {
-          planType: selectedPlan,
-          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
-          email: user?.email,
-          currency: "ZAR",
-        });
-        window.location.href = response.checkoutUrl;
-      } else {
-        // Use PayNow for USD
-        const response = await api.post<{
-          checkoutUrl: string;
-          intermediatePaymentId: string;
-        }>("/payments/create-checkout", {
-          planType: selectedPlan,
-          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
-          email: user?.email,
-        });
-        window.location.href = response.checkoutUrl;
+        setError("ZAR payments are temporarily unavailable. Please use USD.");
+        setIsPaymentLoading(false);
+        return;
       }
+      
+      // Use PayNow for USD
+      const response = await api.post<{
+        checkoutUrl: string;
+        intermediatePaymentId: string;
+      }>("/payments/create-checkout", {
+        planType: selectedPlan,
+        paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
+        email: user?.email,
+      });
+      window.location.href = response.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
       setIsPaymentLoading(false);
@@ -111,7 +103,7 @@ export default function PaymentPage() {
         >
           <TabsList>
             <TabsTrigger value="USD">USD ($)</TabsTrigger>
-            <TabsTrigger value="ZAR">ZAR (R)</TabsTrigger>
+            <TabsTrigger value="ZAR" disabled>ZAR (R) - Coming Soon</TabsTrigger>
           </TabsList>
         </Tabs>
       </motion.div>
