@@ -169,7 +169,7 @@ export default function MyClassPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" asChild className="gap-2">
-                        <Link href="/dashboard/chats">
+                        <Link href="/dashboard/class/chat">
                             <HugeiconsIcon icon={SentIcon} size={16} />
                             Class Chat
                         </Link>
