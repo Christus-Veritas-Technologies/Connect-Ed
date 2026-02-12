@@ -792,8 +792,8 @@ model Grade {
   updatedAt DateTime @updatedAt
 
   // Relations
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)

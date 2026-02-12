@@ -67,7 +67,6 @@ exams.post("/grades", async (c) => {
         schoolId,
         ...(data.subjectId && { subjectId: data.subjectId }),
       },
-      include: { subject: { select: { id: true, name: true } } },
     });
     return successResponse(c, { grade }, 201);
   } catch (error) {
