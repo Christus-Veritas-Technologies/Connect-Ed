@@ -442,7 +442,7 @@ model Subject {
   grades          Grade[]
   exams           Exam[]
 
-  @@unique([schoolId, name])
+  @@unique([schoolId, name, level])
   @@index([schoolId])
   @@map("subjects")
 }
@@ -688,10 +688,9 @@ model PlanPayment {
   updatedAt DateTime @updatedAt
 
   // Relations
-  schoolId String
+  schoolId String @unique
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@index([schoolId])
   @@map("plan_payments")
 }
 
