@@ -431,8 +431,17 @@ export default function TeacherDetailPage() {
                                   : "hover:bg-muted"
                                   }`}
                               >
-                                <span>{subject.name}</span>
-                                {isSelected && <Check className="size-4" />}
+                                <div className="flex items-center justify-between w-full gap-2">
+                                  <span>{subject.name}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {subject.level && (
+                                      <Badge variant="outline" className="text-[10px] capitalize">
+                                        {subject.level}
+                                      </Badge>
+                                    )}
+                                    {isSelected && <Check className="size-4" />}
+                                  </div>
+                                </div>
                               </button>
                             );
                           })
@@ -455,8 +464,11 @@ export default function TeacherDetailPage() {
                     {teacher.teacherSubjects && teacher.teacherSubjects.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {teacher.teacherSubjects.map((ts) => (
-                          <Badge key={ts.id} variant="secondary">
+                          <Badge key={ts.id} variant="secondary" className="gap-1.5">
                             {ts.subject.name}
+                            {ts.subject.level && (
+                              <span className="text-[10px] opacity-70 capitalize">• {ts.subject.level}</span>
+                            )}
                           </Badge>
                         ))}
                       </div>
