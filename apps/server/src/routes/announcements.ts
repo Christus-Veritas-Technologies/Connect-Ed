@@ -160,11 +160,12 @@ announcements.delete("/:id", requireAuth, async (c) => {
   }
 });
 
-// POST /announcements/:id/comments - Add comment (staff)
+// POST /announcements/:id/comments - Add comment (staff and students)
 announcements.post("/:id/comments", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const userId = c.get("userId");
+    const role = c.get("role");
     const id = c.req.param("id");
 
     const body = await c.req.json();
@@ -180,12 +181,24 @@ announcements.post("/:id/comments", requireAuth, async (c) => {
       return errors.notFound(c, "Announcement not found");
     }
 
+    // Build comment data based on user role
+    const commentData: any = {
+      content: parsed.data.content,
+      announcementId: id,
+    };
+
+    // Set the appropriate commenter field based on role
+    if (role === ("STUDENT" as any)) {
+      commentData.studentId = userId;
+    } else if (role === "PARENT") {
+      commentData.parentId = userId;
+    } else {
+      // Admin, Teacher, Receptionist
+      commentData.userId = userId;
+    }
+
     const comment = await db.announcementComment.create({
-      data: {
-        content: parsed.data.content,
-        announcementId: id,
-        userId,
-      },
+      data: commentData,
       include: {
         user: { select: { id: true, name: true, email: true, role: true } },
         parent: { select: { id: true, name: true, email: true } },

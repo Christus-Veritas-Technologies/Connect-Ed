@@ -1014,7 +1014,7 @@ dashboard.get("/student", requireAuth, async (c) => {
         fees: {
           orderBy: { dueDate: "desc" },
           include: {
-            feePayments: {
+            payments: {
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,

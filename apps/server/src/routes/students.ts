@@ -7,6 +7,7 @@ import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { syncChatMembers } from "../lib/chat-sync";
 
 const students = new Hono();
 
@@ -238,6 +239,11 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     const student = result;
 
+    // Sync chat members if student has a class
+    if (student.classId) {
+      await syncChatMembers(student.id);
+    }
+
     // Send notifications (preference-aware)
     const notifications = [];
 
@@ -369,6 +375,9 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
       }
     }
 
+    // Track if class changed for chat sync
+    const classChanged = data.classId !== undefined && data.classId !== existing.classId;
+
     // Update student
     const student = await db.student.update({
       where: { id },
@@ -381,6 +390,11 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
         parent: { select: { id: true, name: true } },
       },
     });
+
+    // Sync chat members if class changed
+    if (classChanged) {
+      await syncChatMembers(id);
+    }
 
     return successResponse(c, { student });
   } catch (error) {
