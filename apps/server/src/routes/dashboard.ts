@@ -597,8 +597,9 @@ dashboard.get("/my-class", requireAuth, async (c) => {
     const status = c.req.query("status") || "";
     const classId = c.req.query("classId") || "";
 
-    // Get teacher's class(es) — use specific classId if provided
-    const teacherClasses = await db.class.findMany({
+    // Get teacher's class(es) — both as class teacher AND as subject teacher
+    // First, get classes where teacher is the class teacher
+    const classTeacherClasses = await db.class.findMany({
       where: {
         schoolId,
         classTeacherId: userId,
@@ -607,6 +608,32 @@ dashboard.get("/my-class", requireAuth, async (c) => {
       },
       select: { id: true, name: true, level: true, capacity: true },
     });
+
+    // Also get classes where teacher is a subject teacher
+    const teacherClassAssignments = await db.teacherClass.findMany({
+      where: {
+        teacherId: userId,
+        class: { schoolId, isActive: true, ...(classId ? { id: classId } : {}) },
+      },
+      select: {
+        class: { select: { id: true, name: true, level: true, capacity: true } },
+      },
+    });
+
+    // Combine and deduplicate classes
+    const classMap = new Map<string, any>();
+    
+    classTeacherClasses.forEach((cl) => {
+      classMap.set(cl.id, cl);
+    });
+    
+    teacherClassAssignments.forEach(({ class: cl }) => {
+      if (!classMap.has(cl.id)) {
+        classMap.set(cl.id, cl);
+      }
+    });
+
+    const teacherClasses = Array.from(classMap.values());
 
     if (teacherClasses.length === 0) {
       return successResponse(c, {
