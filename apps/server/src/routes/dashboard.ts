@@ -1089,7 +1089,7 @@ dashboard.get("/student", requireAuth, async (c) => {
         balance: fee.amount - fee.paidAmount,
         dueDate: fee.dueDate,
         status: fee.status,
-        payments: fee.feePayments.map((p) => ({
+        payments: fee.payments.map((p) => ({
           id: p.id,
           amount: p.amount,
           method: p.paymentMethod,

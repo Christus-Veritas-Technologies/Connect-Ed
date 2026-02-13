@@ -241,7 +241,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
 
     // Sync chat members if student has a class
     if (student.classId) {
-      await syncChatMembers(student.id);
+      await syncChatMembers(student.classId);
     }
 
     // Send notifications (preference-aware)
@@ -377,6 +377,8 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
 
     // Track if class changed for chat sync
     const classChanged = data.classId !== undefined && data.classId !== existing.classId;
+    const oldClassId = existing.classId;
+    const newClassId = data.classId;
 
     // Update student
     const student = await db.student.update({
@@ -393,7 +395,14 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
 
     // Sync chat members if class changed
     if (classChanged) {
-      await syncChatMembers(id);
+      // Sync old class to remove the student
+      if (oldClassId) {
+        await syncChatMembers(oldClassId);
+      }
+      // Sync new class to add the student
+      if (newClassId) {
+        await syncChatMembers(newClassId);
+      }
     }
 
     return successResponse(c, { student });
