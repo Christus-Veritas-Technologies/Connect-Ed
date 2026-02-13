@@ -32,6 +32,7 @@ interface StudentReportPayload {
   subjects: SubjectReportData[];
   overall: {
     averageMark: number;
+    averageGrade: string | null;
     totalSubjects: number;
     totalExams: number;
     passRate: number;
@@ -176,6 +177,12 @@ export async function computeStudentReport(
   const overallPassRate =
     totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
 
+  // Calculate overall grade based on average mark
+  // Find any grade that matches the overall average
+  const overallGrade = allGrades.find(
+    (g) => overallAverage >= g.minMark && overallAverage <= g.maxMark
+  );
+
   const sortedSubjects = [...subjects].sort(
     (a, b) => a.averageMark - b.averageMark
   );
@@ -190,6 +197,7 @@ export async function computeStudentReport(
     subjects,
     overall: {
       averageMark: overallAverage,
+      averageGrade: overallGrade?.name || null,
       totalSubjects: subjects.length,
       totalExams,
       passRate: overallPassRate,
