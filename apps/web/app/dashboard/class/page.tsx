@@ -167,10 +167,10 @@ function StudentMyClass() {
 
     const filteredClassmates = search
         ? data.classmates.filter(
-              (c) =>
-                  c.name.toLowerCase().includes(search.toLowerCase()) ||
-                  c.admissionNumber.toLowerCase().includes(search.toLowerCase())
-          )
+            (c) =>
+                c.name.toLowerCase().includes(search.toLowerCase()) ||
+                c.admissionNumber.toLowerCase().includes(search.toLowerCase())
+        )
         : data.classmates;
 
     return (
