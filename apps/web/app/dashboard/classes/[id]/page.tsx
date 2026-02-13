@@ -493,7 +493,14 @@ export default function ClassDetailPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm truncate">{ta.teacher.name}</p>
                           {ta.subject && (
-                            <p className="text-xs text-muted-foreground">{ta.subject.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <p className="text-xs text-muted-foreground">{ta.subject.name}</p>
+                              {ta.subject.level && (
+                                <Badge variant="outline" className="text-[9px] capitalize">
+                                  {ta.subject.level}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
