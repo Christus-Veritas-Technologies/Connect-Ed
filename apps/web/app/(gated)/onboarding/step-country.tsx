@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { useOnboarding } from "./onboarding-context";
 import { FormActions } from "./components";
 
@@ -21,7 +19,8 @@ export function StepCountry({ onNext, onSkip }: StepCountryProps) {
     const { data, updateCountry } = useOnboarding();
     const [selected, setSelected] = useState<string>(data.country || "");
 
-    const handleContinue = () => {
+    const handleContinue = (e: React.FormEvent) => {
+        e.preventDefault();
         if (selected) {
             const match = COUNTRIES.find((c) => c.code === selected);
             updateCountry(selected, match?.currency || "USD");
@@ -30,7 +29,7 @@ export function StepCountry({ onNext, onSkip }: StepCountryProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <form onSubmit={handleContinue} className="space-y-6">
             <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -79,6 +78,6 @@ export function StepCountry({ onNext, onSkip }: StepCountryProps) {
                 onSkip={onSkip}
                 showSkip={!!onSkip}
             />
-        </div>
+        </form>
     );
 }
