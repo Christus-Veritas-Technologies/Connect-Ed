@@ -61,6 +61,8 @@ const navSections = [
       { href: "/dashboard/receptionists", label: "Receptionists", icon: UserGroupIcon, roles: ["ADMIN"] },
       { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/class", label: "My Class", icon: School01Icon, roles: ["TEACHER", "STUDENT"] },
+      { href: "/dashboard/my-child", label: "My Child", icon: UserGroupIcon, roles: ["PARENT"] },
+      { href: "/dashboard/my-child-class", label: "My Child's Class", icon: School01Icon, roles: ["PARENT"] },
     ],
   },
   {
@@ -76,6 +78,7 @@ const navSections = [
     label: "Finance",
     items: [
       { href: "/dashboard/fees", label: "Fees", icon: Money01Icon, roles: ["ADMIN", "RECEPTIONIST"] },
+      { href: "/dashboard/fee-payments", label: "Fee Payments", icon: Money01Icon, roles: ["PARENT"] },
       { href: "/dashboard/reports", label: "Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "RECEPTIONIST"] },
     ],
   },

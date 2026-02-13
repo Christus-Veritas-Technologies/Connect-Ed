@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "@repo/db";
-import { requireAuth, requireParentAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 import { successResponse, errors, errorResponse } from "../lib/response";
 import { computeStudentReport, sendReportToParent, sendReportsToParentsBulk } from "../lib/report-dispatch";
 
@@ -106,11 +106,14 @@ studentReports.get("/:studentId", requireAuth, async (c) => {
 // ============================================
 
 // GET /student-reports/parent/my-children - Parent views their children's reports
-studentReports.get("/parent/my-children", requireParentAuth, async (c) => {
+studentReports.get("/parent/my-children", requireAuth, async (c) => {
   try {
-    const parentId = c.get("parentId");
-    const parent = c.get("parent");
-    const schoolId = parent.schoolId;
+    const role = c.get("role");
+    if (role !== ("PARENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const parentId = c.get("userId");
+    const schoolId = c.get("schoolId");
 
     const children = await db.student.findMany({
       where: { parentId, schoolId },
@@ -137,7 +140,7 @@ studentReports.get("/student/my-report", requireAuth, async (c) => {
   try {
     const role = c.get("role");
     if (role !== ("STUDENT" as any)) {
-      return errors.forbidden(c, "Only students can access this endpoint");
+      return errors.forbidden(c);
     }
     const studentId = c.get("userId");
     const schoolId = c.get("schoolId");

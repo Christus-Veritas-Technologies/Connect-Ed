@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db, FeeStatus } from "@repo/db";
-import { requireAuth, requireParentAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 
 const dashboard = new Hono();
@@ -358,7 +358,7 @@ dashboard.get("/teacher", requireAuth, async (c) => {
 
     // Only teachers can access this
     if (role !== "TEACHER") {
-      return errors.forbidden(c, "Only teachers can access this dashboard");
+      return errors.forbidden(c);
     }
 
     // Get teacher's assigned classes
@@ -587,7 +587,7 @@ dashboard.get("/my-class", requireAuth, async (c) => {
     const role = c.get("role");
 
     if (role !== "TEACHER") {
-      return errors.forbidden(c, "Only teachers can access this endpoint");
+      return errors.forbidden(c);
     }
 
     const page = parseInt(c.req.query("page") || "1");
@@ -753,7 +753,7 @@ dashboard.get("/my-class/student", requireAuth, async (c) => {
   try {
     const role = c.get("role");
     if (role !== ("STUDENT" as any)) {
-      return errors.forbidden(c, "Only students can access this endpoint");
+      return errors.forbidden(c);
     }
     const studentId = c.get("userId");
     const schoolId = c.get("schoolId");
@@ -849,12 +849,16 @@ dashboard.get("/my-class/student", requireAuth, async (c) => {
 // ============================================
 
 // GET /dashboard/parent - Get parent dashboard data
-dashboard.get("/parent", requireParentAuth, async (c) => {
+dashboard.get("/parent", requireAuth, async (c) => {
   try {
-    const parentId = c.get("parentId");
+    const role = c.get("role");
+    if (role !== ("PARENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const parentId = c.get("userId");
     const schoolId = c.get("schoolId");
 
-    // Get parent with children and their fees
+    // Get parent with children, fees, and exam results
     const parent = await db.parent.findUnique({
       where: { id: parentId },
       include: {
@@ -864,11 +868,19 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
         children: {
           where: { isActive: true },
           include: {
-            class: { select: { id: true, name: true, level: true } },
+            class: {
+              select: {
+                id: true,
+                name: true,
+                level: true,
+                classTeacher: { select: { name: true, email: true } },
+              },
+            },
             fees: {
               orderBy: { dueDate: "desc" },
+              take: 5,
               include: {
-                feePayments: {
+                payments: {
                   orderBy: { createdAt: "desc" },
                   select: {
                     id: true,
@@ -876,6 +888,17 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
                     paymentMethod: true,
                     reference: true,
                     createdAt: true,
+                  },
+                },
+              },
+            },
+            examResults: {
+              orderBy: { createdAt: "desc" },
+              take: 10,
+              include: {
+                exam: {
+                  include: {
+                    subject: { select: { id: true, name: true, code: true } },
                   },
                 },
               },
@@ -889,29 +912,20 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
       return errors.notFound(c, "Parent not found");
     }
 
+    // Get grades for pass/fail determination
+    const allGrades = await db.grade.findMany({ where: { schoolId } });
+
     // Calculate summary stats
     let totalFees = 0;
     let totalPaid = 0;
     let overdueFees = 0;
-    const upcomingDueDates: { studentName: string; amount: number; dueDate: Date }[] = [];
 
     parent.children.forEach((child) => {
       child.fees.forEach((fee) => {
-        totalFees += fee.amount;
-        totalPaid += fee.paidAmount;
+        totalFees += Number(fee.amount);
+        totalPaid += Number(fee.paidAmount);
         if (fee.status === FeeStatus.OVERDUE) {
-          overdueFees += fee.amount - fee.paidAmount;
-        }
-        // Upcoming dues (next 30 days)
-        const dueDate = new Date(fee.dueDate);
-        const now = new Date();
-        const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        if (dueDate > now && dueDate <= thirtyDaysLater && fee.status !== FeeStatus.PAID) {
-          upcomingDueDates.push({
-            studentName: `${child.firstName} ${child.lastName}`,
-            amount: fee.amount - fee.paidAmount,
-            dueDate: fee.dueDate,
-          });
+          overdueFees += Number(fee.amount) - Number(fee.paidAmount);
         }
       });
     });
@@ -934,15 +948,47 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
         totalBalance: totalFees - totalPaid,
         overdueFees,
       },
-      upcomingDueDates: upcomingDueDates.sort((a, b) => 
-        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-      ).slice(0, 5),
       children: parent.children.map((child) => {
-        const childTotalFees = child.fees.reduce((acc, f) => acc + f.amount, 0);
-        const childTotalPaid = child.fees.reduce((acc, f) => acc + f.paidAmount, 0);
+        const childTotalFees = child.fees.reduce((acc, f) => acc + Number(f.amount), 0);
+        const childTotalPaid = child.fees.reduce((acc, f) => acc + Number(f.paidAmount), 0);
         const childOverdue = child.fees
           .filter((f) => f.status === FeeStatus.OVERDUE)
-          .reduce((acc, f) => acc + (f.amount - f.paidAmount), 0);
+          .reduce((acc, f) => acc + Number(f.amount) - Number(f.paidAmount), 0);
+
+        // Latest exam per subject for this child
+        const latestExamsBySubject = new Map<string, (typeof child.examResults)[0]>();
+        for (const result of child.examResults) {
+          const subId = result.exam.subjectId;
+          if (!latestExamsBySubject.has(subId)) {
+            latestExamsBySubject.set(subId, result);
+          }
+        }
+
+        const latestExams = Array.from(latestExamsBySubject.values()).map((result) => {
+          const subjectGrades = allGrades.filter((g) => g.subjectId === result.exam.subjectId || g.subjectId === null);
+          const grade = subjectGrades.find((g) => result.mark >= g.minMark && result.mark <= g.maxMark);
+          const isPass = grade ? grade.isPass : result.mark >= 50;
+          let gradeName = grade?.name || "N/A";
+          if (!grade) {
+            if (result.mark >= 90) gradeName = "A";
+            else if (result.mark >= 80) gradeName = "B";
+            else if (result.mark >= 70) gradeName = "C";
+            else if (result.mark >= 60) gradeName = "D";
+            else if (result.mark >= 50) gradeName = "E";
+            else gradeName = "F";
+          }
+          return {
+            subjectName: result.exam.subject.name,
+            examName: result.exam.name,
+            mark: result.mark,
+            grade: gradeName,
+            isPass,
+          };
+        });
+
+        const overallAverage = latestExams.length > 0
+          ? Math.round(latestExams.reduce((sum, e) => sum + e.mark, 0) / latestExams.length)
+          : 0;
 
         return {
           id: child.id,
@@ -955,27 +1001,157 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
           totalPaid: childTotalPaid,
           balance: childTotalFees - childTotalPaid,
           overdueFees: childOverdue,
+          overallAverage,
+          latestExams,
           fees: child.fees.map((fee) => ({
             id: fee.id,
             description: fee.description,
-            amount: fee.amount,
-            paidAmount: fee.paidAmount,
-            balance: fee.amount - fee.paidAmount,
+            amount: Number(fee.amount),
+            paidAmount: Number(fee.paidAmount),
+            balance: Number(fee.amount) - Number(fee.paidAmount),
             dueDate: fee.dueDate,
             status: fee.status,
-            payments: fee.feePayments.map((p) => ({
-              id: p.id,
-              amount: p.amount,
-              method: p.paymentMethod,
-              reference: p.reference,
-              date: p.createdAt,
-            })),
           })),
         };
       }),
     });
   } catch (error) {
     console.error("Parent dashboard error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// GET /dashboard/my-child-class - Get child's class info for parent
+dashboard.get("/my-child-class", requireAuth, async (c) => {
+  try {
+    const role = c.get("role");
+    if (role !== ("PARENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const parentId = c.get("userId");
+    const schoolId = c.get("schoolId");
+
+    const children = await db.student.findMany({
+      where: { parentId, schoolId, isActive: true },
+      include: {
+        class: {
+          include: {
+            classTeacher: { select: { id: true, name: true, email: true, phone: true } },
+            subjects: {
+              include: {
+                subject: { select: { id: true, name: true, code: true } },
+                teacher: { select: { id: true, name: true, email: true } },
+              },
+            },
+            students: {
+              where: { isActive: true },
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                admissionNumber: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return successResponse(c, {
+      children: children.map((child) => ({
+        id: child.id,
+        name: `${child.firstName} ${child.lastName}`,
+        admissionNumber: child.admissionNumber,
+        class: child.class ? {
+          id: child.class.id,
+          name: child.class.name,
+          level: child.class.level,
+          teacher: child.class.classTeacher,
+          subjects: child.class.subjects.map((s) => ({
+            id: s.subject.id,
+            name: s.subject.name,
+            code: s.subject.code,
+            teacher: s.teacher ? { id: s.teacher.id, name: s.teacher.name } : null,
+          })),
+          totalStudents: child.class.students.length,
+        } : null,
+      })),
+    });
+  } catch (error) {
+    console.error("Parent my-child-class error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// GET /dashboard/fee-payments - Get all fee info for parent's children (view-only)
+dashboard.get("/fee-payments", requireAuth, async (c) => {
+  try {
+    const role = c.get("role");
+    if (role !== ("PARENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const parentId = c.get("userId");
+    const schoolId = c.get("schoolId");
+
+    const children = await db.student.findMany({
+      where: { parentId, schoolId, isActive: true },
+      include: {
+        fees: {
+          orderBy: { dueDate: "desc" },
+          include: {
+            payments: {
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                amount: true,
+                paymentMethod: true,
+                reference: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let totalFees = 0;
+    let totalPaid = 0;
+    let overdueFees = 0;
+
+    const allFees = children.flatMap((child) =>
+      child.fees.map((fee) => {
+        totalFees += Number(fee.amount);
+        totalPaid += Number(fee.paidAmount);
+        if (fee.status === FeeStatus.OVERDUE) {
+          overdueFees += Number(fee.amount) - Number(fee.paidAmount);
+        }
+        return {
+          id: fee.id,
+          childName: `${child.firstName} ${child.lastName}`,
+          childId: child.id,
+          description: fee.description,
+          amount: Number(fee.amount),
+          paidAmount: Number(fee.paidAmount),
+          balance: Number(fee.amount) - Number(fee.paidAmount),
+          dueDate: fee.dueDate,
+          status: fee.status,
+          payments: fee.payments.map((p) => ({
+            id: p.id,
+            amount: Number(p.amount),
+            method: p.paymentMethod,
+            reference: p.reference,
+            date: p.createdAt,
+          })),
+        };
+      })
+    );
+
+    return successResponse(c, {
+      summary: { totalFees, totalPaid, balance: totalFees - totalPaid, overdueFees },
+      fees: allFees,
+    });
+  } catch (error) {
+    console.error("Parent fee-payments error:", error);
     return errors.internalError(c);
   }
 });
@@ -989,7 +1165,7 @@ dashboard.get("/student", requireAuth, async (c) => {
   try {
     const role = c.get("role");
     if (role !== ("STUDENT" as any)) {
-      return errors.forbidden(c, "Only students can access this dashboard");
+      return errors.forbidden(c);
     }
     const studentId = c.get("userId");
     const schoolId = c.get("schoolId");
