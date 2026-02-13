@@ -945,12 +945,21 @@ export default function TeachersPage() {
                               : "hover:bg-muted"
                             }`}
                         >
-                          <span>{subject.name}</span>
-                          {isSelected && (
-                            <Badge variant="secondary" className="text-xs">
-                              Selected
-                            </Badge>
-                          )}
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{subject.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              {subject.level && (
+                                <Badge variant="outline" className="text-[10px] capitalize">
+                                  {subject.level}
+                                </Badge>
+                              )}
+                              {isSelected && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Selected
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </button>
                       );
                     })
