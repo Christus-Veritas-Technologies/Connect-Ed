@@ -10,7 +10,6 @@ import {
   School01Icon,
   TeacherIcon,
   ChartHistogramIcon,
-  Settings02Icon,
   Logout01Icon,
   Notification01Icon,
   BookOpen01Icon,
@@ -83,7 +82,7 @@ const navSections = [
   {
     label: "System",
     items: [
-      { href: "/dashboard/settings", label: "Settings", icon: Settings02Icon, roles: ["ADMIN", "STUDENT"] },
+      // Settings removed from student/teacher/parent sidebars
     ],
   },
 ];
