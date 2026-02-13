@@ -941,8 +941,8 @@ export default function TeachersPage() {
                             });
                           }}
                           className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
-                              ? "bg-brand/10 text-brand border border-brand/30"
-                              : "hover:bg-muted"
+                            ? "bg-brand/10 text-brand border border-brand/30"
+                            : "hover:bg-muted"
                             }`}
                         >
                           <div className="flex items-center justify-between w-full gap-2">
@@ -1012,8 +1012,8 @@ export default function TeachersPage() {
                               setClassSearch("");
                             }}
                             className={`w-full px-3 py-2 text-left transition-colors flex items-center justify-between ${isSelected
-                                ? "bg-brand/10"
-                                : "hover:bg-muted cursor-pointer"
+                              ? "bg-brand/10"
+                              : "hover:bg-muted cursor-pointer"
                               }`}
                           >
                             <span className="text-sm">
