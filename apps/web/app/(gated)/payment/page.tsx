@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -18,69 +18,95 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Plan } from "@repo/db";
-import { Checkbox } from "@/components/ui/checkbox";
+
+type Plan = "LITE" | "GROWTH" | "ENTERPRISE";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 type PaymentCurrency = "USD" | "ZAR";
 
+interface PlanStatus {
+  monthlyPaymentPaid: boolean;
+  onceOffPaymentPaid: boolean;
+  paid: boolean;
+}
+
 export default function PaymentPage() {
   const { user, school } = useAuth();
   const logoutMutation = useLogout();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
-  const [isManualPayment, setIsManualPayment] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
     school?.currency === "ZAR" ? "ZAR" : "USD"
   );
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
+  // Fetch plan payment status on mount
+  useEffect(() => {
+    const fetchPlanStatus = async () => {
+      try {
+        const data = await api.get<PlanStatus>("/payments/plan-status");
+        setPlanStatus(data);
+      } catch {
+        // No plan payment record yet — everything is unpaid
+        setPlanStatus({ monthlyPaymentPaid: false, onceOffPaymentPaid: false, paid: false });
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+    fetchPlanStatus();
+  }, []);
+
   const planMeta = PRICING[selectedPlan];
   const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
 
-  // If manual payment, only charge monthly. Otherwise, charge signup + monthly
-  const paymentAmount = isManualPayment
-    ? amounts.monthlyEstimate
-    : amounts.signupFee + amounts.monthlyEstimate;
+  // Determine what's already paid
+  const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
+  const setupAlreadyPaid = planStatus?.onceOffPaymentPaid ?? false;
 
-  const handleManualPaymentToggle = (checked: boolean) => {
-    setIsManualPayment(checked);
-    setError("");
+  // Calculate remaining amounts
+  const setupFeeRemaining = setupAlreadyPaid ? 0 : amounts.signupFee;
+  const monthlyRemaining = monthlyAlreadyPaid ? 0 : amounts.monthlyEstimate;
+  const totalRemaining = setupFeeRemaining + monthlyRemaining;
+
+  // Determine the payment type the server should use
+  const getPaymentType = (): string => {
+    if (monthlyAlreadyPaid && !setupAlreadyPaid) return "SETUP_ONLY";
+    return "FULL";
   };
 
-  const handlePayOnline = async () => {
+  const handlePayOnline = async (monthlyOnly = false) => {
     setIsPaymentLoading(true);
     setError("");
 
+    const paymentType = monthlyOnly ? "MONTHLY_ONLY" : getPaymentType();
+
     try {
       if (paymentCurrency === "ZAR") {
-        // Use DodoPayments for ZAR
         const response = await api.post<{
           checkoutUrl: string;
           paymentId: string;
         }>("/payments/create-dodo-checkout", {
           planType: selectedPlan,
-          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
+          paymentType,
           email: user?.email,
           currency: "ZAR",
         });
         window.location.href = response.checkoutUrl;
       } else {
-        // Use PayNow for USD
         const response = await api.post<{
           checkoutUrl: string;
           intermediatePaymentId: string;
         }>("/payments/create-checkout", {
           planType: selectedPlan,
-          paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
+          paymentType,
           email: user?.email,
         });
         window.location.href = response.checkoutUrl;
@@ -91,14 +117,25 @@ export default function PaymentPage() {
     }
   };
 
+  if (isLoadingStatus) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="size-10 rounded-full border-4 border-brand border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading payment status...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Dev Logout Button */}
       {process.env.NODE_ENV === "development" && (
         <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleLogout}
             className="text-muted-foreground hover:text-destructive"
           >
@@ -114,9 +151,13 @@ export default function PaymentPage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-bold">Choose Your Plan</h1>
+        <h1 className="text-3xl font-bold">
+          {monthlyAlreadyPaid ? "Complete Your Setup" : "Choose Your Plan"}
+        </h1>
         <p className="text-muted-foreground mt-2">
-          Select the plan that best fits your school&apos;s needs
+          {monthlyAlreadyPaid
+            ? "Your first month\u2019s fee has been paid. Complete the one-time setup fee to get started."
+            : "Select the plan that best fits your school\u2019s needs"}
         </p>
       </motion.div>
 
@@ -243,71 +284,108 @@ export default function PaymentPage() {
         <Card className="max-w-xl mx-auto">
           <CardHeader>
             <CardTitle>Payment Summary</CardTitle>
+            {monthlyAlreadyPaid && !setupAlreadyPaid && (
+              <Alert className="mt-3 border-success/30 bg-success/5">
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-success" />
+                <AlertDescription className="text-success">
+                  Your first month&apos;s fee has been confirmed! Only the setup fee remains.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
-            {!isManualPayment && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="font-medium">Setup Fee ({planMeta.name}) <span className="text-xs text-muted-foreground">one-time</span></span>
+            {/* Line items */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="font-medium">
+                  Setup Fee ({planMeta.name}){" "}
+                  <span className="text-xs text-muted-foreground">one-time</span>
+                </span>
+                {setupAlreadyPaid ? (
+                  <Badge variant="outline" className="text-success border-success/40">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} className="mr-1" />
+                    Paid
+                  </Badge>
+                ) : (
                   <span className="font-semibold">{fmt(amounts.signupFee, paymentCurrency)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="font-medium">First Month Charge <span className="text-xs text-muted-foreground">recurring</span></span>
+                )}
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="font-medium">
+                  First Month Charge{" "}
+                  <span className="text-xs text-muted-foreground">recurring</span>
+                </span>
+                {monthlyAlreadyPaid ? (
+                  <Badge variant="outline" className="text-success border-success/40">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} className="mr-1" />
+                    Paid
+                  </Badge>
+                ) : (
                   <span className="font-semibold">{fmt(amounts.monthlyEstimate, paymentCurrency)}</span>
-                </div>
+                )}
+              </div>
+            </div>
+
+            {/* Total */}
+            {totalRemaining > 0 && (
+              <div className="flex justify-between py-2 text-lg font-bold">
+                <span>Total Due Today</span>
+                <span className="text-brand">{fmt(totalRemaining, paymentCurrency)}</span>
               </div>
             )}
 
-            <div className="flex justify-between py-2 text-lg font-bold">
-              <span>Total Due Today</span>
-              <span className="text-brand">{fmt(paymentAmount, paymentCurrency)}</span>
-            </div>
-
-            {!isManualPayment && (
+            {/* Info box — show when both are unpaid */}
+            {!monthlyAlreadyPaid && !setupAlreadyPaid && (
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded">
                 <HugeiconsIcon
                   icon={InformationCircleIcon}
                   size={16}
                   className="shrink-0 mt-0.5"
                 />
-                <span><strong>Setup fee:</strong> Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is charged only once. You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month after that.</span>
+                <span>
+                  <strong>Setup fee:</strong> Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is
+                  charged only once. You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every
+                  month after that.
+                </span>
               </div>
             )}
 
-            {/* Manual Payment Option */}
-            <div className="p-4 rounded-xl bg-muted border border-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="manual-payment" className="font-medium cursor-pointer">
-                    Already paid signup fee?
-                  </Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {isManualPayment
-                      ? "Great! Pay only the monthly fee online"
-                      : "Toggle this and pay only the monthly fee"}
-                  </p>
-                </div>
-                <Switch
-                  id="manual-payment"
-                  checked={isManualPayment}
-                  onCheckedChange={handleManualPaymentToggle}
-                />
-              </div>
-            </div>
+            {/* Payment buttons */}
+            {totalRemaining > 0 ? (
+              <div className="space-y-3">
+                <Button
+                  className="w-full"
+                  size="lg"
+                  loading={isPaymentLoading}
+                  onClick={() => handlePayOnline(false)}
+                >
+                  {!isPaymentLoading && (
+                    <>
+                      Pay {fmt(totalRemaining, paymentCurrency)} Now
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
+                    </>
+                  )}
+                </Button>
 
-            <Button
-              className="w-full"
-              size="lg"
-              loading={isPaymentLoading}
-              onClick={handlePayOnline}
-            >
-              {!isPaymentLoading && (
-                <>
-                  Pay {fmt(paymentAmount, paymentCurrency)} Now
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                </>
-              )}
-            </Button>
+                {/* Show "Pay first month only" option only when both are still unpaid */}
+                {!monthlyAlreadyPaid && !setupAlreadyPaid && (
+                  <button
+                    type="button"
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 underline underline-offset-4"
+                    onClick={() => handlePayOnline(true)}
+                    disabled={isPaymentLoading}
+                  >
+                    Pay first month only ({fmt(amounts.monthlyEstimate, paymentCurrency)})
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={32} className="text-success mx-auto mb-2" />
+                <p className="font-semibold text-success">All payments complete!</p>
+                <p className="text-sm text-muted-foreground mt-1">Redirecting to setup...</p>
+              </div>
+            )}
 
             <p className="text-xs text-center text-muted-foreground">
               {paymentCurrency === "ZAR"
