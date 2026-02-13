@@ -13,7 +13,7 @@ import { MessageCircle } from "lucide-react";
 export default function ClassChatPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const { data: roomsData, isLoading } = useChatRooms();
+    const { data: roomsData, isLoading, error } = useChatRooms();
 
     const rooms = roomsData?.rooms || [];
     const room = rooms[0]; // Teachers/students should only have one room
@@ -23,6 +23,20 @@ export default function ClassChatPage() {
             <div className="space-y-4">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-[calc(100vh-8rem)] rounded-2xl" />
+            </div>
+        );
+    }
+
+    // Error loading chat rooms
+    if (error) {
+        return (
+            <div className="space-y-6">
+                <DashboardBreadcrumbs items={[{ label: "My Class", href: "/dashboard/class" }, { label: "Class Chat" }]} />
+                <EmptyState
+                    icon={<MessageCircle className="size-12" />}
+                    title="Error Loading Chat"
+                    description="Unable to load your class chat. Please try refreshing the page."
+                />
             </div>
         );
     }

@@ -5,6 +5,7 @@ import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { successResponse, errors } from "../lib/response";
+import { syncChatMembers } from "../lib/chat-sync";
 import { z } from "zod";
 
 const createTeacherSchema = z.object({
@@ -204,6 +205,11 @@ teachers.post("/", async (c) => {
       });
     }
 
+    // Sync chat members for assigned classes
+    if (data.classIds && data.classIds.length > 0) {
+      await Promise.all(data.classIds.map(classId => syncChatMembers(classId)));
+    }
+
     return successResponse(c, { teacher, password: generatedPassword }, 201);
   } catch (error) {
     console.error("Create teacher error:", error);
@@ -365,6 +371,15 @@ teachers.patch("/:id", async (c) => {
         },
       });
     });
+
+    // Sync chat members if class assignments changed
+    const classChanged = JSON.stringify(oldClassIds.sort()) !== JSON.stringify(newClassIds.sort());
+    if (classChanged) {
+      // Sync old classes to remove the teacher
+      await Promise.all(oldClassIds.map(classId => syncChatMembers(classId)));
+      // Sync new classes to add the teacher
+      await Promise.all(newClassIds.map(classId => syncChatMembers(classId)));
+    }
 
     return successResponse(c, { teacher });
   } catch (error) {
