@@ -12,9 +12,9 @@ import {
   UserIcon,
   Calendar03Icon,
   SunCloudAngledRain01Icon,
-  TrendUp01Icon,
-  TrendDown01Icon,
   Target01Icon,
+  ArrowUp01Icon,
+  ArrowDown01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -126,9 +126,9 @@ const getExamColumns = (): ColumnDef<LatestExam>[] => [
     header: "Grade",
     cell: ({ row }) => {
       const grade = row.original.grade;
-      const variant = grade === "A" || grade === "B" ? "success" 
-                    : grade === "C" || grade === "D" ? "warning" 
-                    : "destructive";
+      const variant = grade === "A" || grade === "B" ? "success"
+        : grade === "C" || grade === "D" ? "warning"
+          : "destructive";
       return <Badge variant={variant as any}>{grade}</Badge>;
     },
   },
@@ -317,7 +317,7 @@ export function StudentDashboard() {
                   {data.reportSnapshot.strongestSubject && (
                     <div className="p-4 rounded-lg border border-success/30 bg-success/5">
                       <div className="flex items-center gap-2 mb-2">
-                        <HugeiconsIcon icon={TrendUp01Icon} className="size-5 text-success" />
+                        <HugeiconsIcon icon={ArrowUp01Icon} className="size-5 text-success" />
                         <p className="text-sm font-semibold">Strongest Subject</p>
                       </div>
                       <p className="font-semibold">{data.reportSnapshot.strongestSubject.subjectName}</p>
@@ -329,7 +329,7 @@ export function StudentDashboard() {
                   {data.reportSnapshot.weakestSubject && (
                     <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
                       <div className="flex items-center gap-2 mb-2">
-                        <HugeiconsIcon icon={TrendDown01Icon} className="size-5 text-warning" />
+                        <HugeiconsIcon icon={ArrowDown01Icon} className="size-5 text-warning" />
                         <p className="text-sm font-semibold">Areas for Improvement</p>
                       </div>
                       <p className="font-semibold">{data.reportSnapshot.weakestSubject.subjectName}</p>
