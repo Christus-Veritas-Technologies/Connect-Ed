@@ -33,6 +33,8 @@ staffRoutes.post("/upload", async (c) => {
     const schoolId = c.get("schoolId");
     const userId = c.get("userId");
     const user = c.get("user");
+    const role = c.get("role");
+    const isStudent = role === ("STUDENT" as any);
 
     const formData = await c.req.formData();
     const file = formData.get("file") as File | null;
@@ -73,7 +75,9 @@ staffRoutes.post("/upload", async (c) => {
         size: uploadResult.size,
         mimeType: uploadResult.mimeType,
         url: uploadResult.url,
-        uploadedByUserId: userId,
+        ...(isStudent
+          ? { uploadedByStudentId: userId }
+          : { uploadedByUserId: userId }),
         schoolId,
       },
     });
@@ -102,27 +106,45 @@ staffRoutes.get("/", async (c) => {
     const schoolId = c.get("schoolId");
     const userId = c.get("userId");
     const role = c.get("role");
+    const isStudent = role === ("STUDENT" as any);
 
     const page = parseInt(c.req.query("page") || "1");
     const limit = parseInt(c.req.query("limit") || "20");
     const search = c.req.query("search") || "";
 
+    // Build ownership/recipient filter based on user type
+    const ownershipFilter = isStudent
+      ? [
+          { uploadedByStudentId: userId },
+          {
+            recipients: {
+              some: {
+                OR: [
+                  { recipientStudentId: userId },
+                  { recipientType: "ROLE" as const, recipientRole: "STUDENT" },
+                ],
+              },
+            },
+          },
+        ]
+      : [
+          { uploadedByUserId: userId },
+          {
+            recipients: {
+              some: {
+                OR: [
+                  { recipientUserId: userId },
+                  { recipientType: "ROLE" as const, recipientRole: role },
+                ],
+              },
+            },
+          },
+        ];
+
     // Files shared with this user directly OR with their role, OR files they uploaded
     const where = {
       schoolId,
-      OR: [
-        { uploadedByUserId: userId },
-        {
-          recipients: {
-            some: {
-              OR: [
-                { recipientUserId: userId },
-                { recipientType: "ROLE" as const, recipientRole: role },
-              ],
-            },
-          },
-        },
-      ],
+      OR: ownershipFilter,
       ...(search
         ? {
             OR: [
@@ -140,19 +162,7 @@ staffRoutes.get("/", async (c) => {
           AND: [
             {
               schoolId,
-              OR: [
-                { uploadedByUserId: userId },
-                {
-                  recipients: {
-                    some: {
-                      OR: [
-                        { recipientUserId: userId },
-                        { recipientType: "ROLE" as const, recipientRole: role },
-                      ],
-                    },
-                  },
-                },
-              ],
+              OR: ownershipFilter,
             },
             {
               OR: [
@@ -324,7 +334,8 @@ staffRoutes.delete("/:id", async (c) => {
     }
 
     // Only uploader or ADMIN can delete
-    if (file.uploadedByUserId !== userId && role !== "ADMIN") {
+    const isUploader = file.uploadedByUserId === userId || file.uploadedByStudentId === userId;
+    if (!isUploader && role !== "ADMIN") {
       return errors.forbidden(c);
     }
 

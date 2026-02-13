@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "@repo/db";
-import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth } from "../middleware/auth";
 import { successResponse, errors, errorResponse } from "../lib/response";
 import { computeStudentReport, sendReportToParent, sendReportsToParentsBulk } from "../lib/report-dispatch";
 
@@ -133,11 +133,14 @@ studentReports.get("/parent/my-children", requireParentAuth, async (c) => {
 // ============================================
 
 // GET /student-reports/student/my-report - Student views their own report
-studentReports.get("/student/my-report", requireStudentAuth, async (c) => {
+studentReports.get("/student/my-report", requireAuth, async (c) => {
   try {
-    const studentId = c.get("studentId");
-    const student = c.get("student");
-    const schoolId = student.schoolId;
+    const role = c.get("role");
+    if (role !== ("STUDENT" as any)) {
+      return errors.forbidden(c, "Only students can access this endpoint");
+    }
+    const studentId = c.get("userId");
+    const schoolId = c.get("schoolId");
 
     const report = await computeStudentReport(studentId, schoolId);
     if (!report) return errors.notFound(c, "Student report");

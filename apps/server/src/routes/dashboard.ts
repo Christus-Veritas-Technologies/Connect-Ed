@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db, FeeStatus } from "@repo/db";
-import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 
 const dashboard = new Hono();
@@ -748,6 +748,102 @@ dashboard.get("/my-class", requireAuth, async (c) => {
   }
 });
 
+// GET /dashboard/my-class/student - Get class data for a student
+dashboard.get("/my-class/student", requireAuth, async (c) => {
+  try {
+    const role = c.get("role");
+    if (role !== ("STUDENT" as any)) {
+      return errors.forbidden(c, "Only students can access this endpoint");
+    }
+    const studentId = c.get("userId");
+    const schoolId = c.get("schoolId");
+
+    // Get student with class info
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: {
+        class: {
+          include: {
+            classTeacher: { select: { id: true, name: true, email: true } },
+            subjects: {
+              include: { subject: { select: { id: true, name: true, code: true } } },
+            },
+            students: {
+              where: { isActive: true },
+              orderBy: { lastName: "asc" },
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                admissionNumber: true,
+                gender: true,
+                email: true,
+              },
+            },
+            _count: { select: { students: { where: { isActive: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      return errors.notFound(c, "Student not found");
+    }
+
+    if (!student.class) {
+      return successResponse(c, {
+        class: null,
+        classmates: [],
+        subjects: [],
+        teacher: null,
+        stats: { totalClassmates: 0, totalSubjects: 0 },
+      });
+    }
+
+    const cls = student.class;
+
+    return successResponse(c, {
+      class: {
+        id: cls.id,
+        name: cls.name,
+        level: cls.level,
+        capacity: cls.capacity,
+        studentCount: cls._count.students,
+      },
+      teacher: cls.classTeacher
+        ? {
+            id: cls.classTeacher.id,
+            name: cls.classTeacher.name,
+            email: cls.classTeacher.email,
+          }
+        : null,
+      subjects: cls.subjects.map((s) => ({
+        id: s.subject.id,
+        name: s.subject.name,
+        code: s.subject.code,
+      })),
+      classmates: cls.students
+        .filter((s) => s.id !== studentId)
+        .map((s) => ({
+          id: s.id,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          name: `${s.firstName} ${s.lastName}`,
+          admissionNumber: s.admissionNumber,
+          gender: s.gender,
+          email: s.email,
+        })),
+      stats: {
+        totalClassmates: cls._count.students - 1,
+        totalSubjects: cls.subjects.length,
+      },
+    });
+  } catch (error) {
+    console.error("Student my-class error:", error);
+    return errors.internalError(c);
+  }
+});
+
 // ============================================
 // PARENT DASHBOARD
 // ============================================
@@ -889,9 +985,13 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
 // ============================================
 
 // GET /dashboard/student - Get student dashboard data
-dashboard.get("/student", requireStudentAuth, async (c) => {
+dashboard.get("/student", requireAuth, async (c) => {
   try {
-    const studentId = c.get("studentId");
+    const role = c.get("role");
+    if (role !== ("STUDENT" as any)) {
+      return errors.forbidden(c, "Only students can access this dashboard");
+    }
+    const studentId = c.get("userId");
     const schoolId = c.get("schoolId");
 
     // Get student with fees

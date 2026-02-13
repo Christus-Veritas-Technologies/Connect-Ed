@@ -83,7 +83,7 @@ const navSections = [
   {
     label: "System",
     items: [
-      { href: "/dashboard/settings", label: "Settings", icon: Settings02Icon, roles: ["ADMIN"] },
+      { href: "/dashboard/settings", label: "Settings", icon: Settings02Icon, roles: ["ADMIN", "STUDENT"] },
     ],
   },
 ];

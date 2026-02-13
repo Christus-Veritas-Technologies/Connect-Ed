@@ -177,6 +177,41 @@ const userPrefsSchema = z.object({
 settings.get("/profile", async (c) => {
   try {
     const userId = c.get("userId");
+    const role = c.get("role");
+
+    // Students are stored in the Student table, not User
+    if (role === ("STUDENT" as any)) {
+      const student = await db.student.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          notifyInApp: true,
+          notifyEmail: true,
+          createdAt: true,
+        },
+      });
+
+      if (!student) {
+        return errors.notFound(c, "Student");
+      }
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          phone: student.phone,
+          role: "STUDENT",
+          notifyInApp: student.notifyInApp ?? true,
+          notifyEmail: student.notifyEmail ?? true,
+          createdAt: student.createdAt,
+        },
+      });
+    }
 
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -207,7 +242,47 @@ settings.get("/profile", async (c) => {
 settings.patch("/profile", zValidator("json", userPrefsSchema), async (c) => {
   try {
     const userId = c.get("userId");
+    const role = c.get("role");
     const data = c.req.valid("json");
+
+    // Students are stored in the Student table
+    if (role === ("STUDENT" as any)) {
+      const updateData: any = {};
+      if (data.notifyInApp !== undefined) updateData.notifyInApp = data.notifyInApp;
+      if (data.notifyEmail !== undefined) updateData.notifyEmail = data.notifyEmail;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.name) {
+        const parts = data.name.trim().split(/\s+/);
+        updateData.firstName = parts[0];
+        updateData.lastName = parts.slice(1).join(" ") || parts[0];
+      }
+
+      const student = await db.student.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          notifyInApp: true,
+          notifyEmail: true,
+        },
+      });
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          phone: student.phone,
+          role: "STUDENT",
+          notifyInApp: student.notifyInApp,
+          notifyEmail: student.notifyEmail,
+        },
+      });
+    }
 
     const user = await db.user.update({
       where: { id: userId },
