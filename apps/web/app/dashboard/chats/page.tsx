@@ -54,7 +54,7 @@ export default function ChatsPage() {
                 </div>
             ) : rooms.length === 0 ? (
                 <EmptyState
-                    icon={MessageCircle}
+                    icon={<MessageCircle className="size-12" />}
                     title="No chat rooms yet"
                     description={
                         user?.role === "ADMIN"
