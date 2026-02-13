@@ -102,11 +102,25 @@ chat.get("/rooms", async (c) => {
   try {
     const user = getChatUser(c);
 
-    const memberships = await db.chatMember.findMany({
-      where: { memberType: user.memberType, memberId: user.memberId },
-      select: { classId: true },
-    });
-    const classIds = memberships.map((m) => m.classId);
+    let classIds: string[] = [];
+
+    // For students, get class from their student record directly
+    if (user.memberType === "STUDENT") {
+      const student = await db.student.findUnique({
+        where: { id: user.memberId },
+        select: { classId: true },
+      });
+      if (student?.classId) {
+        classIds = [student.classId];
+      }
+    } else {
+      // For staff/parents, use chatMembers table
+      const memberships = await db.chatMember.findMany({
+        where: { memberType: user.memberType, memberId: user.memberId },
+        select: { classId: true },
+      });
+      classIds = memberships.map((m) => m.classId);
+    }
 
     const classes = await db.class.findMany({
       where: { id: { in: classIds } },
