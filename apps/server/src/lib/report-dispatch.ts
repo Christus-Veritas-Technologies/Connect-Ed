@@ -118,13 +118,30 @@ export async function computeStudentReport(
     const grade = subjectGrades.find(
       (g) => result.mark >= g.minMark && result.mark <= g.maxMark
     );
-    // If no grades configured, default: pass if >= 50%
-    const isPass = grade?.isPass ?? (result.mark >= 50);
+    // Determine pass status: use grade if found, otherwise use 50% threshold
+    let isPass = false;
+    if (grade) {
+      isPass = grade.isPass;
+    } else {
+      isPass = result.mark >= 50;
+    }
+    
+    // Determine grade name: use configured grade or default scale
+    let gradeName = grade?.name || "N/A";
+    if (!grade && result.mark >= 50) {
+      // Show default grades when no configured grade matches
+      if (result.mark >= 90) gradeName = "A";
+      else if (result.mark >= 80) gradeName = "B";
+      else if (result.mark >= 70) gradeName = "C";
+      else if (result.mark >= 60) gradeName = "D";
+      else gradeName = "F";
+    }
+    
     subjectMap.get(subId)!.exams.push({
       examName: result.exam.name,
       paper: result.exam.paper,
       mark: result.mark,
-      gradeName: grade?.name || "N/A",
+      gradeName,
       isPass,
     });
   }
@@ -143,13 +160,26 @@ export async function computeStudentReport(
       const avgGrade = subjectGrades.find(
         (g) => avgMark >= g.minMark && avgMark <= g.maxMark
       );
-      // If no grades configured, default: pass if >= 50%
-      const avgIsPass = avgGrade?.isPass ?? (avgMark >= 50);
+      // Determine pass status: use grade if found, otherwise use 50% threshold
+      let avgIsPass = false;
+      let avgGradeName = "N/A";
+      if (avgGrade) {
+        avgIsPass = avgGrade.isPass;
+        avgGradeName = avgGrade.name;
+      } else {
+        avgIsPass = avgMark >= 50;
+        // Show default grades when no configured grade matches
+        if (avgMark >= 90) avgGradeName = "A";
+        else if (avgMark >= 80) avgGradeName = "B";
+        else if (avgMark >= 70) avgGradeName = "C";
+        else if (avgMark >= 60) avgGradeName = "D";
+        else if (avgMark >= 0) avgGradeName = "F";
+      }
 
       return {
         subjectName: s.subjectName,
         averageMark: avgMark,
-        averageGrade: avgGrade?.name || "N/A",
+        averageGrade: avgGradeName,
         averageIsPass: avgIsPass,
         examsTaken: s.exams.length,
         examsPassed: passCount,
@@ -176,11 +206,12 @@ export async function computeStudentReport(
     );
     // If grades exist, check if mark matches a passing grade
     if (subjectGrades.length > 0) {
-      return subjectGrades
+      const matchesPassingGrade = subjectGrades
         .filter((g) => g.isPass)
         .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+      if (matchesPassingGrade) return true;
     }
-    // If no grades, default: pass if >= 50%
+    // Fallback: pass if >= 50% (either no grades or mark doesn't match any grade range)
     return r.mark >= 50;
   }).length;
 
