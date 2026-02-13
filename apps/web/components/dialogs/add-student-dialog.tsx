@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -440,11 +441,18 @@ export function AddStudentDialog({
                     {subjects.map((subject) => (
                       <div
                         key={subject.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors gap-2"
                       >
-                        <Label htmlFor={`subject-${subject.id}`} className="text-sm font-medium cursor-pointer flex-1">
-                          {subject.name}
-                        </Label>
+                        <div className="flex items-center justify-between flex-1 gap-2">
+                          <Label htmlFor={`subject-${subject.id}`} className="text-sm font-medium cursor-pointer">
+                            {subject.name}
+                          </Label>
+                          {subject.level && (
+                            <Badge variant="outline" className="text-[10px] capitalize">
+                              {subject.level}
+                            </Badge>
+                          )}
+                        </div>
                         <Switch
                           id={`subject-${subject.id}`}
                           checked={selectedSubjects.includes(subject.id)}
