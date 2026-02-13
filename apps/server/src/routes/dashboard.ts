@@ -994,7 +994,7 @@ dashboard.get("/student", requireAuth, async (c) => {
     const studentId = c.get("userId");
     const schoolId = c.get("schoolId");
 
-    // Get student with fees
+    // Get student with class, fees, and exam results
     const student = await db.student.findUnique({
       where: { id: studentId },
       include: {
@@ -1013,6 +1013,7 @@ dashboard.get("/student", requireAuth, async (c) => {
         },
         fees: {
           orderBy: { dueDate: "desc" },
+          take: 3, // Only latest 3 fees for dashboard
           include: {
             payments: {
               orderBy: { createdAt: "desc" },
@@ -1033,7 +1034,76 @@ dashboard.get("/student", requireAuth, async (c) => {
       return errors.notFound(c, "Student not found");
     }
 
-    // Calculate summary
+    // Get latest exam results (last exam per subject)
+    const examResults = await db.examResult.findMany({
+      where: { studentId, exam: { schoolId } },
+      include: {
+        exam: {
+          include: {
+            subject: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Get grades for pass/fail determination
+    const allGrades = await db.grade.findMany({ where: { schoolId } });
+
+    // Group by subject and get latest exam per subject
+    const latestExamsBySubject = new Map<string, (typeof examResults)[0]>();
+    for (const result of examResults) {
+      const subId = result.exam.subjectId;
+      if (!latestExamsBySubject.has(subId)) {
+        latestExamsBySubject.set(subId, result);
+      }
+    }
+
+    // Transform into dashboard format
+    const latestExams = Array.from(latestExamsBySubject.values()).map((result) => {
+      // Determine if pass based on grades
+      const subjectGrades = allGrades.filter((g) => g.subjectId === result.exam.subjectId || g.subjectId === null);
+      const grade = subjectGrades.find((g) => result.mark >= g.minMark && result.mark <= g.maxMark);
+      const isPass = grade ? grade.isPass : result.mark >= 50;
+      
+      // Determine grade name
+      let gradeName = grade?.name || "N/A";
+      if (!grade) {
+        if (result.mark >= 90) gradeName = "A";
+        else if (result.mark >= 80) gradeName = "B";
+        else if (result.mark >= 70) gradeName = "C";
+        else if (result.mark >= 60) gradeName = "D";
+        else if (result.mark >= 50) gradeName = "E";
+        else gradeName = "F";
+      }
+
+      return {
+        subjectName: result.exam.subject.name,
+        subjectCode: result.exam.subject.code,
+        examName: result.exam.name,
+        mark: result.mark,
+        grade: gradeName,
+        isPass,
+        createdAt: result.createdAt,
+      };
+    });
+
+    // Calculate overall report snapshot
+    const overallAverage = latestExams.length > 0
+      ? Math.round(latestExams.reduce((sum, e) => sum + e.mark, 0) / latestExams.length)
+      : 0;
+    
+    const passCount = latestExams.filter((e) => e.isPass).length;
+    const overallPassRate = latestExams.length > 0
+      ? Math.round((passCount / latestExams.length) * 100)
+      : 0;
+
+    // Identify strongest and weakest subjects
+    const sorted = [...latestExams].sort((a, b) => a.mark - b.mark);
+    const weakestSubject = sorted.length > 0 ? sorted[0] : null;
+    const strongestSubject = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+
+    // Calculate fee summary (minimal for dashboard)
     const totalFees = student.fees.reduce((acc, f) => acc + f.amount, 0);
     const totalPaid = student.fees.reduce((acc, f) => acc + f.paidAmount, 0);
     const overdueFees = student.fees
@@ -1074,7 +1144,20 @@ dashboard.get("/student", requireAuth, async (c) => {
             })),
           }
         : null,
-      summary: {
+      // Latest exam results - shows current marks per subject
+      latestExams: latestExams.sort((a, b) => b.mark - a.mark), // Sort by mark descending
+      // Report snapshot - key metrics
+      reportSnapshot: {
+        overallAverage,
+        overallPassRate,
+        totalSubjects: latestExams.length,
+        examsTaken: latestExams.length,
+        examsPassed: passCount,
+        weakestSubject,
+        strongestSubject,
+      },
+      // Minimal fee info (moved to bottom of dashboard)
+      feeSummary: {
         totalFees,
         totalPaid,
         balance: totalFees - totalPaid,
