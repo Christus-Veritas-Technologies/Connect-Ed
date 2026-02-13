@@ -476,12 +476,8 @@ function generateReportEmailHtml(
               ${
                 report.subjects.length > 0
                   ? `
-              <h3 style="margin: 28px 0 12px 0; font-size: 16px; color: #374151;">Subject Breakdown</h3>
-              <!-- Subject Details -->
               <h3 style="font-size: 18px; margin: 28px 0 12px 0; color: #111827;">Subject Performance</h3>
-              ${
-                report.subjects.length > 0
-                  ? `<table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background: #f9fafb;">
                     <th style="padding: 12px 16px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Subject</th>
