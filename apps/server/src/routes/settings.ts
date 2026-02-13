@@ -473,4 +473,82 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
   }
 });
 
+// =============================================
+// Report Settings (Admin only)
+// =============================================
+
+// GET /settings/report - Get report configuration settings
+settings.get("/report", requireRole(Role.ADMIN), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        reportShowSchoolBranding: true,
+        reportShowTeacherDetails: true,
+        reportShowGrades: true,
+        reportShowPassRates: true,
+        reportShowInsights: true,
+        reportShowExamDetails: true,
+        reportShowOverallAverage: true,
+        reportSchoolLogo: true,
+        reportSchoolMotto: true,
+      },
+    });
+
+    if (!school) {
+      return errors.notFound(c, "School");
+    }
+
+    return successResponse(c, { settings: school });
+  } catch (error) {
+    console.error("Get report settings error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// PATCH /settings/report - Update report configuration settings
+const updateReportSettingsSchema = z.object({
+  reportShowSchoolBranding: z.boolean().optional(),
+  reportShowTeacherDetails: z.boolean().optional(),
+  reportShowGrades: z.boolean().optional(),
+  reportShowPassRates: z.boolean().optional(),
+  reportShowInsights: z.boolean().optional(),
+  reportShowExamDetails: z.boolean().optional(),
+  reportShowOverallAverage: z.boolean().optional(),
+  reportSchoolLogo: z.string().optional().nullable(),
+  reportSchoolMotto: z.string().optional().nullable(),
+});
+
+settings.patch("/report", requireRole(Role.ADMIN), zValidator("json", updateReportSettingsSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const data = c.req.valid("json");
+
+    const school = await db.school.update({
+      where: { id: schoolId },
+      data: {
+        ...data,
+      },
+      select: {
+        reportShowSchoolBranding: true,
+        reportShowTeacherDetails: true,
+        reportShowGrades: true,
+        reportShowPassRates: true,
+        reportShowInsights: true,
+        reportShowExamDetails: true,
+        reportShowOverallAverage: true,
+        reportSchoolLogo: true,
+        reportSchoolMotto: true,
+      },
+    });
+
+    return successResponse(c, { settings: school, message: "Report settings updated successfully" });
+  } catch (error) {
+    console.error("Update report settings error:", error);
+    return errors.internalError(c);
+  }
+});
+
 export default settings;

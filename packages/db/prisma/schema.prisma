@@ -172,6 +172,17 @@ model School {
   // Billing
   nextPaymentDate DateTime? // null = no billing yet; when past due + 3 grace days → lockout
 
+  // Student Report Settings
+  reportShowSchoolBranding Boolean @default(true)
+  reportShowTeacherDetails Boolean @default(true)
+  reportShowGrades         Boolean @default(true)
+  reportShowPassRates      Boolean @default(true)
+  reportShowInsights       Boolean @default(true)
+  reportShowExamDetails    Boolean @default(true)
+  reportShowOverallAverage Boolean @default(true)
+  reportSchoolLogo         String? // URL or path to school logo
+  reportSchoolMotto        String?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
