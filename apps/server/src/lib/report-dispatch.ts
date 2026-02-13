@@ -113,16 +113,19 @@ export async function computeStudentReport(
         exams: [],
       });
     }
-    const subjectGrades = allGrades.filter((g) => g.subjectId === subId);
+    // Get subject-specific grades first, then fall back to school-wide grades
+    const subjectGrades = allGrades.filter((g) => g.subjectId === subId || g.subjectId === null);
     const grade = subjectGrades.find(
       (g) => result.mark >= g.minMark && result.mark <= g.maxMark
     );
+    // If no grades configured, default: pass if >= 50%
+    const isPass = grade?.isPass ?? (result.mark >= 50);
     subjectMap.get(subId)!.exams.push({
       examName: result.exam.name,
       paper: result.exam.paper,
       mark: result.mark,
       gradeName: grade?.name || "N/A",
-      isPass: grade?.isPass ?? false,
+      isPass,
     });
   }
 
@@ -135,18 +138,19 @@ export async function computeStudentReport(
             )
           : 0;
       const passCount = s.exams.filter((e) => e.isPass).length;
-      const subjectGrades = allGrades.filter(
-        (g) => g.subjectId === s.subjectId
-      );
+      // Get subject-specific grades first, then fall back to school-wide grades
+      const subjectGrades = allGrades.filter((g) => g.subjectId === s.subjectId || g.subjectId === null);
       const avgGrade = subjectGrades.find(
         (g) => avgMark >= g.minMark && avgMark <= g.maxMark
       );
+      // If no grades configured, default: pass if >= 50%
+      const avgIsPass = avgGrade?.isPass ?? (avgMark >= 50);
 
       return {
         subjectName: s.subjectName,
         averageMark: avgMark,
         averageGrade: avgGrade?.name || "N/A",
-        averageIsPass: avgGrade?.isPass ?? false,
+        averageIsPass: avgIsPass,
         examsTaken: s.exams.length,
         examsPassed: passCount,
         passRate:
@@ -166,12 +170,18 @@ export async function computeStudentReport(
       : 0;
 
   const totalPassed = results.filter((r) => {
+    // Get subject-specific grades first, then fall back to school-wide grades
     const subjectGrades = allGrades.filter(
-      (g) => g.subjectId === r.exam.subjectId
+      (g) => g.subjectId === r.exam.subjectId || g.subjectId === null
     );
-    return subjectGrades
-      .filter((g) => g.isPass)
-      .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+    // If grades exist, check if mark matches a passing grade
+    if (subjectGrades.length > 0) {
+      return subjectGrades
+        .filter((g) => g.isPass)
+        .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+    }
+    // If no grades, default: pass if >= 50%
+    return r.mark >= 50;
   }).length;
 
   const overallPassRate =
