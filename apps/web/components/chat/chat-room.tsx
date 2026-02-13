@@ -66,7 +66,7 @@ export function ChatRoom({ classId, className }: ChatRoomProps) {
     // WebSocket
     const { isConnected, sendMessage: wsSend } = useChatWebSocket({
         classId,
-        enabled: true,
+        enabled: false,  // Disabled due to reconnection issues - using REST fallback
         onSystemMessage: (msg) => {
             // Filter out join/leave messages to prevent spam during reconnections
             const shouldDisplay = !msg.includes("joined the chat") && !msg.includes("left the chat");
