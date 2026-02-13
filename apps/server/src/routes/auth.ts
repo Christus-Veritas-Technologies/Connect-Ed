@@ -18,6 +18,7 @@ import {
   resetPasswordSchema,
 } from "../lib/validation";
 import { successResponse, errors, errorResponse } from "../lib/response";
+import { sendEmail, generatePasswordResetEmail } from "../lib/email";
 import { randomBytes } from "crypto";
 
 const auth = new Hono();
@@ -584,9 +585,15 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
   try {
     const { email } = c.req.valid("json");
 
-    // Find user
+    // Find user with schoolId
     const user = await db.user.findUnique({
       where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        schoolId: true,
+      },
     });
 
     // Always return success to prevent email enumeration
@@ -609,10 +616,25 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
       },
     });
 
-    // TODO: Send email with reset link
-    console.log(
-      `Password reset token for ${email}: ${resetToken}`
-    );
+    // Send password reset email
+    const emailHtml = generatePasswordResetEmail({
+      name: user.name,
+      resetToken,
+    });
+
+    const emailSent = await sendEmail({
+      to: user.email,
+      subject: "Reset Your Connect-Ed Password",
+      html: emailHtml,
+      schoolId: user.schoolId,
+      type: "NOREPLY",
+    });
+
+    if (emailSent) {
+      console.log(`✅ Password reset email sent to ${user.email}`);
+    } else {
+      console.error(`❌ Failed to send password reset email to ${user.email}`);
+    }
 
     return successResponse(c, {
       message: "If an account exists, a password reset link will be sent",

@@ -701,3 +701,62 @@ export function generatePeriodChangeEmail(params: {
   `;
 }
 
+export function generatePasswordResetEmail(params: {
+  name: string;
+  resetToken: string;
+}): string {
+  const resetUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/reset-password?token=${params.resetToken}`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .button { background: #10b981; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; font-weight: bold; }
+          .warning { background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; font-size: 14px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+          .token-box { background: #f3f4f6; padding: 15px; border-radius: 6px; font-family: monospace; word-break: break-all; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${params.name},</p>
+            <p>We received a request to reset your Connect-Ed password. Click the button below to create a new password:</p>
+            
+            <center>
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </center>
+
+            <p style="text-align: center; color: #6b7280; margin: 20px 0;">
+              Or copy this link in your browser:<br>
+              <span style="word-break: break-all; font-size: 12px;">${resetUrl}</span>
+            </p>
+
+            <div class="warning">
+              <strong>⏱️ Important:</strong> This password reset link expires in <strong>1 hour</strong>. If you don't reset your password within this time, you'll need to request a new reset link.
+            </div>
+
+            <p style="margin-top: 30px;">
+              <strong>Didn't request this?</strong> If you didn't ask to reset your password, you can ignore this email or contact your administrator. Your password will remain unchanged.
+            </p>
+          </div>
+          <div class="footer">
+            <p>Connect-Ed School Management System</p>
+            <p style="margin-top: 15px; font-size: 12px;">
+              This is an automated security notification. Please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
