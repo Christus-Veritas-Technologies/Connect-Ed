@@ -31,8 +31,8 @@ export async function createDodoPaymentLink(
     isTestKey: cleanApiKey.includes('test') || cleanApiKey.includes('Test'),
   });
 
-  // Initialize with just the key - let SDK figure out auth
-  const dodo = new DodoPayments(cleanApiKey);
+  // Initialize with API key as bearer token
+  const dodo = new DodoPayments({ bearerToken: cleanApiKey });
 
   try {
     console.log("Creating checkout session with:", {
