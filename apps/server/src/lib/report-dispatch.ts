@@ -209,11 +209,18 @@ export async function computeStudentReport(
       const matchesPassingGrade = subjectGrades
         .filter((g) => g.isPass)
         .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
-      if (matchesPassingGrade) return true;
+      if (matchesPassingGrade) {
+        console.log(`[PASS] Exam ${r.exam.name}: ${r.mark}% - matches grade`);
+        return true;
+      }
     }
     // Fallback: pass if >= 50% (either no grades or mark doesn't match any grade range)
-    return r.mark >= 50;
+    const passes = r.mark >= 50;
+    console.log(`[${passes ? 'PASS' : 'FAIL'}] Exam ${r.exam.name}: ${r.mark}% - fallback 50% check`);
+    return passes;
   }).length;
+  
+  console.log(`[REPORT] Total exams: ${totalExams}, Passed: ${totalPassed}, Failed: ${totalExams - totalPassed}`);
 
   const overallPassRate =
     totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
@@ -223,6 +230,19 @@ export async function computeStudentReport(
   const overallGrade = allGrades.find(
     (g) => overallAverage >= g.minMark && overallAverage <= g.maxMark
   );
+  
+  // Determine overall grade name with fallback to default scale
+  let overallGradeName: string | null = null;
+  if (overallGrade) {
+    overallGradeName = overallGrade.name;
+  } else if (overallAverage >= 50) {
+    // Show default grades when no configured grade matches
+    if (overallAverage >= 90) overallGradeName = "A";
+    else if (overallAverage >= 80) overallGradeName = "B";
+    else if (overallAverage >= 70) overallGradeName = "C";
+    else if (overallAverage >= 60) overallGradeName = "D";
+    else overallGradeName = "F";
+  }
 
   const sortedSubjects = [...subjects].sort(
     (a, b) => a.averageMark - b.averageMark
@@ -238,7 +258,7 @@ export async function computeStudentReport(
     subjects,
     overall: {
       averageMark: overallAverage,
-      averageGrade: overallGrade?.name || null,
+      averageGrade: overallGradeName,
       totalSubjects: subjects.length,
       totalExams,
       passRate: overallPassRate,
