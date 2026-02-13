@@ -363,7 +363,7 @@ export default function MyClassPage() {
                             >
                                 <Card className="overflow-hidden hover:shadow-md transition-shadow">
                                     <CardContent className="p-4">
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-3 mb-3">
                                             <div className="size-11 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
                                                 <span className="text-sm font-semibold text-brand">
                                                     {student.firstName[0]}{student.lastName[0]}
@@ -371,14 +371,14 @@ export default function MyClassPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium truncate">{student.name}</p>
-                                                <p className="text-xs text-muted-foreground font-mono">{student.admissionNumber}</p>
+                                                <p className="text-xs text-muted-foreground font-mono mb-2">{student.admissionNumber}</p>
+                                                <Badge variant={(STATUS_COLORS[student.status] || "outline") as any} className="text-xs">
+                                                    {student.status}
+                                                </Badge>
                                             </div>
-                                            <Badge variant={(STATUS_COLORS[student.status] || "outline") as any} className="text-xs shrink-0">
-                                                {student.status}
-                                            </Badge>
                                         </div>
 
-                                        <div className="mt-4 space-y-2 text-sm">
+                                        <div className="space-y-2 text-sm">
                                             {student.gender && (
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-muted-foreground">Gender</span>
@@ -410,19 +410,31 @@ export default function MyClassPage() {
                                                 {student.phone && (
                                                     <a
                                                         href={`tel:${student.phone}`}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 rounded-md hover:bg-muted transition-colors"
+                                                        className="flex-1"
                                                     >
-                                                        <Phone size={14} />
-                                                        Call
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            className="w-full gap-1.5"
+                                                        >
+                                                            <Phone size={14} />
+                                                            Call
+                                                        </Button>
                                                     </a>
                                                 )}
                                                 {student.email && (
                                                     <a
                                                         href={`mailto:${student.email}`}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 rounded-md hover:bg-muted transition-colors"
+                                                        className="flex-1"
                                                     >
-                                                        <HugeiconsIcon icon={Mail01Icon} size={14} />
-                                                        Email
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="w-full gap-1.5"
+                                                        >
+                                                            <HugeiconsIcon icon={Mail01Icon} size={14} />
+                                                            Email
+                                                        </Button>
                                                     </a>
                                                 )}
                                             </div>
