@@ -49,7 +49,7 @@ export function AddStudentDialog({
 }: AddStudentDialogProps) {
   const [createAccount, setCreateAccount] = useState(false);
   const [classSearch, setClassSearch] = useState("");
-  const [subjects, setSubjects] = useState<Array<{id: string; name: string; level?: string | null}>>([]);
+  const [subjects, setSubjects] = useState<Array<{ id: string; name: string; level?: string | null }>>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -80,17 +80,17 @@ export function AddStudentDialog({
       try {
         const selectedClass = allClasses.find((c: ClassWithLevel) => c.id === formData.classId);
         const level = selectedClass?.level?.toLowerCase();
-        
+
         const response = await api.get("/subjects");
-        const allSubjects = response.data.subjects || [];
-        
+        const allSubjects = response.subjects || [];
+
         // Filter subjects by level if class has a level
         const filtered = level
-          ? allSubjects.filter((s: {level?: string | null}) => 
-              !s.level || s.level.toLowerCase() === level
-            )
+          ? allSubjects.filter((s: { level?: string | null }) =>
+            !s.level || s.level.toLowerCase() === level
+          )
           : allSubjects;
-        
+
         setSubjects(filtered);
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
@@ -104,8 +104,8 @@ export function AddStudentDialog({
   }, [formData.classId]);
   const filteredClasses = classSearch
     ? allClasses.filter((c: ClassWithLevel) =>
-        c.name.toLowerCase().includes(classSearch.toLowerCase())
-      )
+      c.name.toLowerCase().includes(classSearch.toLowerCase())
+    )
     : allClasses;
 
   const primaryClasses = filteredClasses.filter(
@@ -146,11 +146,11 @@ export function AddStudentDialog({
         setCreateAccount(false);
         setSelectedSubjects([]);
         setSubjects([]);
-        
+
         toast.success("Student created successfully!", {
           description: `${data.student.firstName} ${data.student.lastName} has been added.`,
         });
-        
+
         onOpenChange(false);
         if (onSuccess) {
           onSuccess(data.student.id);
@@ -207,7 +207,7 @@ export function AddStudentDialog({
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
                 Personal Information
               </h3>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
