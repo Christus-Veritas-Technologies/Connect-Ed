@@ -133,13 +133,13 @@ export const createUserSchema = z.object({
 // Payment schemas
 export const createCheckoutSchema = z.object({
   planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
-  paymentType: z.enum(["SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
   email: z.string().email().optional(),
 });
 
 export const createDodoCheckoutSchema = z.object({
   planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
-  paymentType: z.enum(["SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
   email: z.string().email().optional(),
   currency: z.enum(["ZAR"]),
 });
