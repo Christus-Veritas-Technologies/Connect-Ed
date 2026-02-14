@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/table";
 import type { StudentReportData } from "@/lib/hooks/use-student-reports";
 import { useSendReportToParent } from "@/lib/hooks/use-student-reports";
-import { exportToPDF } from "@/lib/export-utils";
+import { exportStudentReportPDF, type SchoolBranding, type StudentInfo, type TeacherInfo } from "@/lib/export-utils";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export function ReportOverviewCards({ report }: { report: StudentReportData }) {
   const stats = [
@@ -239,28 +240,57 @@ export function ReportExamDetails({ report }: { report: StudentReportData }) {
 }
 
 export function ExportReportButton({ report }: { report: StudentReportData }) {
-  const handleExport = () => {
-    const rows = report.subjects.map((s) => ({
-      subject: s.subjectName,
-      exams: String(s.examsTaken),
-      average: `${s.averageMark}%`,
-      grade: s.averageGrade,
-      passRate: `${s.passRate}%`,
-      passed: String(s.examsPassed),
-    }));
+  const { school, user } = useAuth();
 
-    exportToPDF(
-      rows,
-      [
-        { key: "subject", label: "Subject" },
-        { key: "exams", label: "Exams Taken" },
-        { key: "average", label: "Average Mark" },
-        { key: "grade", label: "Grade" },
-        { key: "passRate", label: "Pass Rate" },
-        { key: "passed", label: "Passed" },
-      ],
-      `report-${report.student.name.replace(/\s+/g, "-").toLowerCase()}`,
-      `Academic Report — ${report.student.name} (${report.student.className})`
+  const handleExport = () => {
+    // Prepare school branding
+    const schoolBranding: SchoolBranding = {
+      schoolName: school?.name || "School",
+      schoolAddress: school?.address || undefined,
+      schoolPhone: school?.phone || undefined,
+      schoolEmail: school?.email || undefined,
+    };
+
+    // Prepare student info
+    const studentInfo: StudentInfo = {
+      name: report.student.name,
+      admissionNumber: report.student.admissionNumber,
+      className: report.student.className,
+    };
+
+    // Prepare teacher info (current user generating the report)
+    const teacherInfo: TeacherInfo | undefined = user ? {
+      name: user.name,
+      email: user.email,
+    } : undefined;
+
+    // Export using the enhanced PDF function
+    exportStudentReportPDF(
+      {
+        subjects: report.subjects.map(s => ({
+          subjectName: s.subjectName,
+          subjectCode: s.subjectCode || undefined,
+          examsTaken: s.examsTaken,
+          averageMark: s.averageMark,
+          averageGrade: s.averageGrade,
+          passRate: s.passRate,
+          examsPassed: s.examsPassed,
+        })),
+        overall: {
+          averageMark: report.overall.averageMark,
+          averageGrade: report.overall.averageGrade,
+          totalSubjects: report.overall.totalSubjects,
+          totalExams: report.overall.totalExams,
+          passRate: report.overall.passRate,
+          totalPassed: report.overall.totalPassed,
+          totalFailed: report.overall.totalFailed,
+        },
+        insights: report.insights,
+      },
+      studentInfo,
+      schoolBranding,
+      teacherInfo,
+      `${report.student.name.replace(/\s+/g, "-").toLowerCase()}-academic-report`
     );
   };
 
