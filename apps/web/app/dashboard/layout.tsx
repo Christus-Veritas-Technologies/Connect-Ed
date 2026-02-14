@@ -107,8 +107,15 @@ interface ParentChildrenLinksProps {
 function ParentChildrenLinks({ pathname, isActive, notificationCounts, section }: ParentChildrenLinksProps) {
   const { childrenCount, isLoading } = useParentChildren();
 
+  console.log(`[ParentChildrenLinks] Section: ${section}`, {
+    childrenCount,
+    isLoading,
+    willRender: !(!isLoading && childrenCount === 0),
+  });
+
   // Hide entire section if no children
   if (!isLoading && childrenCount === 0) {
+    console.log(`[ParentChildrenLinks] Hiding ${section} - no children`);
     return null;
   }
 
@@ -229,6 +236,8 @@ function AppSidebar({ pathname, user, school, logout }: {
 }) {
   const { data: notificationData } = useNotificationCounts();
   const notificationCounts = notificationData?.counts || {};
+
+  console.log("[AppSidebar] User role:", user.role, "Is parent:", user.role === "PARENT");
 
   // Filter sections based on user role and school plan
   const filteredSections = navSections.map(section => ({
