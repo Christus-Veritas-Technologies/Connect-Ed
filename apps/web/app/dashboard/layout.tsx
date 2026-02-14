@@ -20,11 +20,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
 import { useLogout } from "@/lib/hooks";
 import { useNotificationCounts } from "@/lib/hooks/use-notifications";
+import { useParentChildren } from "@/lib/hooks/use-parent-children";
 import { DashboardGuard } from "@/components/auth-guard";
 import { BillingGuard } from "@/components/billing-guard";
 import { SetupFeeGuard } from "@/components/setup-fee-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sidebar,
   SidebarContent,
@@ -62,8 +64,7 @@ const navSections = [
       { href: "/dashboard/receptionists", label: "Receptionists", icon: UserGroupIcon, roles: ["ADMIN"] },
       { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/class", label: "My Class", icon: School01Icon, roles: ["TEACHER", "STUDENT"] },
-      { href: "/dashboard/my-child", label: "My Child", icon: UserGroupIcon, roles: ["PARENT"] },
-      { href: "/dashboard/my-child-class", label: "My Child's Class", icon: School01Icon, roles: ["PARENT"] },
+      // Parent-specific "My Child" and "My Child's Class" items are rendered dynamically based on children count
     ],
   },
   {
@@ -72,7 +73,7 @@ const navSections = [
       { href: "/dashboard/exams", label: "Exams", icon: BookOpen01Icon, roles: ["ADMIN", "TEACHER"] },
       { href: "/dashboard/student-reports", label: "Student Reports", icon: ChartHistogramIcon, roles: ["ADMIN", "TEACHER"] },
       { href: "/dashboard/my-report", label: "My Report", icon: ChartHistogramIcon, roles: ["STUDENT"] },
-      { href: "/dashboard/my-child-report", label: "My Child's Report", icon: ChartHistogramIcon, roles: ["PARENT"] },
+      // Parent-specific "My Child's Report" is rendered dynamically based on children count
     ],
   },
   {
@@ -90,6 +91,135 @@ const navSections = [
     ],
   },
 ];
+
+interface ParentChildrenLinksProps {
+  pathname: string;
+  isActive: (href: string) => boolean;
+  notificationCounts: Record<string, number>;
+  section: string; // "Management" or "Academics"
+}
+
+/**
+ * Component to render parent's "My Child" related links with dynamic labels
+ * Shows loading skeletons while loading, hides if no children, shows singular/plural labels
+ * Renders different links based on section (Management or Academics)
+ */
+function ParentChildrenLinks({ pathname, isActive, notificationCounts, section }: ParentChildrenLinksProps) {
+  const { childrenCount, isLoading } = useParentChildren();
+
+  // Hide entire section if no children
+  if (!isLoading && childrenCount === 0) {
+    return null;
+  }
+
+  // Management section links
+  if (section === "Management") {
+    const managementLinks = [
+      {
+        href: "/dashboard/my-child",
+        label: childrenCount === 1 ? "My Child" : "My Children",
+        icon: UserGroupIcon,
+      },
+      {
+        href: "/dashboard/my-child-class",
+        label: childrenCount === 1 ? "My Child's Class" : "My Children's Class",
+        icon: School01Icon,
+      },
+    ];
+
+    return (
+      <>
+        {isLoading ? (
+          // Show loading skeletons
+          <div className="space-y-2 px-3">
+            {[...Array(2)].map((_, i) => (
+              <Skeleton key={`skeleton-${i}`} className="h-8 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          managementLinks.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive(item.href)}
+                tooltip={item.label}
+                className={`
+                  ${isActive(item.href)
+                    ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-tr-xl rounded-br-xl"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
+                  }
+                `}
+              >
+                <Link href={item.href}>
+                  <HugeiconsIcon
+                    icon={item.icon}
+                    size={20}
+                    strokeWidth={2}
+                    className={isActive(item.href) ? "text-brand" : "text-inherit"}
+                  />
+                  <span>{item.label}</span>
+                  {notificationCounts[item.href] > 0 && (
+                    <SidebarMenuBadge className="ml-auto bg-brand text-white">
+                      {notificationCounts[item.href]}
+                    </SidebarMenuBadge>
+                  )}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))
+        )}
+      </>
+    );
+  }
+
+  // Academics section links
+  if (section === "Academics") {
+    const reportLink = {
+      href: "/dashboard/my-child-report",
+      label: childrenCount === 1 ? "My Child's Report" : "My Children's Reports",
+      icon: ChartHistogramIcon,
+    };
+
+    return (
+      <>
+        {isLoading ? (
+          <Skeleton className="h-8 w-full rounded-lg mx-3" />
+        ) : (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive(reportLink.href)}
+              tooltip={reportLink.label}
+              className={`
+                ${isActive(reportLink.href)
+                  ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-tr-xl rounded-br-xl"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
+                }
+              `}
+            >
+              <Link href={reportLink.href}>
+                <HugeiconsIcon
+                  icon={reportLink.icon}
+                  size={20}
+                  strokeWidth={2}
+                  className={isActive(reportLink.href) ? "text-brand" : "text-inherit"}
+                />
+                <span>{reportLink.label}</span>
+                {notificationCounts[reportLink.href] > 0 && (
+                  <SidebarMenuBadge className="ml-auto bg-brand text-white">
+                    {notificationCounts[reportLink.href]}
+                  </SidebarMenuBadge>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+      </>
+    );
+  }
+
+  return null;
+}
 
 function AppSidebar({ pathname, user, school, logout }: {
   pathname: string;
@@ -127,52 +257,76 @@ function AppSidebar({ pathname, user, school, logout }: {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
-        {filteredSections.map((section, sectionIndex) => (
-          <SidebarGroup key={section.label}>
-            <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
-              {section.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => {
-                  const isActive = pathname === item.href;
-                  const notificationCount = notificationCounts[item.href] || 0;
+        {filteredSections.map((section, sectionIndex) => {
+          const isParentUser = user.role === "PARENT";
 
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.label}
-                        className={`
-                          ${isActive
-                            ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-tr-xl rounded-br-xl"
-                            : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
-                          }
-                        `}
-                      >
-                        <Link href={item.href}>
-                          <HugeiconsIcon
-                            icon={item.icon}
-                            size={20}
-                            strokeWidth={2}
-                            className={isActive ? "text-brand" : "text-inherit"}
-                          />
-                          <span>{item.label}</span>
-                          {notificationCount > 0 && (
-                            <SidebarMenuBadge className="ml-auto bg-brand text-white">
-                              {notificationCount}
-                            </SidebarMenuBadge>
-                          )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+          return (
+            <SidebarGroup key={section.label}>
+              <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                {section.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.href;
+                    const notificationCount = notificationCounts[item.href] || 0;
+
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={`
+                            ${isActive
+                              ? "border-l-2 border-l-brand text-brand bg-white/60 hover:bg-white/80 rounded-tr-xl rounded-br-xl"
+                              : "text-gray-600 hover:text-gray-900 hover:bg-white/40 rounded-xl"
+                            }
+                          `}
+                        >
+                          <Link href={item.href}>
+                            <HugeiconsIcon
+                              icon={item.icon}
+                              size={20}
+                              strokeWidth={2}
+                              className={isActive ? "text-brand" : "text-inherit"}
+                            />
+                            <span>{item.label}</span>
+                            {notificationCount > 0 && (
+                              <SidebarMenuBadge className="ml-auto bg-brand text-white">
+                                {notificationCount}
+                              </SidebarMenuBadge>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+
+                  {/* Render parent children links after Management section items */}
+                  {isParentUser && section.label === "Management" && (
+                    <ParentChildrenLinks
+                      pathname={pathname}
+                      isActive={(href) => pathname === href}
+                      notificationCounts={notificationCounts}
+                      section="Management"
+                    />
+                  )}
+
+                  {/* Render parent report link after Academics section items */}
+                  {isParentUser && section.label === "Academics" && (
+                    <ParentChildrenLinks
+                      pathname={pathname}
+                      isActive={(href) => pathname === href}
+                      notificationCounts={notificationCounts}
+                      section="Academics"
+                    />
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t">
