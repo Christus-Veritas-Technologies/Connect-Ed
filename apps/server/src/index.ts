@@ -252,7 +252,7 @@ app.notFound((c) => {
   );
 });
 
-const port = parseInt(process.env.PORT || "3001");
+const port = parseInt(process.env.PORT || "4000");
 
 console.log(`
 🚀 Connect-Ed API Server

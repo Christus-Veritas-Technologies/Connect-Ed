@@ -319,7 +319,7 @@ start().catch(console.error);
 // Export Hono server for Bun
 // ============================================
 
-const port = Number(process.env.AGENT_PORT) || 3002;
+const port = Number(process.env.AGENT_PORT) || 5000;
 console.log(`[Agent] HTTP server starting on port ${port}`);
 
 export default {
