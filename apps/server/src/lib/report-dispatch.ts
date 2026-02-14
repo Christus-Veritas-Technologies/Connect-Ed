@@ -184,13 +184,14 @@ export async function computeStudentReport(
     }
     
     // Determine grade name: use configured grade or default scale
-    let gradeName = grade?.name || "N/A";
-    if (!grade && result.mark >= 50) {
+    let gradeName = grade?.name;
+    if (!grade) {
       // Show default grades when no configured grade matches
       if (result.mark >= 90) gradeName = "A";
       else if (result.mark >= 80) gradeName = "B";
       else if (result.mark >= 70) gradeName = "C";
       else if (result.mark >= 60) gradeName = "D";
+      else if (result.mark >= 50) gradeName = "E";
       else gradeName = "F";
     }
     
@@ -198,7 +199,7 @@ export async function computeStudentReport(
       examName: result.exam.name,
       paper: result.exam.paper,
       mark: result.mark,
-      gradeName,
+      gradeName: gradeName || "N/A",
       isPass,
     });
   }
@@ -230,7 +231,8 @@ export async function computeStudentReport(
         else if (avgMark >= 80) avgGradeName = "B";
         else if (avgMark >= 70) avgGradeName = "C";
         else if (avgMark >= 60) avgGradeName = "D";
-        else if (avgMark >= 0) avgGradeName = "F";
+        else if (avgMark >= 50) avgGradeName = "E";
+        else avgGradeName = "F";
       }
 
       return {

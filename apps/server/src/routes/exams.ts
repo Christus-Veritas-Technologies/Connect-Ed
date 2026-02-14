@@ -261,27 +261,47 @@ exams.get("/:id", async (c) => {
     if (!exam) return errors.notFound(c, "Exam");
 
     // Get grades for school to determine letter grades
+    // First try subject-specific grades, then fall back to general grades
     const grades = await db.grade.findMany({
-      where: { subjectId: null, schoolId },
+      where: {
+        schoolId,
+        OR: [
+          { subjectId: exam.subjectId },
+          { subjectId: null },
+        ],
+      },
       orderBy: { minMark: "desc" },
     });
 
     // Map results with grade info
     const resultsWithGrades = exam.results.map((r) => {
+      // Find matching grade
       const grade = grades.find((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+      
+      // If no grade system is defined, use default pass threshold of 50%
+      let gradeName = grade?.name;
+      let isPass = grade?.isPass;
+      
+      if (!grade) {
+        // Default grading when no grade system exists
+        if (r.mark >= 90) { gradeName = "A"; isPass = true; }
+        else if (r.mark >= 80) { gradeName = "B"; isPass = true; }
+        else if (r.mark >= 70) { gradeName = "C"; isPass = true; }
+        else if (r.mark >= 60) { gradeName = "D"; isPass = true; }
+        else if (r.mark >= 50) { gradeName = "E"; isPass = true; }
+        else { gradeName = "F"; isPass = false; }
+      }
+      
       return {
         ...r,
-        gradeName: grade?.name || "N/A",
-        isPass: grade?.isPass ?? false,
+        gradeName: gradeName || "N/A",
+        isPass: isPass ?? false,
       };
     });
 
     // Stats
     const totalResults = exam.results.length;
-    const passGrades = grades.filter((g) => g.isPass);
-    const passCount = exam.results.filter((r) =>
-      passGrades.some((g) => r.mark >= g.minMark && r.mark <= g.maxMark)
-    ).length;
+    const passCount = resultsWithGrades.filter((r) => r.isPass).length;
     const averageMark = totalResults > 0
       ? Math.round(exam.results.reduce((sum, r) => sum + r.mark, 0) / totalResults)
       : 0;
