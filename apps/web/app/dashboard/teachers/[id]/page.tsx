@@ -1,47 +1,56 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
-  Pencil,
   Trash2,
   BookmarkPlus,
   Mail,
   Calendar,
-  X,
-  Check,
-  Search,
   GraduationCap,
   Loader2,
+  Download,
+  FileDown,
+  AlertCircle,
 } from "lucide-react";
 import { DashboardBreadcrumbs } from "@/components/dashboard";
 import { useAuth } from "@/lib/auth-context";
 import { canEditEntity } from "@/lib/roles";
-import { useTeacher, useUpdateTeacher, useDeleteTeacher } from "@/lib/hooks/use-teachers";
-import { useClasses } from "@/lib/hooks/use-classes";
-import { useSubjects } from "@/lib/hooks/use-subjects";
+import { useTeacher, useDeleteTeacher } from "@/lib/hooks/use-teachers";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { exportToCSV, exportToPDF } from "@/lib/export-utils";
+
+// Helper function to get initials from name
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 
 export default function TeacherDetailPage() {
   const router = useRouter();
@@ -53,90 +62,18 @@ export default function TeacherDetailPage() {
 
   // Data fetching
   const { data: teacherData, isLoading } = useTeacher(teacherId);
-  const { data: classesData } = useClasses();
-  const { data: subjectsData } = useSubjects();
-  const updateMutation = useUpdateTeacher();
   const deleteMutation = useDeleteTeacher();
 
   const teacher = teacherData?.teacher || null;
-  const allClasses = classesData?.classes || [];
-  const allSubjects = subjectsData?.subjects || [];
 
-  // Edit state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    level: "" as string,
-    classIds: [] as string[],
-    subjectIds: [] as string[],
-    isActive: true,
-  });
-  const [classSearch, setClassSearch] = useState("");
-  const [showClassDropdown, setShowClassDropdown] = useState(false);
+  // Delete state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Populate edit form when teacher data loads
-  useEffect(() => {
-    if (teacher) {
-      const nameParts = teacher.name.split(" ");
-      setEditForm({
-        firstName: nameParts[0] || "",
-        lastName: nameParts.slice(1).join(" ") || "",
-        email: teacher.email,
-        level: teacher.level || "",
-        classIds: teacher.classesTeaching?.map((tc) => tc.class.id) || [],
-        subjectIds: teacher.teacherSubjects?.map((ts) => ts.subject.id) || [],
-        isActive: teacher.isActive,
-      });
-    }
-  }, [teacher]);
-
-  // Filter subjects by level
-  const filteredSubjects = editForm.level
-    ? allSubjects.filter((s) => s.level === editForm.level || !s.level)
-    : [];
-
-  // Filter classes for search dropdown
-  const filteredClasses = classSearch
-    ? allClasses.filter(
-      (cls) =>
-        cls.name.toLowerCase().includes(classSearch.toLowerCase()) &&
-        !editForm.classIds.includes(cls.id)
-    )
-    : [];
-
-  const handleSave = () => {
-    if (!teacher) return;
-
-    updateMutation.mutate(
-      {
-        id: teacherId,
-        data: {
-          firstName: editForm.firstName,
-          lastName: editForm.lastName,
-          email: editForm.email,
-          level: editForm.level || undefined,
-          isActive: editForm.isActive,
-          classIds: editForm.classIds,
-          subjectIds: editForm.subjectIds,
-        },
-      },
-      {
-        onSuccess: () => {
-          setIsEditing(false);
-          toast.success("Teacher updated successfully");
-        },
-        onError: (err) => {
-          const error = err instanceof ApiError ? err.message : "Failed to update teacher";
-          toast.error(error);
-        },
-      }
-    );
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
   };
 
-  const handleDelete = () => {
+  const confirmDelete = () => {
     deleteMutation.mutate(teacherId, {
       onSuccess: () => {
         toast.success("Teacher deleted successfully");
@@ -145,23 +82,80 @@ export default function TeacherDetailPage() {
       onError: (err) => {
         const error = err instanceof ApiError ? err.message : "Failed to delete teacher";
         toast.error(error);
+        setShowDeleteDialog(false);
       },
     });
+  };
+
+  const handleExportCSV = () => {
+    if (!teacher) return;
+
+    const classesData = teacher.classesTeaching?.map((tc: any) => ({
+      class: tc.class.name,
+      subject: tc.subject?.name || "—",
+      students: tc.class._count?.students || 0,
+      level: tc.class.level || "—",
+    })) || [];
+
+    if (classesData.length === 0) return;
+
+    exportToCSV(
+      classesData,
+      [
+        { key: "class", label: "Class" },
+        { key: "subject", label: "Subject" },
+        { key: "students", label: "Students" },
+        { key: "level", label: "Level" },
+      ],
+      `teacher-${teacher.name.replace(/\s+/g, "-")}-classes-${new Date().toISOString().split("T")[0]}`
+    );
+  };
+
+  const handleExportPDF = () => {
+    if (!teacher) return;
+
+    const classesData = teacher.classesTeaching?.map((tc: any) => ({
+      class: tc.class.name,
+      subject: tc.subject?.name || "—",
+      students: tc.class._count?.students || 0,
+    })) || [];
+
+    if (classesData.length === 0) return;
+
+    exportToPDF(
+      classesData,
+      [
+        { key: "class", label: "Class" },
+        { key: "subject", label: "Subject" },
+        { key: "students", label: "Students" },
+      ],
+      `teacher-${teacher.name.replace(/\s+/g, "-")}-classes-${new Date().toISOString().split("T")[0]}`,
+      `Classes taught by ${teacher.name}`
+    );
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="size-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+        <Loader2 className="size-8 animate-spin text-brand" />
       </div>
     );
   }
 
   if (!teacher) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
-        <h1 className="text-2xl font-semibold text-foreground mb-2">Teacher not found</h1>
-        <Button onClick={() => router.push("/dashboard/teachers")} className="mt-4">
+      <div className="space-y-6">
+        <DashboardBreadcrumbs
+          items={[
+            { label: "Teachers", href: "/dashboard/teachers" },
+            { label: "Not Found" },
+          ]}
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>Teacher not found</AlertDescription>
+        </Alert>
+        <Button onClick={() => router.push("/dashboard/teachers")}>
           Back to Teachers
         </Button>
       </div>
@@ -174,580 +168,283 @@ export default function TeacherDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumbs */}
+      {/* Breadcrumb */}
       <DashboardBreadcrumbs
         items={[
           { label: "Teachers", href: "/dashboard/teachers" },
-          { label: teacher?.name || "Teacher" },
+          { label: teacher.name },
         ]}
       />
 
-      {/* Hero Section */}
+      {/* Header with back button */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => router.push("/dashboard/teachers")}
+        >
+          <ArrowLeft className="size-4" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">{teacher.name}</h1>
+          <p className="text-sm text-muted-foreground">{teacher.email}</p>
+        </div>
+      </div>
+
+      {/* Teacher info card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-8 md:p-12 mb-6 shadow-2xl"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
-        <div className="absolute inset-0 bg-black/10" />
-        <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-            <div className="flex items-start gap-6">
-              <div className="size-24 md:size-28 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-xl flex-shrink-0 border-4 border-white/30">
-                <span className="text-4xl md:text-5xl font-bold text-white">
-                  {teacher.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)}
-                </span>
+        {/* Main info */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Teacher Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Avatar and basic info */}
+            <div className="flex items-start gap-4">
+              <div className="size-20 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                {getInitials(teacher.name)}
               </div>
-              <div>
-                {isEditing ? (
-                  <div className="flex gap-2 mb-2">
-                    <Input
-                      value={editForm.firstName}
-                      onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
-                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 text-xl font-bold"
-                      placeholder="First name"
-                    />
-                    <Input
-                      value={editForm.lastName}
-                      onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
-                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 text-xl font-bold"
-                      placeholder="Last name"
-                    />
-                  </div>
-                ) : (
-                  <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{teacher.name}</h1>
-                )}
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-2 text-white/90">
-                    <Mail className="size-[18px]" />
-                    {isEditing ? (
-                      <Input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="bg-white/20 border-white/30 text-white placeholder:text-white/60 text-sm h-8 w-64"
-                        placeholder="Email address"
-                      />
-                    ) : (
-                      <span className="text-sm md:text-base">{teacher.email}</span>
-                    )}
-                  </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold">{teacher.name}</h2>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                  <Mail className="size-4" />
+                  {teacher.email}
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {isEditing ? (
-                    <Select
-                      value={editForm.isActive ? "active" : "inactive"}
-                      onValueChange={(v) => setEditForm({ ...editForm, isActive: v === "active" })}
-                    >
-                      <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">On Leave</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge
-                      className={
-                        teacher.isActive
-                          ? "bg-green-500/90 text-white border-green-300 shadow-lg"
-                          : "bg-orange-500/90 text-white border-orange-300 shadow-lg"
-                      }
-                    >
-                      {teacher.isActive ? "Active" : "On Leave"}
-                    </Badge>
-                  )}
-                  {teacher.level && !isEditing && (
-                    <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg capitalize">
+                <div className="flex items-center gap-2 mt-3">
+                  <Badge
+                    variant="outline"
+                    className={
+                      teacher.isActive
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-gray-50 text-gray-700 border-gray-200"
+                    }
+                  >
+                    {teacher.isActive ? "Active" : "On Leave"}
+                  </Badge>
+                  {teacher.level && (
+                    <Badge variant="outline" className="capitalize">
                       {teacher.level} School
                     </Badge>
                   )}
-                  <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg">
-                    {totalClasses} {totalClasses === 1 ? "Class" : "Classes"}
-                  </Badge>
                 </div>
               </div>
             </div>
 
-            {canEdit && (
-              <div className="flex gap-2">
-                {isEditing ? (
-                  <>
-                    <Button
-                      onClick={() => setIsEditing(false)}
-                      variant="secondary"
-                      className="gap-2 shadow-lg"
-                    >
-                      <X className="size-5" />
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      className="gap-2 shadow-lg bg-green-600 hover:bg-green-700"
-                      disabled={updateMutation.isPending}
-                    >
-                      {updateMutation.isPending ? (
-                        <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      ) : (
-                        <Check className="size-5" />
+            {/* Details grid */}
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">
+                  Email
+                </p>
+                <p className="text-sm font-medium mt-1">{teacher.email}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">
+                  Level
+                </p>
+                <p className="text-sm font-medium mt-1 capitalize">
+                  {teacher.level ? `${teacher.level} School` : "Not set"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">
+                  Classes
+                </p>
+                <p className="text-sm font-medium mt-1">{totalClasses}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">
+                  Subjects
+                </p>
+                <p className="text-sm font-medium mt-1">{totalSubjects}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">
+                  Status
+                </p>
+                <p className="text-sm font-medium mt-1">
+                  {teacher.isActive ? "Active" : "On Leave"}
+                </p>
+              </div>
+            </div>
+
+            {/* Subjects */}
+            {totalSubjects > 0 && (
+              <div className="pt-4 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                  Teaching Subjects
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {teacher.teacherSubjects?.map((ts: any) => (
+                    <Badge key={ts.id} variant="secondary">
+                      {ts.subject.name}
+                      {ts.subject.level && (
+                        <span className="text-[10px] opacity-70 ml-1 capitalize">
+                          • {ts.subject.level}
+                        </span>
                       )}
-                      Save
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      variant="secondary"
-                      className="gap-2 shadow-lg"
-                    >
-                      <Pencil className="size-5" />
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => setShowDeleteDialog(true)}
-                      variant="destructive"
-                      className="gap-2 shadow-lg"
-                    >
-                      <Trash2 className="size-5" />
-                      Delete
-                    </Button>
-                  </>
-                )}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        </div>
+
+            {/* Created date */}
+            {teacher.createdAt && (
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="size-4" />
+                  <span>
+                    Joined {new Date(teacher.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => router.push(`/dashboard/teachers/${teacherId}/edit`)}
+              >
+                <GraduationCap className="size-4" />
+                Edit Teacher
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleExportCSV}
+              disabled={totalClasses === 0}
+            >
+              <Download className="size-4" />
+              Export as CSV
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleExportPDF}
+              disabled={totalClasses === 0}
+            >
+              <FileDown className="size-4" />
+              Export as PDF
+            </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="w-full justify-start text-destructive"
+                onClick={handleDelete}
+              >
+                <Trash2 className="size-4" />
+                Delete Teacher
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
-            <div className="absolute top-0 right-0 opacity-10">
-              <BookmarkPlus className="size-20" />
-            </div>
-            <div className="relative z-10">
-              <p className="text-sm font-medium text-blue-100">Classes Teaching</p>
-              <p className="text-4xl font-bold mt-2">{totalClasses}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-white shadow-lg">
-            <div className="absolute top-0 right-0 opacity-10">
-              <GraduationCap className="size-20" />
-            </div>
-            <div className="relative z-10">
-              <p className="text-sm font-medium text-purple-100">Subjects</p>
-              <p className="text-4xl font-bold mt-2">{totalSubjects}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-white shadow-lg">
-            <div className="absolute top-0 right-0 opacity-10">
-              <Calendar className="size-20" />
-            </div>
-            <div className="relative z-10">
-              <p className="text-sm font-medium text-indigo-100">Joined</p>
-              <p className="text-lg font-bold mt-2">
-                {new Date(teacher.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Level, Subjects & Details */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-          className="lg:col-span-1 space-y-6"
-        >
-          {/* Level & Subjects */}
-          <Card className="shadow-lg border-2 h-fit">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-purple-50">
-                  <GraduationCap className="size-6 text-purple-600" />
-                </div>
-                <h2 className="text-xl font-bold">Level & Subjects</h2>
-              </div>
-
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Teaching Level</Label>
-                    <Select
-                      value={editForm.level}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, level: value, subjectIds: [] })
-                      }
+      {/* Classes table */}
+      {totalClasses > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookmarkPlus className="size-5" />
+              Classes ({totalClasses})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Class</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead className="text-right">Students</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {uniqueClasses.map((tc: any) => (
+                    <TableRow
+                      key={tc.id}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      onClick={() => router.push(`/dashboard/classes/${tc.class.id}`)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select level..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="primary">Primary</SelectItem>
-                        <SelectItem value="secondary">Secondary</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {editForm.level && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Subjects</Label>
-                      <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
-                        {filteredSubjects.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-2">
-                            No subjects for this level
-                          </p>
-                        ) : (
-                          filteredSubjects.map((subject) => {
-                            const isSelected = editForm.subjectIds.includes(subject.id);
-                            return (
-                              <button
-                                key={subject.id}
-                                type="button"
-                                onClick={() => {
-                                  setEditForm({
-                                    ...editForm,
-                                    subjectIds: isSelected
-                                      ? editForm.subjectIds.filter((id) => id !== subject.id)
-                                      : [...editForm.subjectIds, subject.id],
-                                  });
-                                }}
-                                className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between ${isSelected
-                                  ? "bg-brand/10 text-brand border border-brand/30"
-                                  : "hover:bg-muted"
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between w-full gap-2">
-                                  <span>{subject.name}</span>
-                                  <div className="flex items-center gap-1.5">
-                                    {subject.level && (
-                                      <Badge variant="outline" className="text-[10px] capitalize">
-                                        {subject.level}
-                                      </Badge>
-                                    )}
-                                    {isSelected && <Check className="size-4" />}
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 py-3 border-b">
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">Level</p>
-                      <p className="font-semibold capitalize">{teacher.level ? `${teacher.level} School` : "Not set"}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2">Subjects</p>
-                    {teacher.teacherSubjects && teacher.teacherSubjects.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {teacher.teacherSubjects.map((ts) => (
-                          <Badge key={ts.id} variant="secondary" className="gap-1.5">
-                            {ts.subject.name}
-                            {ts.subject.level && (
-                              <span className="text-[10px] opacity-70 capitalize">• {ts.subject.level}</span>
-                            )}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No subjects assigned</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Teacher Details */}
-          <Card className="shadow-lg border-2 h-fit">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-indigo-50">
-                  <GraduationCap className="size-6 text-indigo-600" />
-                </div>
-                <h2 className="text-xl font-bold">Details</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 py-3 border-b">
-                  <Mail className="size-5 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="font-semibold text-sm truncate">{teacher.email}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 py-3 border-b">
-                  <BookmarkPlus className="size-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Classes</p>
-                    <p className="font-semibold">{totalClasses}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 py-3">
-                  <Calendar className="size-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Joined</p>
-                    <p className="font-semibold text-sm">
-                      {new Date(teacher.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Right Column - Classes */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="lg:col-span-2"
-        >
-          <Card className="shadow-lg border-2 h-fit">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-blue-50">
-                    <BookmarkPlus className="size-6 text-blue-600" />
-                  </div>
-                  <h2 className="text-xl font-bold">Classes</h2>
-                </div>
-                <Badge variant="outline" className="text-lg px-3 py-1">
-                  {isEditing ? editForm.classIds.length : totalClasses}
-                </Badge>
-              </div>
-
-              {isEditing ? (
-                <div className="space-y-4">
-                  {/* Search to add class */}
-                  <div className="relative">
-                    <div className="relative">
-                      <Search className="size-[18px] absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search to add a class..."
-                        value={classSearch}
-                        onChange={(e) => {
-                          setClassSearch(e.target.value);
-                          setShowClassDropdown(true);
-                        }}
-                        onFocus={() => setShowClassDropdown(true)}
-                        className="pl-10"
-                      />
-                    </div>
-                    {showClassDropdown && classSearch && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-border rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto">
-                        {filteredClasses.length === 0 ? (
-                          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                            No matching classes
-                          </div>
-                        ) : (
-                          filteredClasses.map((cls) => (
-                            <button
-                              key={cls.id}
-                              type="button"
-                              onClick={() => {
-                                setEditForm({
-                                  ...editForm,
-                                  classIds: [...editForm.classIds, cls.id],
-                                });
-                                setClassSearch("");
-                                setShowClassDropdown(false);
-                              }}
-                              className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center justify-between"
-                            >
-                              <span className="text-sm">{cls.name}</span>
-                              {cls.level && (
-                                <Badge variant="outline" className="text-xs capitalize">
-                                  {cls.level}
-                                </Badge>
-                              )}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Selected classes with X to remove */}
-                  {editForm.classIds.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground text-sm">No classes assigned. Search above to add classes.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {editForm.classIds.map((classId) => {
-                        const cls = allClasses.find((c) => c.id === classId);
-                        if (!cls) return null;
-                        return (
-                          <div
-                            key={classId}
-                            className="flex items-center justify-between p-3 rounded-lg border-2 bg-card"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="size-10 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-sm">
-                                <span className="text-xs font-bold text-white">
-                                  {cls.name.substring(0, 2).toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm">{cls.name}</p>
-                                {cls.level && (
-                                  <p className="text-xs text-muted-foreground capitalize">{cls.level}</p>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                              onClick={() =>
-                                setEditForm({
-                                  ...editForm,
-                                  classIds: editForm.classIds.filter((id) => id !== classId),
-                                })
-                              }
-                            >
-                              <X className="size-[18px]" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {uniqueClasses.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-                        <BookmarkPlus className="size-12 text-muted-foreground" />
-                      </div>
-                      <p className="text-muted-foreground">No classes assigned yet</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {uniqueClasses.map((tc, index) => (
-                        <motion.div
-                          key={tc.id}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.6 + index * 0.05 }}
-                          className="group relative overflow-hidden rounded-xl border-2 hover:border-brand/50 transition-all hover:shadow-lg bg-gradient-to-br from-white to-brand/5 cursor-pointer"
-                          onClick={() => router.push(`/dashboard/classes/${tc.class.id}`)}
-                        >
-                          <div className="p-4">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="size-12 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md">
-                                <span className="text-sm font-bold text-white">
-                                  {tc.class.name.substring(0, 2).toUpperCase()}
-                                </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold truncate">{tc.class.name}</p>
-                                {tc.class.level && (
-                                  <p className="text-xs text-muted-foreground capitalize">{tc.class.level}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between pt-3 border-t">
-                              <span className="text-sm text-muted-foreground">Students</span>
-                              <Badge variant="secondary">{tc.class._count?.students || 0}</Badge>
-                            </div>
-                            {tc.subject && (
-                              <div className="flex items-center justify-between pt-2">
-                                <span className="text-sm text-muted-foreground">Subject</span>
-                                <Badge variant="outline">{tc.subject.name}</Badge>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Delete Confirmation Dialog */}
-      {canEdit && (
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete Teacher</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Are you sure you want to delete <strong>{teacher.name}</strong>?
-                </p>
-                <p className="text-xs text-destructive/80">
-                  This action cannot be undone. All associated data will be removed.
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowDeleteDialog(false)}
-                  disabled={deleteMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? (
-                    <>
-                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="size-4 mr-2" />
-                      Delete
-                    </>
-                  )}
-                </Button>
-              </div>
+                      <TableCell className="font-medium">
+                        {tc.class.name}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {tc.subject?.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm capitalize">
+                        {tc.class.level || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="outline">
+                          {tc.class._count?.students || 0}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          </DialogContent>
-        </Dialog>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <BookmarkPlus className="size-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-muted-foreground">No classes assigned to this teacher</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Teacher</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-medium">{teacher.name}</span>? This action
+            cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
