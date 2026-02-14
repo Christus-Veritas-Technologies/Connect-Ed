@@ -1,4 +1,5 @@
 import { db, MessageType, MessageStatus } from "@repo/db";
+import { fmt } from "@/lib/currency";
 
 // Message service interfaces
 export interface SendMessageOptions {
@@ -239,7 +240,7 @@ export async function sendFeeReminder(
 This is a reminder that the fee for ${studentName} is due.
 
 Fee: ${fee.description}
-Amount Due: $${outstanding.toLocaleString()}
+Amount Due: ${fmt(outstanding)}
 Due Date: ${dueDate}
 
 Please make the payment at your earliest convenience.

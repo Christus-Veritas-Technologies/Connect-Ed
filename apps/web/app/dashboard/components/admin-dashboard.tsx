@@ -76,6 +76,7 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
 import { exportDataAsCSV } from "@/lib/export-utils";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { AddStudentDialog } from "@/components/dialogs/add-student-dialog";
 import { AddFeeDialog } from "@/components/dialogs/add-fee-dialog";
 import { toast } from "sonner";
@@ -90,6 +91,7 @@ const PIE_COLORS = ["#22c55e", "#f59e0b", "#ef4444"];
 
 export function AdminDashboard() {
   const { user, school, checkAuth } = useAuth();
+  const currency = (school?.currency ?? "USD") as CurrencyCode;
   const queryClient = useQueryClient();
   const { data: stats, isLoading } = useDashboardStats();
   const { data: notificationsData } = useNotifications();
@@ -214,12 +216,12 @@ export function AdminDashboard() {
     })),
     ...(stats.recentActivity?.payments || []).map((p: any) => ({
       type: "payment",
-      description: `Payment received: $${p.amount} from ${p.student}`,
+      description: `Payment received: ${fmt(p.amount, currency)} from ${p.student}`,
       date: p.date,
     })),
     ...(stats.recentActivity?.expenses || []).map((e: any) => ({
       type: "expense",
-      description: `Expense recorded: $${e.amount} - ${e.category}`,
+      description: `Expense recorded: ${fmt(e.amount, currency)} - ${e.category}`,
       date: e.date,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -231,7 +233,7 @@ export function AdminDashboard() {
 
   const handleExportRevenuePDF = async () => {
     try {
-      const rows = revenueData.map((d: any) => [d.name || d.month, `$${(d.value || d.collected).toLocaleString()}`]);
+      const rows = revenueData.map((d: any) => [d.name || d.month, fmt(d.value || d.collected, currency)]);
 
       // Get auth token
       const token = localStorage.getItem("accessToken");
@@ -248,7 +250,7 @@ export function AdminDashboard() {
           subtitle: school?.name || "School Management System",
           headers: ["Month", "Revenue Collected"],
           rows,
-          footer: `Total Revenue: $${revenueData.reduce((sum, d) => sum + (d.value || d.collected), 0).toLocaleString()}`,
+          footer: `Total Revenue: ${fmt(revenueData.reduce((sum, d) => sum + (d.value || d.collected), 0), currency)}`,
         }),
       });
 
@@ -394,7 +396,7 @@ export function AdminDashboard() {
         />
         <StatCard
           label="Fees Collected"
-          value={`$${stats.collectedFees.toLocaleString()}`}
+          value={fmt(stats.collectedFees, currency)}
           subtext={`${stats.totalFees > 0 ? Math.round((stats.collectedFees / stats.totalFees) * 100) : 0}% collection rate`}
           icon={Money01Icon}
           color="from-success to-emerald-600"
@@ -403,14 +405,14 @@ export function AdminDashboard() {
         />
         <StatCard
           label="Pending Fees"
-          value={`$${stats.pendingFees.toLocaleString()}`}
+          value={fmt(stats.pendingFees, currency)}
           subtext="Outstanding balance"
           icon={TimeQuarterIcon}
           color="from-warning to-orange-600"
         />
         <StatCard
           label="Expenses"
-          value={`$${stats.totalExpenses.toLocaleString()}`}
+          value={fmt(stats.totalExpenses, currency)}
           subtext="This month"
           icon={Invoice03Icon}
           color="from-destructive to-red-600"
@@ -448,7 +450,7 @@ export function AdminDashboard() {
                 >
                   <BarChart data={revenueData}>
                     <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmt(Number(v), currency)} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -555,7 +557,7 @@ export function AdminDashboard() {
                 >
                   <div className="flex items-center gap-3">
                     <div className={`size-2 rounded-full ${activity.type === "payment" ? "bg-success" :
-                        activity.type === "student" ? "bg-brand" : "bg-muted-foreground"
+                      activity.type === "student" ? "bg-brand" : "bg-muted-foreground"
                       }`} />
                     <span className="text-sm">{activity.description}</span>
                   </div>
@@ -642,8 +644,8 @@ export function AdminDashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={`p-4 rounded-lg border transition-all ${notification.isRead
-                        ? "bg-muted/30 border-muted"
-                        : `bg-card ${colors.border} shadow-sm`
+                      ? "bg-muted/30 border-muted"
+                      : `bg-card ${colors.border} shadow-sm`
                       }`}
                   >
                     <div className="flex gap-3">

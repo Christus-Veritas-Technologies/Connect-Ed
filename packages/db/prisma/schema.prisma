@@ -1,10 +1,16 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -80,6 +86,14 @@ enum NotificationType {
   FEE_OVERDUE
   MESSAGE_SENT
   SYSTEM_ALERT
+  SHARED_FILE
+}
+
+enum SharedFileRecipientType {
+  USER
+  STUDENT
+  PARENT
+  ROLE
 }
 
 enum NotificationPriority {
@@ -93,6 +107,12 @@ enum StudentStatus {
   ACTIVE
   SUSPENDED
   ABSENT
+}
+
+enum Currency {
+  USD
+  ZAR
+  ZIG
 }
 
 enum SchoolPeriodType {
@@ -111,6 +131,10 @@ model School {
   isActive           Boolean  @default(false)
   signupFeePaid      Boolean  @default(false)
   onboardingComplete Boolean  @default(false)
+
+  // Country & currency
+  country  String?   // "ZW" or "ZA"
+  currency Currency  @default(USD)
 
   // Term and period management
   termlyFee         Decimal?         @db.Decimal(10, 2)
@@ -145,6 +169,20 @@ model School {
   smsUsed        Int      @default(0)
   quotaResetDate DateTime @default(now())
 
+  // Billing
+  nextPaymentDate DateTime? // null = no billing yet; when past due + 3 grace days → lockout
+
+  // Student Report Settings
+  reportShowSchoolBranding Boolean @default(true)
+  reportShowTeacherDetails Boolean @default(true)
+  reportShowGrades         Boolean @default(true)
+  reportShowPassRates      Boolean @default(true)
+  reportShowInsights       Boolean @default(true)
+  reportShowExamDetails    Boolean @default(true)
+  reportShowOverallAverage Boolean @default(true)
+  reportSchoolLogo         String? // URL or path to school logo
+  reportSchoolMotto        String?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,6 +206,7 @@ model School {
   announcements  Announcement[]
   grades         Grade[]
   exams          Exam[]
+  sharedFiles    SharedFile[]
 
   @@map("schools")
 }
@@ -228,6 +267,10 @@ model User {
   // Exams
   createdExams Exam[] @relation("ExamTeacher")
 
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("UserUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("UserFileRecipients")
+
   @@index([schoolId])
   @@index([email])
   @@map("users")
@@ -253,6 +296,10 @@ model Student {
   tokenVersion Int     @default(0)
   onboardingComplete Boolean @default(true)
 
+  // Notification preferences
+  notifyInApp Boolean @default(true)
+  notifyEmail Boolean @default(true)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -272,6 +319,10 @@ model Student {
   subjects       StudentSubject[]
   announcementComments AnnouncementComment[] @relation("StudentAnnouncementComments")
   examResults          ExamResult[]
+
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("StudentUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("StudentFileRecipients")
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -307,6 +358,10 @@ model Parent {
   
   // Announcement comments
   announcementComments AnnouncementComment[] @relation("ParentAnnouncementComments")
+
+  // Shared files
+  uploadedFiles       SharedFile[]          @relation("ParentUploadedFiles")
+  sharedFileRecipients SharedFileRecipient[] @relation("ParentFileRecipients")
 
   @@index([schoolId])
   @@map("parents")
@@ -402,7 +457,7 @@ model Subject {
   grades          Grade[]
   exams           Exam[]
 
-  @@unique([schoolId, name])
+  @@unique([schoolId, name, level])
   @@index([schoolId])
   @@map("subjects")
 }
@@ -485,6 +540,10 @@ model TeacherSubject {
 model OnboardingProgress {
   id String @id @default(cuid())
 
+  // Country & currency (step 0 – before school info)
+  country  String?
+  currency String?
+
   // School info (step 1)
   schoolName  String?
   address     String?
@@ -564,6 +623,8 @@ model FeePayment {
   paymentMethod PaymentMethod
   reference     String?
   notes         String?
+  termNumber    Int?
+  termYear      Int?
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -576,7 +637,7 @@ model FeePayment {
   fee   Fee    @relation(fields: [feeId], references: [id], onDelete: Cascade)
 
   receivedById String
-  receivedBy   User   @relation("ReceivedBy", fields: [receivedById], references: [id])
+  receivedBy   User   @relation("ReceivedBy", fields: [receivedById], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([feeId])
@@ -600,7 +661,7 @@ model Expense {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   recordedById String
-  recordedBy   User   @relation("RecordedBy", fields: [recordedById], references: [id])
+  recordedBy   User   @relation("RecordedBy", fields: [recordedById], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([date])
@@ -642,10 +703,9 @@ model PlanPayment {
   updatedAt DateTime @updatedAt
 
   // Relations
-  schoolId String
+  schoolId String @unique
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@index([schoolId])
   @@map("plan_payments")
 }
 
@@ -752,8 +812,8 @@ model Grade {
   updatedAt DateTime @updatedAt
 
   // Relations
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -926,4 +986,85 @@ model AnnouncementComment {
   @@index([announcementId])
   @@index([createdAt])
   @@map("announcement_comments")
+}
+
+// ============================================
+// SHARED FILES & CLOUD STORAGE
+// ============================================
+
+model SharedFile {
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+  storedName  String  @unique // UUID key in R2 bucket
+  originalName String // Original file name (e.g. "homework.pdf")
+  size        Int     // File size in bytes
+  mimeType    String
+  url         String? // Public/signed URL (optional, generated on demand)
+
+  // Uploader — one of these will be set (polymorphic)
+  uploadedByUserId    String?
+  uploadedByUser      User?    @relation("UserUploadedFiles", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedByStudentId String?
+  uploadedByStudent   Student? @relation("StudentUploadedFiles", fields: [uploadedByStudentId], references: [id], onDelete: SetNull)
+  uploadedByParentId  String?
+  uploadedByParent    Parent?  @relation("ParentUploadedFiles", fields: [uploadedByParentId], references: [id], onDelete: SetNull)
+
+  // School scope
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Recipients
+  recipients SharedFileRecipient[]
+
+  @@index([schoolId])
+  @@index([uploadedByUserId])
+  @@index([uploadedByStudentId])
+  @@index([uploadedByParentId])
+  @@index([createdAt])
+  @@map("shared_files")
+}
+
+model SharedFileRecipient {
+  id String @id @default(cuid())
+
+  // The file being shared
+  fileId String
+  file   SharedFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Recipient type — who this was shared with
+  recipientType SharedFileRecipientType
+
+  // If shared with an individual (one of these will be set)
+  recipientUserId    String?
+  recipientUser      User?    @relation("UserFileRecipients", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientStudentId String?
+  recipientStudent   Student? @relation("StudentFileRecipients", fields: [recipientStudentId], references: [id], onDelete: Cascade)
+  recipientParentId  String?
+  recipientParent    Parent?  @relation("ParentFileRecipients", fields: [recipientParentId], references: [id], onDelete: Cascade)
+
+  // If shared with a role (e.g., "TEACHER", "PARENT", "STUDENT", "ADMIN")
+  recipientRole String? // Role name when recipientType is ROLE
+
+  // Read tracking
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([fileId, recipientUserId])
+  @@unique([fileId, recipientStudentId])
+  @@unique([fileId, recipientParentId])
+  @@unique([fileId, recipientRole])
+  @@index([fileId])
+  @@index([recipientUserId])
+  @@index([recipientStudentId])
+  @@index([recipientParentId])
+  @@index([recipientRole])
+  @@map("shared_file_recipients")
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
@@ -12,6 +12,9 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  MessageSquare,
+  Timer,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -20,7 +23,10 @@ import {
   useDeleteAnnouncement,
   useCreateAnnouncementComment,
 } from "@/lib/hooks/use-announcements";
-import type { Announcement, AnnouncementComment } from "@/lib/hooks/use-announcements";
+import type {
+  Announcement,
+  AnnouncementComment,
+} from "@/lib/hooks/use-announcements";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +48,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DashboardBreadcrumbs,
+  PageHeader,
+  StatsCard,
+  FilterTabs,
+  EmptyState,
+} from "@/components/dashboard";
 import { toast } from "sonner";
+
+// ─── Constants & Helpers ─────────────────────────────────────
 
 const LENGTH_LABELS: Record<string, string> = {
   ONE_DAY: "1 Day",
@@ -98,18 +113,15 @@ function getInitials(name: string): string {
 }
 
 function getCommentAuthor(comment: AnnouncementComment) {
-  if (comment.user) {
+  if (comment.user)
     return { name: comment.user.name, role: comment.user.role };
-  }
-  if (comment.parent) {
+  if (comment.parent)
     return { name: comment.parent.name, role: "PARENT" };
-  }
-  if (comment.student) {
+  if (comment.student)
     return {
       name: `${comment.student.firstName} ${comment.student.lastName}`,
       role: "STUDENT",
     };
-  }
   return { name: "Unknown", role: "UNKNOWN" };
 }
 
@@ -123,13 +135,18 @@ const ROLE_COLORS: Record<string, string> = {
 
 const AVATAR_COLORS: Record<string, string> = {
   ADMIN: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
-  RECEPTIONIST: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-  TEACHER: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
-  PARENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-  STUDENT: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+  RECEPTIONIST:
+    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+  TEACHER:
+    "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
+  PARENT:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+  STUDENT:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
 };
 
-/* ─── Comment Item ─── */
+// ─── Comment Item ────────────────────────────────────────────
+
 function CommentItem({ comment }: { comment: AnnouncementComment }) {
   const author = getCommentAuthor(comment);
   return (
@@ -159,7 +176,8 @@ function CommentItem({ comment }: { comment: AnnouncementComment }) {
   );
 }
 
-/* ─── Announcement Card ─── */
+// ─── Announcement Card ───────────────────────────────────────
+
 function AnnouncementCard({
   announcement,
   isAdmin,
@@ -239,8 +257,8 @@ function AnnouncementCard({
               <Badge
                 variant="secondary"
                 className={`text-[11px] px-2 py-0.5 font-normal ${isExpired
-                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
                   }`}
               >
                 {timeRemaining}
@@ -275,7 +293,7 @@ function AnnouncementCard({
           </button>
         </div>
 
-        {/* Reply input — always visible */}
+        {/* Reply input */}
         <div className="flex items-center gap-2 mt-3 ml-[52px]">
           <Input
             placeholder="Write a reply..."
@@ -307,7 +325,6 @@ function AnnouncementCard({
         {/* Comments section */}
         {commentCount > 0 && (
           <div className="mt-3 ml-[52px] space-y-3">
-            {/* Preview comments (always visible — latest 2) */}
             {!showAllComments && (
               <>
                 {previewComments.map((comment) => (
@@ -326,7 +343,6 @@ function AnnouncementCard({
               </>
             )}
 
-            {/* All comments */}
             <AnimatePresence>
               {showAllComments && (
                 <motion.div
@@ -356,7 +372,8 @@ function AnnouncementCard({
   );
 }
 
-/* ─── Main Page ─── */
+// ─── Main Page ───────────────────────────────────────────────
+
 export default function AnnouncementsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
@@ -369,11 +386,41 @@ export default function AnnouncementsPage() {
   const announcements = data?.announcements || [];
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [filterTab, setFilterTab] = useState("all");
+  const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({
     heading: "",
     subheading: "",
     length: "" as string,
   });
+
+  // ── Derived data ──
+  const activeAnnouncements = announcements.filter(
+    (a) => getTimeRemaining(a.createdAt, a.length) !== "Expired"
+  );
+  const expiredAnnouncements = announcements.filter(
+    (a) => getTimeRemaining(a.createdAt, a.length) === "Expired"
+  );
+  const totalComments = announcements.reduce(
+    (sum, a) => sum + a._count.comments,
+    0
+  );
+
+  // Filter by tab and search
+  const filteredAnnouncements = announcements
+    .filter((a) => {
+      if (filterTab === "active")
+        return getTimeRemaining(a.createdAt, a.length) !== "Expired";
+      if (filterTab === "expired")
+        return getTimeRemaining(a.createdAt, a.length) === "Expired";
+      return true;
+    })
+    .filter((a) =>
+      search
+        ? a.heading.toLowerCase().includes(search.toLowerCase()) ||
+        a.subheading.toLowerCase().includes(search.toLowerCase())
+        : true
+    );
 
   const handleCreate = () => {
     if (!formData.heading || !formData.subheading || !formData.length) {
@@ -410,7 +457,9 @@ export default function AnnouncementsPage() {
         onSuccess: () => toast.success("Comment added"),
         onError: (err) => {
           const msg =
-            err instanceof ApiError ? err.message : "Failed to add comment";
+            err instanceof ApiError
+              ? err.message
+              : "Failed to add comment";
           toast.error(msg);
         },
       }
@@ -430,49 +479,108 @@ export default function AnnouncementsPage() {
       : createMutation.error?.message;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs items={[{ label: "Announcements" }]} />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Announcements</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            School-wide announcements and updates
-          </p>
-        </div>
-        {isAdmin && (
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setShowCreateDialog(true)}
-          >
-            <Plus className="size-4" />
-            New Announcement
-          </Button>
-        )}
+      <PageHeader
+        title="Announcements"
+        subtitle="School-wide announcements and updates"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search announcements..."
+        action={
+          isAdmin ? (
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="size-4" />
+              New Announcement
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          label="Total Announcements"
+          value={announcements.length}
+          icon={<Megaphone className="size-6" />}
+          color="brand"
+          delay={0.1}
+        />
+        <StatsCard
+          label="Active"
+          value={activeAnnouncements.length}
+          icon={<Timer className="size-6" />}
+          color="green"
+          delay={0.2}
+        />
+        <StatsCard
+          label="Expired"
+          value={expiredAnnouncements.length}
+          icon={<AlertCircle className="size-6" />}
+          color="red"
+          delay={0.3}
+        />
+        <StatsCard
+          label="Total Comments"
+          value={totalComments}
+          icon={<MessageSquare className="size-6" />}
+          color="blue"
+          delay={0.4}
+        />
       </div>
+
+      {/* Filter Tabs */}
+      <FilterTabs
+        tabs={[
+          { key: "all", label: "All", count: announcements.length },
+          {
+            key: "active",
+            label: "Active",
+            count: activeAnnouncements.length,
+          },
+          {
+            key: "expired",
+            label: "Expired",
+            count: expiredAnnouncements.length,
+          },
+        ]}
+        active={filterTab}
+        onChange={setFilterTab}
+      />
 
       {/* Feed */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-8 animate-spin text-brand" />
         </div>
-      ) : announcements.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Megaphone className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm font-medium text-foreground">
-            No announcements yet
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isAdmin
+      ) : filteredAnnouncements.length === 0 ? (
+        <EmptyState
+          icon={<Megaphone className="size-12" />}
+          title={
+            search || filterTab !== "all"
+              ? "No announcements match your filters"
+              : "No announcements yet"
+          }
+          description={
+            isAdmin
               ? "Create your first announcement to get started."
-              : "Check back later for updates."}
-          </p>
-        </div>
+              : "Check back later for updates."
+          }
+          action={
+            isAdmin ? (
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="size-4" />
+                New Announcement
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          {announcements.map((announcement) => (
+        <div className="rounded-xl border bg-card overflow-hidden max-w-2xl">
+          {filteredAnnouncements.map((announcement) => (
             <AnnouncementCard
               key={announcement.id}
               announcement={announcement}
@@ -562,7 +670,7 @@ export default function AnnouncementsPage() {
               >
                 {createMutation.isPending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin mr-2" />
+                    <Loader2 className="size-4 animate-spin" />
                     Publishing...
                   </>
                 ) : (

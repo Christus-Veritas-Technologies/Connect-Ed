@@ -10,12 +10,13 @@ import {
     SentIcon,
     BookOpen01Icon,
     Notification01Icon,
-    ArrowRight01Icon,
+    FileAttachmentIcon,
     CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Navbar, Footer } from "@/components/marketing-layout";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -141,11 +142,27 @@ const features = [
             "Engagement analytics",
         ],
     },
+    {
+        icon: FileAttachmentIcon,
+        title: "Shared Files & Storage",
+        description:
+            "Share documents, homework, and resources with individuals or entire roles — with cloud storage included in every plan.",
+        details: [
+            "Share files with individuals or roles",
+            "Cloud storage powered by Cloudflare R2",
+            "Auto-generated file names with custom titles",
+            "In-app file preview and download",
+            "New file notifications for recipients",
+            "Storage included: 150 GB – 1,000 GB by plan",
+        ],
+    },
 ];
 
 export default function FeaturesPage() {
     return (
         <main className="min-h-screen bg-background">
+            <Navbar />
+
             {/* Hero */}
             <section className={`pt-32 pb-16 ${patternBg} bg-muted/30`}>
                 <div className="mx-auto max-w-6xl px-6 text-center">
@@ -180,51 +197,54 @@ export default function FeaturesPage() {
                 </div>
             </section>
 
-            {/* Feature deep-dives */}
-            {features.map((feature, idx) => (
-                <section
-                    key={feature.title}
-                    className={`py-20 ${idx % 2 === 0 ? "" : `${patternBg} bg-muted/30`}`}
-                >
-                    <div className="mx-auto max-w-6xl px-6">
-                        <AnimatedSection
-                            className={`grid gap-12 items-center lg:grid-cols-2 ${idx % 2 !== 0 ? "lg:direction-rtl" : ""}`}
-                        >
-                            <motion.div variants={fadeUp}>
-                                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand text-white ring-2 ring-brand/20">
-                                    <HugeiconsIcon icon={feature.icon} className="size-6" />
-                                </div>
-                                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
-                                    {feature.title}
-                                </h2>
-                                <p className="text-muted-foreground leading-relaxed mb-6">
-                                    {feature.description}
-                                </p>
-                                <Button asChild>
-                                    <Link href="/auth/signup">Start Free Trial</Link>
-                                </Button>
-                            </motion.div>
+            {/* Feature deep-dives — odd heading left, even heading right */}
+            {features.map((feature, idx) => {
+                const isEven = idx % 2 !== 0;
+                return (
+                    <section
+                        key={feature.title}
+                        className={`py-20 ${isEven ? `${patternBg} bg-muted/30` : ""}`}
+                    >
+                        <div className="mx-auto max-w-6xl px-6">
+                            <AnimatedSection className="grid gap-12 items-center lg:grid-cols-2">
+                                {/* Heading + CTA */}
+                                <motion.div variants={fadeUp} className={isEven ? "lg:order-2" : ""}>
+                                    <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand text-white ring-2 ring-brand/20">
+                                        <HugeiconsIcon icon={feature.icon} className="size-6" />
+                                    </div>
+                                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+                                        {feature.title}
+                                    </h2>
+                                    <p className="text-muted-foreground leading-relaxed mb-6">
+                                        {feature.description}
+                                    </p>
+                                    <Button asChild>
+                                        <Link href="/auth/signup">Get Started</Link>
+                                    </Button>
+                                </motion.div>
 
-                            <motion.div variants={fadeUp} custom={1}>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {feature.details.map((detail) => (
-                                        <div
-                                            key={detail}
-                                            className="flex items-start gap-2.5 text-sm text-muted-foreground"
-                                        >
-                                            <HugeiconsIcon
-                                                icon={CheckmarkCircle02Icon}
-                                                className="size-4 text-emerald-500 shrink-0 mt-0.5"
-                                            />
-                                            <span>{detail}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        </AnimatedSection>
-                    </div>
-                </section>
-            ))}
+                                {/* Details grid */}
+                                <motion.div variants={fadeUp} custom={1} className={isEven ? "lg:order-1" : ""}>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {feature.details.map((detail) => (
+                                            <div
+                                                key={detail}
+                                                className="flex items-start gap-2.5 text-sm text-muted-foreground"
+                                            >
+                                                <HugeiconsIcon
+                                                    icon={CheckmarkCircle02Icon}
+                                                    className="size-4 text-emerald-500 shrink-0 mt-0.5"
+                                                />
+                                                <span>{detail}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            </AnimatedSection>
+                        </div>
+                    </section>
+                );
+            })}
 
             {/* CTA */}
             <section className="py-20">
@@ -237,19 +257,18 @@ export default function FeaturesPage() {
                             Ready to get started?
                         </motion.h2>
                         <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-md mx-auto">
-                            Create your account and explore every feature with a free trial.
+                            Create your account and explore every feature today.
                         </motion.p>
                         <motion.div variants={fadeUp}>
                             <Button size="xl" asChild>
-                                <Link href="/auth/signup">
-                                    Start Free Trial
-                                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 ml-1" />
-                                </Link>
+                                <Link href="/auth/signup">Get Started</Link>
                             </Button>
                         </motion.div>
                     </AnimatedSection>
                 </div>
             </section>
+
+            <Footer />
         </main>
     );
 }

@@ -1,46 +1,91 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan, PaymentType, PaymentStatus, PaymentMethod, Prisma } from "@repo/db";
+import {
+  getPlanAmounts,
+  createPaynowCheckout,
+  createDodoPaymentLink,
+  type PlanType,
+} from "@repo/payments";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { createCheckoutSchema } from "../lib/validation";
+import { createCheckoutSchema, createDodoCheckoutSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { PLAN_FEATURES } from "../lib/auth";
-import { Paynow } from "paynow";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
 const payments = new Hono();
 
-// Initialize PayNow (using environment variables)
-const initializePaynow = () => {
-  const integrationId = process.env.PAYNOW_INTEGRATION_ID;
-  const integrationKey = process.env.PAYNOW_INTEGRATION_KEY;
-  
-  if (!integrationId || !integrationKey) {
-    throw new Error("PayNow credentials not configured - set PAYNOW_INTEGRATION_ID and PAYNOW_INTEGRATION_KEY");
-  }
-  
-  return new Paynow(integrationId, integrationKey);
-};
+/** Set next payment due date to 31 days from now */
+function getNextPaymentDate(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 31);
+  return d;
+}
 
-// Pricing configuration
-const PRICING = {
-  LITE: {
-    signupFee: 400,
-    perTermCost: 50,
-    monthlyEstimate: 40,
-  },
-  GROWTH: {
-    signupFee: 750,
-    perTermCost: 90,
-    monthlyEstimate: 75,
-  },
-  ENTERPRISE: {
-    signupFee: 1200,
-    perTermCost: 150,
-    monthlyEstimate: 120,
-  },
-} as const;
+/**
+ * Determine payment amount based on the paymentType and school's PlanPayment status.
+ * Returns { amount, effectiveType } where effectiveType is what was actually charged.
+ */
+function resolvePaymentAmount(
+  planPricing: { signupFee: number; monthlyEstimate: number },
+  paymentType: string,
+  planPayment: { monthlyPaymentPaid: boolean; onceOffPaymentPaid: boolean } | null
+): { amount: number; effectiveType: "FULL" | "MONTHLY_ONLY" | "SETUP_ONLY" } {
+  const monthlyPaid = planPayment?.monthlyPaymentPaid ?? false;
+  const setupPaid = planPayment?.onceOffPaymentPaid ?? false;
+
+  if (paymentType === "MONTHLY_ONLY") {
+    // Explicitly paying only the monthly fee
+    return { amount: planPricing.monthlyEstimate, effectiveType: "MONTHLY_ONLY" };
+  }
+
+  if (paymentType === "SETUP_ONLY" || monthlyPaid) {
+    // Monthly already paid, only setup fee remaining
+    return { amount: planPricing.signupFee, effectiveType: "SETUP_ONLY" };
+  }
+
+  // Full payment (setup + monthly)
+  return { amount: planPricing.signupFee + planPricing.monthlyEstimate, effectiveType: "FULL" };
+}
+
+/**
+ * Upsert a PlanPayment record (findFirst + create/update to avoid
+ * @unique constraint issues until the migration is run).
+ */
+async function upsertPlanPayment(
+  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  schoolId: string,
+  data: Record<string, boolean>,
+) {
+  const existing = await tx.planPayment.findFirst({ where: { schoolId } });
+  if (existing) {
+    await tx.planPayment.update({ where: { id: existing.id }, data });
+  } else {
+    await tx.planPayment.create({ data: { schoolId, ...data } });
+  }
+}
+
+// GET /payments/plan-status - Get the school's plan payment status
+payments.get("/plan-status", requireAuth, async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const planPayment = await db.planPayment.findFirst({
+      where: { schoolId },
+    });
+
+    return successResponse(c, {
+      monthlyPaymentPaid: planPayment?.monthlyPaymentPaid ?? false,
+      onceOffPaymentPaid: planPayment?.onceOffPaymentPaid ?? false,
+      paid: planPayment?.paid ?? false,
+    });
+  } catch (error) {
+    console.error("Plan status error:", error);
+    return errors.internalError(c);
+  }
+});
 
 // POST /payments/create-checkout - Create PayNow checkout session with intermediate payment
 payments.post("/create-checkout", requireAuth, zValidator("json", createCheckoutSchema), async (c) => {
@@ -49,10 +94,13 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
     const userId = c.get("userId");
     const data = c.req.valid("json");
 
-    const planPricing = PRICING[data.planType];
-    const amount = data.paymentType === "SIGNUP"
-      ? planPricing.signupFee + planPricing.monthlyEstimate
-      : planPricing.monthlyEstimate;
+    // Get school's current plan payment status
+    const planPayment = await db.planPayment.findFirst({
+      where: { schoolId },
+    });
+
+    const planPricing = getPlanAmounts(data.planType as PlanType);
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment);
 
     // Create intermediate payment record first
     const intermediatePayment = await db.intermediatePayment.create({
@@ -62,48 +110,35 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
         amount: new Prisma.Decimal(amount),
         plan: data.planType,
         paid: false,
+        reference: `type:${effectiveType}`, // Store the payment type for callback
       },
     });
 
-    // Get PayNow instance
-    const paynow = initializePaynow();
-
-    // Set PayNow URLs
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
-    paynow.resultUrl = `${baseUrl}/api/payments/callback`;
-    paynow.returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}`;
-
-    // Create PayNow payment
-    const payment = paynow.createPayment(`Invoice-${intermediatePayment.id}`, data.email);
-    payment.add(data.planType, amount);
-
-    console.log("PayNow payment created:", {
-      reference: `Invoice-${intermediatePayment.id}`,
-      email: data.email,
-      amount,
-      plan: planPricing.name,
-    });
 
     try {
-      const response = await paynow.send(payment);
-      
-      console.log("PayNow response:", response);
-      
-      if (response.success) {
-        // Save the poll URL for webhook verification
-        await db.intermediatePayment.update({
-          where: { id: intermediatePayment.id },
-          data: { reference: response.pollUrl },
-        });
+      const result = await createPaynowCheckout({
+        integrationId: process.env.PAYNOW_INTEGRATION_ID || "",
+        integrationKey: process.env.PAYNOW_INTEGRATION_KEY || "",
+        amount,
+        planType: data.planType,
+        email: data.email || "",
+        reference: `Invoice-${intermediatePayment.id}`,
+        resultUrl: `${baseUrl}/api/payments/callback`,
+        returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+      });
 
-        return successResponse(c, {
-          checkoutUrl: response.redirectUrl,
-          intermediatePaymentId: intermediatePayment.id,
-          pollUrl: response.pollUrl,
-        });
-      } else {
-        return errors.internalError(c, { error: response.error });
-      }
+      // Save the poll URL for webhook verification (append to existing reference)
+      await db.intermediatePayment.update({
+        where: { id: intermediatePayment.id },
+        data: { reference: `type:${effectiveType}|poll:${result.pollUrl}` },
+      });
+
+      return successResponse(c, {
+        checkoutUrl: result.redirectUrl,
+        intermediatePaymentId: intermediatePayment.id,
+        pollUrl: result.pollUrl,
+      });
     } catch (paynowError) {
       console.error("PayNow error:", paynowError);
       console.error("PayNow error details:", {
@@ -118,6 +153,130 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       type: typeof error,
+    });
+    return errors.internalError(c);
+  }
+});
+
+// POST /payments/create-dodo-checkout - Create DodoPayments checkout session (ZAR)
+payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDodoCheckoutSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const userId = c.get("userId");
+    const data = c.req.valid("json");
+
+    // Get school to check plan payment status
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+    });
+
+    if (!school) {
+      return errors.notFound(c, { error: "School not found" });
+    }
+
+    // Get plan payment status
+    const planPayment = await db.planPayment.findFirst({
+      where: { schoolId },
+    });
+
+    const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment);
+
+    // Select appropriate product IDs based on what is being paid
+    const productIds: string[] = [];
+    const planType = data.planType as PlanType;
+    
+    // Add one-time product if paying for it
+    if (effectiveType === "FULL" || effectiveType === "SETUP_ONLY") {
+      const onetimeKey = `DODO_PRODUCT_${planType}_ONETIME`;
+      const onetimeProductId = process.env[onetimeKey];
+      if (onetimeProductId) {
+        productIds.push(onetimeProductId);
+      }
+    }
+    
+    // Add the monthly product if paying for it
+    if (effectiveType === "FULL" || effectiveType === "MONTHLY_ONLY") {
+      const monthlyKey = `DODO_PRODUCT_${planType}_MONTHLY`;
+      const monthlyProductId = process.env[monthlyKey];
+      if (monthlyProductId) {
+        productIds.push(monthlyProductId);
+      }
+    }
+
+    if (productIds.length === 0) {
+      console.error("No product IDs found for plan:", planType);
+      return errors.internalError(c);
+    }
+
+    // Create intermediate payment record
+    const intermediatePayment = await db.intermediatePayment.create({
+      data: {
+        userId,
+        schoolId,
+        amount: new Prisma.Decimal(amount),
+        plan: data.planType,
+        paid: false,
+        reference: `type:${effectiveType}`,
+      },
+    });
+
+    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+
+    // Validate API key exists
+    const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+    if (!apiKey) {
+      console.error("DODO_PAYMENTS_API_KEY is not configured");
+      return errors.internalError(c);
+    }
+
+    console.log("Creating Dodo checkout with:", {
+      apiKey: apiKey.substring(0, 10) + "..." + apiKey.substring(apiKey.length - 10),
+      productIds,
+      email: data.email,
+      plan: data.planType,
+      schoolId,
+      userId,
+    });
+
+    let result;
+    try {
+      result = await createDodoPaymentLink({
+        apiKey,
+        productIds,
+        email: data.email || "",
+        metadata: {
+          school_id: schoolId,
+          user_id: userId,
+          plan_type: data.planType,
+          payment_type: effectiveType,
+          intermediate_payment_id: intermediatePayment.id,
+        },
+        returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        billingCountry: "ZA",
+      });
+    } catch (dodoError) {
+      console.error("DodoPayments API call failed:", dodoError);
+      throw new Error(`DodoPayments API Error: ${dodoError instanceof Error ? dodoError.message : String(dodoError)}`);
+    }
+
+    // Save the payment ID as the reference (used by webhook to find this record)
+    await db.intermediatePayment.update({
+      where: { id: intermediatePayment.id },
+      data: { reference: `type:${effectiveType}|dodo:${result.paymentId}` },
+    });
+
+    return successResponse(c, {
+      checkoutUrl: result.paymentLink,
+      paymentId: result.paymentId,
+    });
+  } catch (error) {
+    console.error("Create Dodo checkout error:", error);
+    console.error("Full error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error,
+      isDodoError: error instanceof Error && error.message.includes("status code"),
     });
     return errors.internalError(c);
   }
@@ -145,6 +304,11 @@ payments.post("/callback", async (c) => {
 
     // Update intermediate payment and school in a transaction
     if (paid) {
+      // Determine payment type from the stored reference
+      const refString = intermediatePayment.reference || "";
+      const typeMatch = refString.match(/type:(\w+)/);
+      const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+
       await db.$transaction(async (tx) => {
         // Update intermediate payment
         await tx.intermediatePayment.update({
@@ -152,12 +316,31 @@ payments.post("/callback", async (c) => {
           data: { paid: true },
         });
 
+        // Update PlanPayment based on what was paid
+        const planPaymentData: any = {};
+        if (effectiveType === "FULL") {
+          planPaymentData.monthlyPaymentPaid = true;
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        } else if (effectiveType === "MONTHLY_ONLY") {
+          planPaymentData.monthlyPaymentPaid = true;
+        } else if (effectiveType === "SETUP_ONLY") {
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        }
+
+        await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
+
+        // Only set signupFeePaid when the setup fee is included in this payment
+        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment.schoolId },
           data: {
-            signupFeePaid: true,
+            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
             plan: intermediatePayment.plan,
+            nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
             smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
@@ -169,7 +352,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Received",
-        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan has been successfully processed.`,
+        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan has been successfully processed.`,
         type: "PAYMENT_SUCCESS",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -192,6 +375,7 @@ payments.post("/callback", async (c) => {
             amount: Number(intermediatePayment.amount),
             plan: intermediatePayment.plan,
             transactionId: intermediatePaymentId,
+            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
           }),
           schoolId: intermediatePayment.schoolId,
           type: "SALES",
@@ -202,7 +386,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Failed",
-        message: `Payment of $${intermediatePayment.amount} for ${intermediatePayment.plan} plan failed to process.`,
+        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan failed to process.`,
         type: "PAYMENT_FAILED",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -224,6 +408,7 @@ payments.post("/callback", async (c) => {
             name: intermediatePayment.user.name,
             amount: Number(intermediatePayment.amount),
             plan: intermediatePayment.plan,
+            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
           }),
           schoolId: intermediatePayment.schoolId,
           type: "SALES",
@@ -254,6 +439,11 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
 
     // If payment isn't marked as paid yet, update it now along with school
     if (!intermediatePayment.paid) {
+      // Determine payment type from the stored reference
+      const refString = intermediatePayment.reference || "";
+      const typeMatch = refString.match(/type:(\w+)/);
+      const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+
       await db.$transaction(async (tx) => {
         // Mark payment as paid
         await tx.intermediatePayment.update({
@@ -261,12 +451,31 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
           data: { paid: true },
         });
 
+        // Update PlanPayment based on what was paid
+        const planPaymentData: any = {};
+        if (effectiveType === "FULL") {
+          planPaymentData.monthlyPaymentPaid = true;
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        } else if (effectiveType === "MONTHLY_ONLY") {
+          planPaymentData.monthlyPaymentPaid = true;
+        } else if (effectiveType === "SETUP_ONLY") {
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        }
+
+        await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
+
+        // Only set signupFeePaid when the setup fee is included
+        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment.schoolId },
           data: {
-            signupFeePaid: true,
+            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
             plan: intermediatePayment.plan,
+            nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
             smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
@@ -283,7 +492,8 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
 
     return successResponse(c, {
       payment: intermediatePayment,
-      isPaid: intermediatePayment.paid,
+      isPaid: intermediatePayment!.paid,
+      paymentType: intermediatePayment!.reference?.match(/type:(\w+)/)?.[1] || "FULL",
     });
   } catch (error) {
     console.error("Verify payment error:", error);
@@ -303,22 +513,31 @@ payments.post("/confirm-manual-payment", requireAuth, async (c) => {
       return errors.validationError(c, { plan: ["Plan is required"] });
     }
 
-    const planPricing = PRICING[plan as keyof typeof PRICING];
-    if (!planPricing) {
+    const validPlans = ["LITE", "GROWTH", "ENTERPRISE"];
+    if (!validPlans.includes(plan)) {
       return errors.validationError(c, { plan: ["Invalid plan"] });
     }
 
+    const planPricing = getPlanAmounts(plan as PlanType);
+
     // Mark once-off payment as paid, only monthly remains
-    const planPayment = await db.planPayment.upsert({
-      where: { schoolId },
-      update: { onceOffPaymentPaid: true },
-      create: {
-        schoolId,
-        onceOffPaymentPaid: true,
-        monthlyPaymentPaid: false,
-        paid: false,
-      },
-    });
+    const existing = await db.planPayment.findFirst({ where: { schoolId } });
+    let planPaymentRecord;
+    if (existing) {
+      planPaymentRecord = await db.planPayment.update({
+        where: { id: existing.id },
+        data: { onceOffPaymentPaid: true },
+      });
+    } else {
+      planPaymentRecord = await db.planPayment.create({
+        data: {
+          schoolId,
+          onceOffPaymentPaid: true,
+          monthlyPaymentPaid: false,
+          paid: false,
+        },
+      });
+    }
 
     // Create intermediate payment for monthly only
     const intermediatePayment = await db.intermediatePayment.create({
@@ -332,7 +551,7 @@ payments.post("/confirm-manual-payment", requireAuth, async (c) => {
     });
 
     return successResponse(c, {
-      planPayment,
+      planPayment: planPaymentRecord,
       intermediatePayment,
       nextPaymentAmount: planPricing.monthlyEstimate,
     });
@@ -356,10 +575,12 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
       });
     }
 
-    const planPricing = PRICING[planType as keyof typeof PRICING];
-    if (!planPricing) {
+    const validPlans = ["LITE", "GROWTH", "ENTERPRISE"];
+    if (!validPlans.includes(planType)) {
       return errors.validationError(c, { planType: ["Invalid plan type"] });
     }
+
+    const planPricing = getPlanAmounts(planType as PlanType);
 
     const amount = paymentType === "SIGNUP"
       ? planPricing.signupFee + planPricing.monthlyEstimate
@@ -379,7 +600,9 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
         },
       });
 
-      const updateData: any = {};
+      const updateData: any = {
+        nextPaymentDate: getNextPaymentDate(),
+      };
       if (paymentType === "SIGNUP") {
         updateData.signupFeePaid = true;
         updateData.plan = planType;
@@ -455,18 +678,41 @@ payments.post("/test-complete/:intermediatePaymentId", async (c) => {
 
     // Update payment and school in transaction (same as callback)
     await db.$transaction(async (tx) => {
+      // Determine payment type from reference
+      const refString = intermediatePayment.reference || "";
+      const typeMatch = refString.match(/type:(\w+)/);
+      const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+
       // Update intermediate payment
       await tx.intermediatePayment.update({
         where: { id: intermediatePaymentId },
         data: { paid: true },
       });
 
+      // Update PlanPayment based on what was paid
+      const planPaymentData: any = {};
+      if (effectiveType === "FULL") {
+        planPaymentData.monthlyPaymentPaid = true;
+        planPaymentData.onceOffPaymentPaid = true;
+        planPaymentData.paid = true;
+      } else if (effectiveType === "MONTHLY_ONLY") {
+        planPaymentData.monthlyPaymentPaid = true;
+      } else if (effectiveType === "SETUP_ONLY") {
+        planPaymentData.onceOffPaymentPaid = true;
+        planPaymentData.paid = true;
+      }
+
+      await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
+
+      const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
       // Update school's payment status and plan details
       await tx.school.update({
         where: { id: intermediatePayment.schoolId },
         data: {
-          signupFeePaid: true,
+          ...(shouldMarkSignupPaid && { signupFeePaid: true }),
           plan: intermediatePayment.plan,
+          nextPaymentDate: getNextPaymentDate(),
           emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
           whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
           smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,

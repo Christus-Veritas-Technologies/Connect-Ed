@@ -59,8 +59,14 @@ exams.post("/grades", async (c) => {
     const data = createGradeSchema.parse(body);
 
     const grade = await db.grade.create({
-      data: { ...data, schoolId },
-      include: { subject: { select: { id: true, name: true } } },
+      data: { 
+        name: data.name,
+        minMark: data.minMark,
+        maxMark: data.maxMark,
+        isPass: data.isPass,
+        schoolId,
+        ...(data.subjectId && { subjectId: data.subjectId }),
+      },
     });
     return successResponse(c, { grade }, 201);
   } catch (error) {
@@ -130,9 +136,20 @@ exams.get("/", async (c) => {
     const role = c.get("role");
     const userId = c.get("userId");
 
-    const where: any = { schoolId };
+    let where: any = { schoolId };
+    
     if (role === "TEACHER") {
-      where.teacherId = userId;
+      // Teacher sees exams they created OR exams for their classes (as class teacher)
+      const classTeacherClasses = await db.class.findMany({
+        where: { classTeacherId: userId },
+        select: { id: true },
+      });
+      const classIds = classTeacherClasses.map((c) => c.id);
+      
+      where.OR = [
+        { teacherId: userId },
+        { classId: { in: classIds } },
+      ];
     }
 
     const examsList = await db.exam.findMany({
@@ -155,7 +172,7 @@ exams.get("/", async (c) => {
         });
         const totalStudents = results.length;
         const grades = await db.grade.findMany({
-          where: { subjectId: exam.subjectId, schoolId },
+          where: { subjectId: null, schoolId },
         });
         const passGrades = grades.filter((g) => g.isPass);
         const passMarks = results.filter((r) => {
@@ -220,9 +237,11 @@ exams.post("/", async (c) => {
 
 // GET /exams/:id - Get exam detail with results
 exams.get("/:id", async (c) => {
+  const id = c.req.param("id");
+  console.log(`\n${"=".repeat(60)}\n[EXAM DETAIL] Request received for exam ID: ${id}\n${"=".repeat(60)}`);
+  
   try {
     const schoolId = c.get("schoolId");
-    const id = c.req.param("id");
 
     const exam = await db.exam.findFirst({
       where: { id, schoolId },
@@ -243,31 +262,89 @@ exams.get("/:id", async (c) => {
 
     if (!exam) return errors.notFound(c, "Exam");
 
-    // Get grades for this subject to determine letter grades
+    // Get ALL grades for the school to debug
+    const allSchoolGrades = await db.grade.findMany({
+      where: { schoolId },
+    });
+    
+    console.log("[EXAM DETAIL] Total grades in school:", allSchoolGrades.length);
+    if (allSchoolGrades.length > 0) {
+      console.log("[EXAM DETAIL] All school grades:", allSchoolGrades.map(g => ({
+        name: g.name,
+        subjectId: g.subjectId,
+        range: `${g.minMark}-${g.maxMark}`,
+        isPass: g.isPass
+      })));
+    }
+
+    // Get grades for this exam's subject
     const grades = await db.grade.findMany({
-      where: { subjectId: exam.subjectId, schoolId },
+      where: {
+        schoolId,
+        OR: [
+          { subjectId: exam.subjectId },
+          { subjectId: null },
+        ],
+      },
       orderBy: { minMark: "desc" },
     });
 
+    console.log("[EXAM DETAIL] Exam name:", exam.name);
+    console.log("[EXAM DETAIL] Subject ID:", exam.subjectId, "Subject name:", exam.subject.name);
+    console.log("[EXAM DETAIL] Total results:", exam.results.length);
+    console.log("[EXAM DETAIL] Grades found for this subject:", grades.length);
+    if (grades.length > 0) {
+      console.log("[EXAM DETAIL] Grades system:", grades.map(g => `${g.name}(${g.minMark}-${g.maxMark}, pass=${g.isPass}, subj=${g.subjectId || 'SCHOOL-WIDE'})`).join(" | "));
+    }
+
     // Map results with grade info
     const resultsWithGrades = exam.results.map((r) => {
+      console.log(`[EXAM DETAIL] Student: ${r.student.firstName} ${r.student.lastName} - Mark: ${r.mark}%`);
+      
+      // Find matching grade
       const grade = grades.find((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+      if (grade) {
+        console.log(`[EXAM DETAIL]   ✓ Grade found: ${grade.name} (range: ${grade.minMark}-${grade.maxMark})`);
+      } else {
+        console.log(`[EXAM DETAIL]   ✗ NO GRADE MATCH for ${r.mark}%`);
+        if (grades.length === 0) {
+          console.log(`[EXAM DETAIL]     (No grade system defined for this subject)`);
+        } else {
+          console.log(`[EXAM DETAIL]     Available ranges: ${grades.map(g => `${g.minMark}-${g.maxMark}`).join(", ")}`);
+        }
+      }
+      
+      // If no grade system is defined, use default pass threshold of 50%
+      let gradeName = grade?.name;
+      let isPass = grade?.isPass;
+      
+      if (!grade) {
+        // Default grading when no grade system exists
+        if (r.mark >= 90) { gradeName = "A"; isPass = true; }
+        else if (r.mark >= 80) { gradeName = "B"; isPass = true; }
+        else if (r.mark >= 70) { gradeName = "C"; isPass = true; }
+        else if (r.mark >= 60) { gradeName = "D"; isPass = true; }
+        else if (r.mark >= 50) { gradeName = "E"; isPass = true; }
+        else { gradeName = "F"; isPass = false; }
+        console.log(`[EXAM DETAIL]     Using default: ${gradeName}, isPass: ${isPass}`);
+      }
+      
       return {
         ...r,
-        gradeName: grade?.name || "N/A",
-        isPass: grade?.isPass ?? false,
+        gradeName: gradeName || "N/A",
+        isPass: isPass ?? false,
       };
     });
 
     // Stats
     const totalResults = exam.results.length;
-    const passGrades = grades.filter((g) => g.isPass);
-    const passCount = exam.results.filter((r) =>
-      passGrades.some((g) => r.mark >= g.minMark && r.mark <= g.maxMark)
-    ).length;
+    const passCount = resultsWithGrades.filter((r) => r.isPass).length;
     const averageMark = totalResults > 0
       ? Math.round(exam.results.reduce((sum, r) => sum + r.mark, 0) / totalResults)
       : 0;
+
+    console.log("[EXAM DETAIL] FINAL STATS:", { totalResults, passCount, averageMark, passRate: totalResults > 0 ? Math.round((passCount / totalResults) * 100) : 0, gradeSystemExists: grades.length > 0 });
+    console.log(`${"=".repeat(60)}\n`);
 
     return successResponse(c, {
       exam: {

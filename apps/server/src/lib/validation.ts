@@ -31,6 +31,7 @@ export const resetPasswordSchema = z.object({
 
 // Onboarding schema
 export const onboardingSchema = z.object({
+  country: z.string().optional(),
   schoolName: z.string().min(2, "School name must be at least 2 characters"),
   address: z.string().min(5, "Address is required"),
   phone: z.string().min(9, "Phone number is required"),
@@ -100,6 +101,8 @@ export const recordPaymentSchema = z.object({
   paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "ONLINE"]),
   reference: z.string().optional(),
   notes: z.string().optional(),
+  termNumber: z.number().int().min(1).max(3).optional(),
+  termYear: z.number().int().min(2020).max(2100).optional(),
 });
 
 // Expense schemas
@@ -130,8 +133,15 @@ export const createUserSchema = z.object({
 // Payment schemas
 export const createCheckoutSchema = z.object({
   planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
-  paymentType: z.enum(["SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
   email: z.string().email().optional(),
+});
+
+export const createDodoCheckoutSchema = z.object({
+  planType: z.enum(["LITE", "GROWTH", "ENTERPRISE"]),
+  paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
+  email: z.string().email().optional(),
+  currency: z.enum(["ZAR"]),
 });
 
 // School settings schema
@@ -141,6 +151,7 @@ export const updateSchoolSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   website: z.string().url().optional().or(z.literal("")),
+  currency: z.enum(["USD", "ZAR", "ZIG"]).optional(),
 });
 
 // Fee reminders schema
@@ -163,7 +174,7 @@ export const createGradeSchema = z.object({
   minMark: z.number().int().min(0).max(100),
   maxMark: z.number().int().min(0).max(100),
   isPass: z.boolean(),
-  subjectId: z.string().min(1, "Subject is required"),
+  subjectId: z.string().min(1, "Subject is required").optional(),
 });
 
 export const updateGradeSchema = createGradeSchema.partial();
@@ -195,6 +206,7 @@ export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
+export type CreateDodoCheckoutInput = z.infer<typeof createDodoCheckoutSchema>;
 export type UpdateSchoolInput = z.infer<typeof updateSchoolSchema>;
 export type SendRemindersInput = z.infer<typeof sendRemindersSchema>;
 export type StartTermInput = z.infer<typeof startTermSchema>;

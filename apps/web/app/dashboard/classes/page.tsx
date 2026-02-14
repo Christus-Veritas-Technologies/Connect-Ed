@@ -1,26 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  BookmarkAdd01Icon,
-  Search01Icon,
-  Add01Icon,
-  ViewIcon,
-  FilterIcon,
-  GridIcon,
-  TableIcon,
-  MoreVerticalIcon,
-  Delete02Icon,
-  PencilEdit01Icon,
-  UserGroupIcon,
-  TeacherIcon,
-  Cancel01Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  Plus,
+  Eye,
+  Trash2,
+  Check,
+  MoreVertical,
+  Loader2,
+  BookOpen,
+  CheckCircle,
+  Users,
+  AlertTriangle,
+  Download,
+  FileDown,
+  Pencil,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useClasses, useCreateClass, useDeleteClass } from "@/lib/hooks/use-classes";
+import {
+  useClasses,
+  useCreateClass,
+  useDeleteClass,
+} from "@/lib/hooks/use-classes";
 import { useTeachers } from "@/lib/hooks/use-teachers";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -51,12 +55,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  DashboardBreadcrumbs,
+  PageHeader,
+  StatsCard,
+  FilterTabs,
+  ViewToggle,
+  EmptyState,
+  BulkActions,
+} from "@/components/dashboard";
+import { exportToPDF, exportDataAsCSV } from "@/lib/export-utils";
 import { toast } from "sonner";
+
+// ─── Types ───────────────────────────────────────────────────
 
 interface Class {
   id: string;
@@ -68,25 +84,131 @@ interface Class {
   createdAt: string;
 }
 
-interface Teacher {
-  id: string;
-  name: string;
-  email: string;
+// ─── Compact Class Card ──────────────────────────────────────
+
+function ClassCard({
+  classItem,
+  isSelected,
+  onSelect,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  classItem: Class;
+  isSelected: boolean;
+  onSelect: () => void;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      layout
+      className="relative group"
+    >
+      <Card
+        hover
+        className={`h-full cursor-pointer transition-all ${isSelected ? "ring-2 ring-brand shadow-lg" : ""
+          }`}
+        onClick={onSelect}
+      >
+        <CardContent className="p-4">
+          {/* Selection checkmark */}
+          {isSelected && (
+            <div className="absolute top-3 right-3 size-5 rounded-md bg-brand flex items-center justify-center z-10">
+              <Check className="size-3.5 text-white" strokeWidth={3} />
+            </div>
+          )}
+
+          {/* Class icon */}
+          <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center mb-3">
+            <span className="text-3xl font-bold text-white">
+              {classItem.name.substring(0, 2).toUpperCase()}
+            </span>
+          </div>
+
+          {/* Name */}
+          <h3 className="font-medium text-sm truncate">{classItem.name}</h3>
+
+          {/* Meta */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+            <span>{classItem._count?.students || 0} students</span>
+            <span>·</span>
+            <span className="capitalize">{classItem.level || "—"}</span>
+          </div>
+
+          {/* Status + teacher */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <Badge
+              variant="outline"
+              className={
+                classItem.isActive
+                  ? "bg-green-50 text-green-700 border-green-200 text-xs"
+                  : "bg-gray-50 text-gray-700 border-gray-200 text-xs"
+              }
+            >
+              {classItem.isActive ? "Active" : "Inactive"}
+            </Badge>
+            {classItem.classTeacher && (
+              <Badge variant="outline" className="text-xs truncate max-w-[120px]">
+                {classItem.classTeacher.name}
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Hover action menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-3 right-3 size-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <MoreVertical className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onView}>
+            <Eye className="size-4" />
+            View Details
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="size-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="size-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </motion.div>
+  );
 }
+
+// ─── Main Page ───────────────────────────────────────────────
 
 export default function ClassesPage() {
   const { school, user } = useAuth();
   const router = useRouter();
 
+  // ── State ──
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "list">("table");
+  const [filterTab, setFilterTab] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
   const [formError, setFormError] = useState("");
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -94,38 +216,176 @@ export default function ClassesPage() {
     classTeacherId: "",
   });
 
-  // TanStack Query hooks
+  // ── Data fetching ──
   const { data: classesData, isLoading } = useClasses();
   const { data: teachersData } = useTeachers();
   const createMutation = useCreateClass();
   const deleteMutation = useDeleteClass();
 
-  const classes = classesData?.classes || [];
+  const classes: Class[] = classesData?.classes || [];
   const teachers = teachersData?.teachers || [];
 
-  // Show loading state while auth is initializing
+  // Loading guard
   if (!user || !school) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+        <Loader2 className="size-8 animate-spin text-brand" />
       </div>
     );
   }
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  // Debounced search
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 400);
+  }, []);
 
-  // Handle add class
+  // ── Derived data — single query, client-side slicing ──
+  const filteredClasses = classes.filter((cls) => {
+    const matchesSearch = debouncedSearch
+      ? cls.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      : true;
+    const matchesStatus =
+      filterTab === "all"
+        ? true
+        : filterTab === "active"
+          ? cls.isActive
+          : !cls.isActive;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Recent 8 for top grid
+  const recentClasses = !debouncedSearch ? filteredClasses.slice(0, 8) : [];
+
+  // Stats
+  const totalClasses = classes.length;
+  const activeClasses = classes.filter((c) => c.isActive).length;
+  const classesWithTeachers = classes.filter((c) => c.classTeacher).length;
+  const classesWithoutTeachers = classes.filter((c) => !c.classTeacher).length;
+  const totalStudents = classes.reduce(
+    (sum, c) => sum + (c._count?.students || 0),
+    0
+  );
+
+  // ── Selection helpers ──
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // ── Actions ──
+  const handleView = (classItem: Class) => {
+    router.push(`/dashboard/classes/${classItem.id}`);
+  };
+
+  const handleEdit = (classItem: Class) => {
+    router.push(`/dashboard/classes/${classItem.id}?edit=true`);
+  };
+
+  const handleDeleteClick = (classItem: Class) => {
+    setSelectedClass(classItem);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedClass) return;
+    deleteMutation.mutate(selectedClass.id, {
+      onSuccess: () => {
+        toast.success("Class deleted", {
+          description: `${selectedClass.name} has been removed.`,
+        });
+        setShowDeleteModal(false);
+        setSelectedClass(null);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(selectedClass.id);
+          return next;
+        });
+      },
+      onError: (error) => {
+        toast.error(
+          error instanceof ApiError ? error.message : "Failed to delete class"
+        );
+      },
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (
+      !confirm(`Delete ${selectedIds.size} class(es)? This cannot be undone.`)
+    )
+      return;
+    const ids = Array.from(selectedIds);
+    ids.forEach((id) => {
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        },
+      });
+    });
+    toast.success(`Deleting ${ids.length} class(es)...`);
+  };
+
+  const handleExportCSV = () => {
+    const toExport =
+      selectedIds.size > 0
+        ? filteredClasses.filter((c) => selectedIds.has(c.id))
+        : filteredClasses;
+    if (toExport.length === 0) return;
+
+    exportDataAsCSV(
+      toExport.map((c) => ({
+        Name: c.name,
+        Level: c.level || "—",
+        Status: c.isActive ? "Active" : "Inactive",
+        Teacher: c.classTeacher?.name || "—",
+        Students: c._count?.students || 0,
+      })),
+      ["Name", "Level", "Status", "Teacher", "Students"],
+      `classes-${new Date().toISOString().split("T")[0]}`
+    );
+  };
+
+  const handleExportPDF = () => {
+    const toExport =
+      selectedIds.size > 0
+        ? filteredClasses.filter((c) => selectedIds.has(c.id))
+        : filteredClasses;
+    if (toExport.length === 0) return;
+
+    exportToPDF(
+      toExport.map((c) => ({
+        name: c.name,
+        level: c.level || "—",
+        status: c.isActive ? "Active" : "Inactive",
+        teacher: c.classTeacher?.name || "—",
+        students: String(c._count?.students || 0),
+      })),
+      [
+        { key: "name", label: "Class" },
+        { key: "level", label: "Level" },
+        { key: "status", label: "Status" },
+        { key: "teacher", label: "Teacher" },
+        { key: "students", label: "Students" },
+      ],
+      `classes-${new Date().toISOString().split("T")[0]}`,
+      "Classes Report"
+    );
+  };
+
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-
-    // Validate required fields
     if (!formData.name.trim()) {
       setFormError("Class name is required");
       return;
@@ -146,79 +406,20 @@ export default function ClassesPage() {
         setShowAddModal(false);
       },
       onError: (err) => {
-        const error = err instanceof ApiError ? err.message : "Failed to create class";
+        const error =
+          err instanceof ApiError ? err.message : "Failed to create class";
         setFormError(error);
         toast.error(error);
       },
     });
   };
 
-  // Handle view details
-  const handleViewDetails = (classItem: Class, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    router.push(`/dashboard/classes/${classItem.id}`);
-  };
-
-  // Handle edit
-  const handleEdit = (classItem: Class, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    router.push(`/dashboard/classes/${classItem.id}?edit=true`);
-  };
-
-  // Handle delete
-  const handleDelete = (classItem: Class, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setSelectedClass(classItem);
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedClass) return;
-
-    deleteMutation.mutate(selectedClass.id, {
-      onSuccess: () => {
-        toast.success("Class deleted successfully", {
-          description: `${selectedClass.name} has been removed.`,
-        });
-        setShowDeleteModal(false);
-        setSelectedClass(null);
-      },
-      onError: (error) => {
-        const err = error instanceof ApiError ? error.message : "Failed to delete class";
-        toast.error(err);
-      },
-    });
-  };
-
-  // Filter classes
-  const filteredClasses = classes.filter((cls) => {
-    const matchesSearch = debouncedSearch
-      ? cls.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      : true;
-
-    const matchesStatus =
-      statusFilter === "all"
-        ? true
-        : statusFilter === "active"
-          ? cls.isActive
-          : !cls.isActive;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // Calculate stats
-  const totalClasses = classes.length;
-  const activeClasses = classes.filter((c) => c.isActive).length;
-  const classesWithTeachers = classes.filter((c) => c.classTeacher).length;
-  const classesWithoutTeachers = classes.filter((c) => !c.classTeacher).length;
-  const totalStudents = classes.reduce((sum, c) => sum + (c._count?.students || 0), 0);
-
-  // Check if plan supports classes
+  // ── Plan guard ──
   if (school?.plan === "LITE") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-          <HugeiconsIcon icon={BookmarkAdd01Icon} size={48} className="text-muted-foreground" />
+          <BookOpen className="size-12 text-muted-foreground" />
         </div>
         <h1 className="text-2xl font-semibold mb-2">Class Management</h1>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -232,409 +433,360 @@ export default function ClassesPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs items={[{ label: "Classes" }]} />
+
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Classes
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage school classes and assign teachers
-          </p>
-        </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2 w-full sm:w-auto">
-          <HugeiconsIcon icon={Add01Icon} size={20} />
-          Add Class
-        </Button>
-      </motion.div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="overflow-hidden border-l-4 border-l-brand">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Classes</p>
-                  <p className="text-2xl font-semibold mt-1 text-brand">{totalClasses}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-brand/10">
-                  <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-brand" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="overflow-hidden border-l-4 border-l-green-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-semibold mt-1 text-green-600">{activeClasses}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-green-100">
-                  <HugeiconsIcon icon={BookmarkAdd01Icon} size={24} className="text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="overflow-hidden border-l-4 border-l-blue-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">With Teachers</p>
-                  <p className="text-2xl font-semibold mt-1 text-blue-600">{classesWithTeachers}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-blue-100">
-                  <HugeiconsIcon icon={TeacherIcon} size={24} className="text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="overflow-hidden border-l-4 border-l-purple-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-semibold mt-1 text-purple-600">{totalStudents}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-purple-100">
-                  <HugeiconsIcon icon={UserGroupIcon} size={24} className="text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Alert for classes without teachers */}
-      {classesWithoutTeachers > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Alert>
-            <AlertDescription>
-              <strong>{classesWithoutTeachers}</strong> class{classesWithoutTeachers !== 1 ? 'es are' : ' is'} without assigned teachers.
-              Consider assigning teachers in the Teachers section.
-            </AlertDescription>
-          </Alert>
-        </motion.div>
-      )}
-
-      {/* Search and Filters */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="flex flex-col sm:flex-row gap-3"
-      >
-        <div className="relative flex-1">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            size={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            placeholder="Search classes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <HugeiconsIcon icon={FilterIcon} size={18} className="mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cards")}>
-          <TabsList>
-            <TabsTrigger value="table">
-              Table
-            </TabsTrigger>
-            <TabsTrigger value="cards">
-              Cards
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </motion.div>
-
-      {/* Classes Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-        className="bg-card rounded-xl border overflow-hidden"
-      >
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-          </div>
-        ) : filteredClasses.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="inline-flex p-4 rounded-full bg-muted/50 mb-4">
-              <HugeiconsIcon icon={BookmarkAdd01Icon} size={48} className="text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground mb-4">
-              {search || statusFilter !== "all" ? "No classes match your filters" : "No classes found"}
-            </p>
-            <Button onClick={() => setShowAddModal(true)} className="gap-2">
-              <HugeiconsIcon icon={Add01Icon} size={20} />
-              Add Your First Class
+      <PageHeader
+        title="Classes"
+        subtitle="Manage school classes and assign teachers"
+        search={search}
+        onSearchChange={handleSearchChange}
+        searchPlaceholder="Search classes..."
+        showFilter
+        action={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportCSV}
+              title="Export CSV"
+            >
+              <Download className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportPDF}
+              title="Export PDF"
+            >
+              <FileDown className="size-4" />
+            </Button>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="size-4" />
+              Add Class
             </Button>
           </div>
-        ) : (
-          <>
-            {/* Table View */}
-            {viewMode === "table" && (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Class</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {filteredClasses.map((classItem, index) => (
-                      <motion.tr
-                        key={classItem.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="group hover:bg-muted/30 transition-colors"
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-sm">
-                              <span className="text-sm font-bold text-white">
-                                {classItem.name.substring(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-semibold">{classItem.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {classItem.classTeacher?.name || "No teacher"}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              classItem.isActive
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-gray-50 text-gray-700 border-gray-200"
-                            }
-                          >
-                            {classItem.isActive ? "Live" : "Completed"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {classItem.level || "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">—</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">Online</TableCell>
-                        <TableCell className="text-sm font-medium">
-                          {classItem._count?.students || 0}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon-sm" className="hover:bg-brand/10 hover:text-brand">
-                                <HugeiconsIcon icon={MoreVerticalIcon} size={18} />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-48" align="end">
-                              <div className="flex flex-col gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="justify-start gap-2 hover:bg-brand/10 hover:text-brand"
-                                  onClick={(e) => handleViewDetails(classItem, e)}
-                                >
-                                  <HugeiconsIcon icon={ViewIcon} size={16} />
-                                  View details
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="justify-start gap-2 hover:bg-blue/10 hover:text-blue-600"
-                                  onClick={(e) => handleEdit(classItem, e)}
-                                >
-                                  <HugeiconsIcon icon={PencilEdit01Icon} size={16} />
-                                  Edit details
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="justify-start gap-2 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={(e) => handleDelete(classItem, e)}
-                                >
-                                  <HugeiconsIcon icon={Delete02Icon} size={16} />
-                                  Delete class
-                                </Button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            )}
+        }
+      />
 
-            {/* Cards View */}
-            {viewMode === "cards" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-                <AnimatePresence>
-                  {filteredClasses.map((classItem, index) => (
-                    <motion.div
-                      key={classItem.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Card className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-brand/50">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="size-12 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-md">
-                              <span className="text-base font-bold text-white">
-                                {classItem.name.substring(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className={
-                                classItem.isActive
-                                  ? "bg-green-50 text-green-700 border-green-300 shadow-sm"
-                                  : "bg-gray-50 text-gray-700 border-gray-300 shadow-sm"
-                              }
-                            >
-                              {classItem.isActive ? "Live" : "Completed"}
-                            </Badge>
-                          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          label="Total Classes"
+          value={totalClasses}
+          icon={<BookOpen className="size-6" />}
+          color="brand"
+          delay={0.1}
+        />
+        <StatsCard
+          label="Active"
+          value={activeClasses}
+          icon={<CheckCircle className="size-6" />}
+          color="green"
+          delay={0.2}
+        />
+        <StatsCard
+          label="With Teachers"
+          value={classesWithTeachers}
+          icon={<Users className="size-6" />}
+          color="blue"
+          delay={0.3}
+        />
+        <StatsCard
+          label="Total Students"
+          value={totalStudents}
+          icon={<Users className="size-6" />}
+          color="purple"
+          delay={0.4}
+        />
+      </div>
 
-                          <div className="space-y-3 mb-4">
-                            <h4 className="font-bold text-lg">{classItem.name}</h4>
+      {/* Alert for unassigned classes */}
+      {classesWithoutTeachers > 0 && (
+        <Alert>
+          <AlertDescription>
+            <strong>{classesWithoutTeachers}</strong> class
+            {classesWithoutTeachers !== 1 ? "es are" : " is"} without
+            assigned teachers. Consider assigning teachers.
+          </AlertDescription>
+        </Alert>
+      )}
 
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Students:</span>
-                                <span className="font-semibold text-brand">
-                                  {classItem._count?.students || 0}
-                                </span>
-                              </div>
+      {/* Recent Classes */}
+      {!isLoading && recentClasses.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Recent Classes</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {recentClasses.map((classItem) => (
+              <ClassCard
+                key={classItem.id}
+                classItem={classItem}
+                isSelected={selectedIds.has(classItem.id)}
+                onSelect={() => toggleSelection(classItem.id)}
+                onView={() => handleView(classItem)}
+                onEdit={() => handleEdit(classItem)}
+                onDelete={() => handleDeleteClick(classItem)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Teacher:</span>
-                                <span className={`font-medium ${classItem.classTeacher ? 'text-green-600' : 'text-orange-600'}`}>
-                                  {classItem.classTeacher ? (
-                                    <div className="flex items-center gap-1">
-                                      <HugeiconsIcon icon={TeacherIcon} size={14} />
-                                      Assigned
-                                    </div>
-                                  ) : (
-                                    "Not assigned"
-                                  )}
-                                </span>
-                              </div>
+      {/* Main Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">All Classes</h2>
 
-                              {classItem.classTeacher && (
-                                <div className="pt-2 border-t">
-                                  <p className="text-xs text-muted-foreground">
-                                    {classItem.classTeacher.name}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+        {/* Filters + View Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <FilterTabs
+            tabs={[
+              { key: "all", label: "All", count: classes.length },
+              { key: "active", label: "Active", count: activeClasses },
+              {
+                key: "inactive",
+                label: "Inactive",
+                count: classes.length - activeClasses,
+              },
+            ]}
+            active={filterTab}
+            onChange={setFilterTab}
+          />
+          <ViewToggle mode={viewMode} onChange={setViewMode} showList />
+        </div>
 
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 hover:bg-brand/10 hover:text-brand hover:border-brand"
-                              onClick={(e) => handleViewDetails(classItem, e)}
-                            >
-                              <HugeiconsIcon icon={ViewIcon} size={16} className="mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
-                              onClick={(e) => handleEdit(classItem, e)}
-                            >
-                              <HugeiconsIcon icon={PencilEdit01Icon} size={16} className="mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-                              onClick={(e) => handleDelete(classItem, e)}
-                            >
-                              <HugeiconsIcon icon={Delete02Icon} size={16} />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </>
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="size-8 animate-spin text-brand" />
+          </div>
         )}
-      </motion.div>
+
+        {/* Empty */}
+        {!isLoading && filteredClasses.length === 0 && (
+          <EmptyState
+            icon={<BookOpen className="size-12" />}
+            title={
+              debouncedSearch || filterTab !== "all"
+                ? "No classes match your filters"
+                : "No classes yet"
+            }
+            description="Create your first class to get started"
+            action={
+              <Button onClick={() => setShowAddModal(true)}>
+                <Plus className="size-4" />
+                Add Class
+              </Button>
+            }
+          />
+        )}
+
+        {/* Grid View */}
+        {!isLoading && filteredClasses.length > 0 && viewMode === "grid" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <AnimatePresence mode="popLayout">
+              {filteredClasses.map((classItem) => (
+                <ClassCard
+                  key={classItem.id}
+                  classItem={classItem}
+                  isSelected={selectedIds.has(classItem.id)}
+                  onSelect={() => toggleSelection(classItem.id)}
+                  onView={() => handleView(classItem)}
+                  onEdit={() => handleEdit(classItem)}
+                  onDelete={() => handleDeleteClick(classItem)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Table View */}
+        {!isLoading &&
+          filteredClasses.length > 0 &&
+          viewMode === "table" && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Teacher</TableHead>
+                  <TableHead>Students</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClasses.map((classItem) => (
+                  <TableRow
+                    key={classItem.id}
+                    className="group hover:bg-muted/50"
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center">
+                          <span className="text-xs font-bold text-white">
+                            {classItem.name.substring(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="font-medium">{classItem.name}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm capitalize text-muted-foreground">
+                      {classItem.level || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {classItem.classTeacher?.name || (
+                        <span className="text-orange-600">Not assigned</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">
+                      {classItem._count?.students || 0}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          classItem.isActive
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-gray-50 text-gray-700 border-gray-200"
+                        }
+                      >
+                        {classItem.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="size-8 p-0"
+                          >
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleView(classItem)}
+                          >
+                            <Eye className="size-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(classItem)}
+                          >
+                            <Pencil className="size-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(classItem)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
+        {/* List View */}
+        {!isLoading &&
+          filteredClasses.length > 0 &&
+          viewMode === "list" && (
+            <div className="border rounded-xl divide-y">
+              {filteredClasses.map((classItem) => (
+                <div
+                  key={classItem.id}
+                  className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="size-10 rounded-lg bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-white">
+                      {classItem.name.substring(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">
+                        {classItem.name}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={
+                          classItem.isActive
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-gray-50 text-gray-700 border-gray-200"
+                        }
+                      >
+                        {classItem.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                      <span className="capitalize">
+                        {classItem.level || "—"}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {classItem._count?.students || 0} students
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {classItem.classTeacher?.name || "No teacher"}
+                      </span>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="size-8 p-0"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleView(classItem)}
+                      >
+                        <Eye className="size-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEdit(classItem)}
+                      >
+                        <Pencil className="size-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteClick(classItem)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedIds.size > 0 && (
+        <BulkActions
+          count={selectedIds.size}
+          onDelete={handleBulkDelete}
+          onExport={handleExportCSV}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
+      )}
 
       {/* Add Class Dialog */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
@@ -650,21 +802,29 @@ export default function ClassesPage() {
           )}
 
           <form onSubmit={handleAddClass} className="space-y-4">
-            <div>
-              <Label>Class Name <span className="text-destructive">*</span></Label>
+            <div className="space-y-2">
+              <Label>
+                Class Name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 placeholder="e.g., Grade 5A, Math 101"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
               />
             </div>
 
-            <div>
-              <Label>Level <span className="text-destructive">*</span></Label>
+            <div className="space-y-2">
+              <Label>
+                Level <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={formData.level}
-                onValueChange={(value) => setFormData({ ...formData, level: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, level: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select level..." />
@@ -676,8 +836,10 @@ export default function ClassesPage() {
               </Select>
             </div>
 
-            <div>
-              <Label>Class Teacher <span className="text-destructive">*</span></Label>
+            <div className="space-y-2">
+              <Label>
+                Class Teacher <span className="text-destructive">*</span>
+              </Label>
               <div className="space-y-2">
                 <Input
                   placeholder="Search teachers..."
@@ -686,19 +848,23 @@ export default function ClassesPage() {
                 />
                 <Select
                   value={formData.classTeacherId}
-                  onValueChange={(value) => setFormData({ ...formData, classTeacherId: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, classTeacherId: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select teacher..." />
                   </SelectTrigger>
                   <SelectContent>
                     {teachers
-                      .filter((teacher) =>
+                      .filter((teacher: any) =>
                         teacherSearch
-                          ? teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
+                          ? teacher.name
+                            .toLowerCase()
+                            .includes(teacherSearch.toLowerCase())
                           : true
                       )
-                      .map((teacher) => (
+                      .map((teacher: any) => (
                         <SelectItem key={teacher.id} value={teacher.id}>
                           {teacher.name}
                         </SelectItem>
@@ -716,18 +882,21 @@ export default function ClassesPage() {
                 onClick={() => setShowAddModal(false)}
                 disabled={createMutation.isPending}
               >
-                <HugeiconsIcon icon={Cancel01Icon} size={18} className="mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={createMutation.isPending}
+              >
                 {createMutation.isPending ? (
                   <>
-                    <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                    <Loader2 className="size-4 animate-spin" />
                     Creating...
                   </>
                 ) : (
                   <>
-                    <HugeiconsIcon icon={Add01Icon} size={18} className="mr-2" />
+                    <Plus className="size-4" />
                     Create Class
                   </>
                 )}
@@ -737,7 +906,7 @@ export default function ClassesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -747,16 +916,16 @@ export default function ClassesPage() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to delete <strong>{selectedClass.name}</strong>?
+                  Are you sure you want to delete{" "}
+                  <strong>{selectedClass.name}</strong>?
                 </p>
                 <p className="text-xs text-destructive/80">
-                  This action cannot be undone. All students will be unassigned from this class.
+                  This action cannot be undone. All students will be
+                  unassigned from this class.
                 </p>
               </div>
-
               <div className="flex gap-3">
                 <Button
-                  type="button"
                   variant="outline"
                   className="flex-1"
                   onClick={() => setShowDeleteModal(false)}
@@ -765,7 +934,6 @@ export default function ClassesPage() {
                   Cancel
                 </Button>
                 <Button
-                  type="button"
                   variant="destructive"
                   className="flex-1"
                   onClick={confirmDelete}
@@ -773,12 +941,12 @@ export default function ClassesPage() {
                 >
                   {deleteMutation.isPending ? (
                     <>
-                      <div className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
+                      <Loader2 className="size-4 animate-spin" />
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <HugeiconsIcon icon={Delete02Icon} size={16} className="mr-2" />
+                      <Trash2 className="size-4" />
                       Delete
                     </>
                   )}

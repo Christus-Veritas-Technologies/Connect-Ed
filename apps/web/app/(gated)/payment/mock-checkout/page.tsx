@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { db } from "@repo/db";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 
 // This is a development-only mock checkout page
 export default function MockCheckoutPage() {
@@ -13,6 +14,7 @@ export default function MockCheckoutPage() {
   const amount = searchParams.get("amount");
   const plan = searchParams.get("plan");
   const schoolId = searchParams.get("schoolId");
+  const currency = (searchParams.get("currency") || "USD") as CurrencyCode;
 
   const handleSimulatePayment = async (success: boolean) => {
     setIsProcessing(true);
@@ -26,13 +28,13 @@ export default function MockCheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "payment.completed",
+          type: "payment.succeeded",
           data: {
             id: `dev_session_${Date.now()}`,
             metadata: {
-              schoolId,
-              planType: plan,
-              paymentType: "SIGNUP",
+              school_id: schoolId,
+              plan_type: plan,
+              is_signup: "true",
             },
           },
         }),
@@ -59,14 +61,14 @@ export default function MockCheckoutPage() {
             This simulates the Dodo Payments checkout
           </p>
 
-          <div style={{ 
-            background: 'var(--muted)', 
-            padding: '1rem', 
+          <div style={{
+            background: 'var(--muted)',
+            padding: '1rem',
             borderRadius: 'var(--radius)',
             marginBottom: '1.5rem'
           }}>
             <p><strong>Plan:</strong> {plan}</p>
-            <p><strong>Amount:</strong> ${amount}</p>
+            <p><strong>Amount:</strong> {fmt(Number(amount), currency)}</p>
           </div>
 
           {isProcessing ? (

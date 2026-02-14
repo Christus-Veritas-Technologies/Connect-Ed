@@ -7,6 +7,7 @@ import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { syncChatMembers } from "../lib/chat-sync";
 
 const students = new Hono();
 
@@ -166,6 +167,16 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
       hashedPassword = await hashPassword(generatedPassword);
     }
 
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        termlyFee: true,
+        termStartDate: true,
+        currentTermNumber: true,
+        currentTermYear: true,
+      },
+    });
+
     // Create student
     console.log(`[POST /students] Inserting student: ${data.firstName} ${data.lastName}`);
     const result = await db.$transaction(async (tx) => {
@@ -208,10 +219,30 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
         });
       }
 
+      // Charge termly fee if the school already configured one
+      if (school?.termlyFee && school.termlyFee.gt(0)) {
+        const feeDescription = `Term ${school.currentTermNumber ?? 1} ${school.currentTermYear ?? new Date().getFullYear()} tuition`;
+        const dueDate = school.termStartDate ? new Date(school.termStartDate) : new Date();
+        await tx.fee.create({
+          data: {
+            amount: school.termlyFee,
+            description: feeDescription,
+            dueDate,
+            schoolId,
+            studentId: student.id,
+          },
+        });
+      }
+
       return student;
     });
 
     const student = result;
+
+    // Sync chat members if student has a class
+    if (student.classId) {
+      await syncChatMembers(student.classId);
+    }
 
     // Send notifications (preference-aware)
     const notifications = [];
@@ -344,6 +375,11 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
       }
     }
 
+    // Track if class changed for chat sync
+    const classChanged = data.classId !== undefined && data.classId !== existing.classId;
+    const oldClassId = existing.classId;
+    const newClassId = data.classId;
+
     // Update student
     const student = await db.student.update({
       where: { id },
@@ -356,6 +392,18 @@ students.patch("/:id", zValidator("json", updateStudentSchema), async (c) => {
         parent: { select: { id: true, name: true } },
       },
     });
+
+    // Sync chat members if class changed
+    if (classChanged) {
+      // Sync old class to remove the student
+      if (oldClassId) {
+        await syncChatMembers(oldClassId);
+      }
+      // Sync new class to add the student
+      if (newClassId) {
+        await syncChatMembers(newClassId);
+      }
+    }
 
     return successResponse(c, { student });
   } catch (error) {
@@ -379,10 +427,8 @@ students.delete("/:id", async (c) => {
       return errors.notFound(c, "Student");
     }
 
-    // Soft delete by setting isActive to false
-    await db.student.update({
+    await db.student.delete({
       where: { id },
-      data: { isActive: false },
     });
 
     return successResponse(c, { message: "Student deleted successfully" });

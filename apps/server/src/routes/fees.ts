@@ -4,6 +4,7 @@ import { db, FeeStatus, PaymentMethod, NotificationType, NotificationPriority } 
 import { requireAuth } from "../middleware/auth";
 import { createFeeSchema, recordPaymentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { createNotification } from "./notifications";
 
 const fees = new Hono();
@@ -312,6 +313,8 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           notes: data.notes,
           schoolId,
           receivedById: userId,
+          ...(typeof data.termNumber === "number" ? { termNumber: data.termNumber } : {}),
+          ...(typeof data.termYear === "number" ? { termYear: data.termYear } : {}),
         },
       });
 
@@ -330,7 +333,9 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
     const studentName = fee.student
       ? `${fee.student.firstName} ${fee.student.lastName}`
       : "Unknown Student";
-    const amountFormatted = Number(data.amount).toLocaleString();
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { currency: true } });
+    const cur = (school?.currency || "USD") as CurrencyCode;
+    const amountFormatted = fmtServer(data.amount, cur);
     const notifications: Promise<unknown>[] = [];
 
     // 1. Notify all admins about the fee payment
@@ -345,7 +350,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           type: NotificationType.PAYMENT_SUCCESS,
           priority: NotificationPriority.MEDIUM,
           title: "Fee Payment Received",
-          message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
+          message: `A payment of ${amountFormatted} has been recorded for ${studentName}. Fee status: ${newStatus}.`,
           actionUrl: `/dashboard/fees`,
           schoolId,
           userId: admin.id,
@@ -367,7 +372,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
             type: NotificationType.PAYMENT_SUCCESS,
             priority: NotificationPriority.HIGH,
             title: "Fee Payment Recorded",
-            message: `A payment of ₦${amountFormatted} has been recorded for ${studentName}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+            message: `A payment of ${amountFormatted} has been recorded for ${studentName}. Remaining balance: ${fmtServer(Math.max(0, Number(fee.amount) - newTotal), cur)}.`,
             actionUrl: `/dashboard/fees`,
             schoolId,
             metadata: { parentId: parent.id, studentId: fee.student.id },
@@ -384,7 +389,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
           type: NotificationType.PAYMENT_SUCCESS,
           priority: NotificationPriority.MEDIUM,
           title: "Fee Payment Recorded",
-          message: `A payment of ₦${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ₦${Math.max(0, Number(fee.amount) - newTotal).toLocaleString()}.`,
+          message: `A payment of ${amountFormatted} has been recorded for your fee: ${fee.description}. Remaining balance: ${fmtServer(Math.max(0, Number(fee.amount) - newTotal), cur)}.`,
           actionUrl: `/dashboard/fees`,
           schoolId,
           metadata: { studentId: fee.student.id },
@@ -401,6 +406,67 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
     return successResponse(c, { payment, newStatus }, 201);
   } catch (error) {
     console.error("Record payment error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// DELETE /fees/payments/:paymentId - Delete fee payment
+fees.delete("/payments/:paymentId", async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const paymentId = c.req.param("paymentId");
+
+    const payment = await db.feePayment.findFirst({
+      where: { id: paymentId, schoolId },
+      include: {
+        fee: {
+          include: { payments: true },
+        },
+      },
+    });
+
+    if (!payment) {
+      return errors.notFound(c, "Fee payment");
+    }
+
+    const fee = payment.fee;
+    const remainingPayments = fee.payments.filter((p) => p.id !== paymentId);
+    const remainingPaid = remainingPayments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0
+    );
+
+    let newStatus: FeeStatus;
+    if (remainingPaid >= Number(fee.amount)) {
+      newStatus = FeeStatus.PAID;
+    } else if (remainingPaid > 0) {
+      newStatus = FeeStatus.PARTIAL;
+    } else {
+      newStatus = fee.dueDate < new Date() ? FeeStatus.OVERDUE : FeeStatus.PENDING;
+    }
+
+    const newPaidAt = newStatus === FeeStatus.PAID ? fee.paidAt ?? new Date() : null;
+
+    await db.$transaction(async (tx) => {
+      await tx.feePayment.delete({ where: { id: paymentId } });
+      await tx.fee.update({
+        where: { id: fee.id },
+        data: {
+          status: newStatus,
+          paidAmount: remainingPaid,
+          paidAt: newPaidAt,
+        },
+      });
+    });
+
+    return successResponse(c, {
+      message: "Fee payment deleted successfully",
+      feeId: fee.id,
+      status: newStatus,
+      paidAmount: remainingPaid,
+    });
+  } catch (error) {
+    console.error("Delete fee payment error:", error);
     return errors.internalError(c);
   }
 });

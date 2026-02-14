@@ -12,7 +12,9 @@ onboardingProgress.use("*", requireAuth);
 
 // Schema for progress updates
 const progressSchema = z.object({
-  currentStep: z.number().int().min(0).max(6),
+  currentStep: z.number().int().min(0).max(8),
+  country: z.string().optional(),
+  currency: z.string().optional(),
   schoolName: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),

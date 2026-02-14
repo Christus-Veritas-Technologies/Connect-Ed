@@ -189,6 +189,7 @@ notifications.delete("/:id", requireAuth, async (c) => {
 
 // Helper function to create notification (can be called from other routes)
 // Respects school-level and user-level notification preferences
+// Includes deduplication to prevent duplicate notifications within 5 minutes
 export async function createNotification(params: {
   schoolId: string;
   userId?: string;
@@ -222,6 +223,23 @@ export async function createNotification(params: {
       if (user && !user.notifyInApp) {
         return null; // User opted out of in-app notifications
       }
+    }
+
+    // Deduplication: Check for similar notification within last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentDuplicate = await db.notification.findFirst({
+      where: {
+        schoolId: params.schoolId,
+        userId: params.userId || null,
+        type: params.type,
+        title: params.title,
+        createdAt: { gte: fiveMinutesAgo },
+      },
+    });
+
+    if (recentDuplicate) {
+      console.log(`[DEDUPLICATE] Skipping duplicate notification: ${params.title} for user ${params.userId || 'broadcast'}`);
+      return recentDuplicate; // Return existing notification instead of creating duplicate
     }
 
     return await db.notification.create({

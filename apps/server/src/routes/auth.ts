@@ -18,6 +18,7 @@ import {
   resetPasswordSchema,
 } from "../lib/validation";
 import { successResponse, errors, errorResponse } from "../lib/response";
+import { sendEmail, generatePasswordResetEmail } from "../lib/email";
 import { randomBytes } from "crypto";
 
 const auth = new Hono();
@@ -166,12 +167,15 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           isActive: staffUser.school.isActive,
           signupFeePaid: staffUser.school.signupFeePaid,
           onboardingComplete: staffUser.school.onboardingComplete,
+          country: staffUser.school.country,
+          currency: staffUser.school.currency,
           termlyFee: staffUser.school.termlyFee,
           currentTermNumber: staffUser.school.currentTermNumber,
           currentTermYear: staffUser.school.currentTermYear,
           termStartDate: staffUser.school.termStartDate,
           currentPeriodType: staffUser.school.currentPeriodType,
           holidayStartDate: staffUser.school.holidayStartDate,
+          nextPaymentDate: staffUser.school.nextPaymentDate,
         },
         userType: "STAFF",
         accessToken,
@@ -241,12 +245,15 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           isActive: parent.school.isActive,
           signupFeePaid: parent.school.signupFeePaid,
           onboardingComplete: parent.school.onboardingComplete,
+          country: parent.school.country,
+          currency: parent.school.currency,
           termlyFee: parent.school.termlyFee,
           currentTermNumber: parent.school.currentTermNumber,
           currentTermYear: parent.school.currentTermYear,
           termStartDate: parent.school.termStartDate,
           currentPeriodType: parent.school.currentPeriodType,
           holidayStartDate: parent.school.holidayStartDate,
+          nextPaymentDate: parent.school.nextPaymentDate,
         },
         userType: "PARENT",
         accessToken,
@@ -316,12 +323,15 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           isActive: student.school.isActive,
           signupFeePaid: student.school.signupFeePaid,
           onboardingComplete: student.school.onboardingComplete,
+          country: student.school.country,
+          currency: student.school.currency,
           termlyFee: student.school.termlyFee,
           currentTermNumber: student.school.currentTermNumber,
           currentTermYear: student.school.currentTermYear,
           termStartDate: student.school.termStartDate,
           currentPeriodType: student.school.currentPeriodType,
           holidayStartDate: student.school.holidayStartDate,
+          nextPaymentDate: student.school.nextPaymentDate,
         },
         userType: "STUDENT",
         accessToken,
@@ -395,12 +405,15 @@ auth.post("/refresh", async (c) => {
           isActive: staffUser.school.isActive,
           signupFeePaid: staffUser.school.signupFeePaid,
           onboardingComplete: staffUser.school.onboardingComplete,
+          country: staffUser.school.country,
+          currency: staffUser.school.currency,
           termlyFee: staffUser.school.termlyFee,
           currentTermNumber: staffUser.school.currentTermNumber,
           currentTermYear: staffUser.school.currentTermYear,
           termStartDate: staffUser.school.termStartDate,
           currentPeriodType: staffUser.school.currentPeriodType,
           holidayStartDate: staffUser.school.holidayStartDate,
+          nextPaymentDate: staffUser.school.nextPaymentDate,
         },
         userType: "STAFF",
         accessToken: newAccessToken,
@@ -420,6 +433,16 @@ auth.post("/refresh", async (c) => {
       if (!parent.isActive) {
         return errors.forbidden(c);
       }
+
+      console.log("[AUTH REFRESH] Parent found:", {
+        parentId: parent.id,
+        parentName: parent.name,
+        childrenCount: parent.children?.length || 0,
+        children: parent.children?.map((s: any) => ({
+          id: s.id,
+          name: `${s.firstName} ${s.lastName}`,
+        })) || [],
+      });
 
       const newAccessToken = await generateAccessToken({
         userId: parent.id,
@@ -455,12 +478,15 @@ auth.post("/refresh", async (c) => {
           isActive: parent.school.isActive,
           signupFeePaid: parent.school.signupFeePaid,
           onboardingComplete: parent.school.onboardingComplete,
+          country: parent.school.country,
+          currency: parent.school.currency,
           termlyFee: parent.school.termlyFee,
           currentTermNumber: parent.school.currentTermNumber,
           currentTermYear: parent.school.currentTermYear,
           termStartDate: parent.school.termStartDate,
           currentPeriodType: parent.school.currentPeriodType,
           holidayStartDate: parent.school.holidayStartDate,
+          nextPaymentDate: parent.school.nextPaymentDate,
         },
         userType: "PARENT",
         accessToken: newAccessToken,
@@ -512,12 +538,15 @@ auth.post("/refresh", async (c) => {
           isActive: student.school.isActive,
           signupFeePaid: student.school.signupFeePaid,
           onboardingComplete: student.school.onboardingComplete,
+          country: student.school.country,
+          currency: student.school.currency,
           termlyFee: student.school.termlyFee,
           currentTermNumber: student.school.currentTermNumber,
           currentTermYear: student.school.currentTermYear,
           termStartDate: student.school.termStartDate,
           currentPeriodType: student.school.currentPeriodType,
           holidayStartDate: student.school.holidayStartDate,
+          nextPaymentDate: student.school.nextPaymentDate,
         },
         userType: "STUDENT",
         accessToken: newAccessToken,
@@ -566,9 +595,15 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
   try {
     const { email } = c.req.valid("json");
 
-    // Find user
+    // Find user with schoolId
     const user = await db.user.findUnique({
       where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        schoolId: true,
+      },
     });
 
     // Always return success to prevent email enumeration
@@ -591,10 +626,25 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
       },
     });
 
-    // TODO: Send email with reset link
-    console.log(
-      `Password reset token for ${email}: ${resetToken}`
-    );
+    // Send password reset email
+    const emailHtml = generatePasswordResetEmail({
+      name: user.name,
+      resetToken,
+    });
+
+    const emailSent = await sendEmail({
+      to: user.email,
+      subject: "Reset Your Connect-Ed Password",
+      html: emailHtml,
+      schoolId: user.schoolId,
+      type: "NOREPLY",
+    });
+
+    if (emailSent) {
+      console.log(`✅ Password reset email sent to ${user.email}`);
+    } else {
+      console.error(`❌ Failed to send password reset email to ${user.email}`);
+    }
 
     return successResponse(c, {
       message: "If an account exists, a password reset link will be sent",

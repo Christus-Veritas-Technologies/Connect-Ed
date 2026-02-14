@@ -29,9 +29,32 @@ interface StudentReportPayload {
     admissionNumber: string;
     className: string;
   };
+  school: {
+    name: string;
+    logo?: string | null;
+    motto?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  };
+  classTeacher?: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
+  reportSettings: {
+    showSchoolBranding: boolean;
+    showTeacherDetails: boolean;
+    showGrades: boolean;
+    showPassRates: boolean;
+    showInsights: boolean;
+    showExamDetails: boolean;
+    showOverallAverage: boolean;
+  };
   subjects: SubjectReportData[];
   overall: {
     averageMark: number;
+    averageGrade: string | null;
     totalSubjects: number;
     totalExams: number;
     passRate: number;
@@ -42,6 +65,7 @@ interface StudentReportPayload {
     weakestSubject: { name: string; averageMark: number } | null;
     strongestSubject: { name: string; averageMark: number } | null;
   };
+  generatedAt: Date;
 }
 
 export interface DispatchResult {
@@ -68,11 +92,45 @@ export async function computeStudentReport(
       firstName: true,
       lastName: true,
       admissionNumber: true,
-      class: { select: { id: true, name: true } },
+      class: { 
+        select: { 
+          id: true, 
+          name: true,
+          classTeacher: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+            }
+          }
+        } 
+      },
     },
   });
 
   if (!student) return null;
+
+  // Get school details and settings
+  const school = await db.school.findUnique({
+    where: { id: schoolId },
+    select: {
+      name: true,
+      address: true,
+      phone: true,
+      email: true,
+      reportSchoolLogo: true,
+      reportSchoolMotto: true,
+      reportShowSchoolBranding: true,
+      reportShowTeacherDetails: true,
+      reportShowGrades: true,
+      reportShowPassRates: true,
+      reportShowInsights: true,
+      reportShowExamDetails: true,
+      reportShowOverallAverage: true,
+    },
+  });
+
+  if (!school) return null;
 
   const results = await db.examResult.findMany({
     where: { studentId, exam: { schoolId } },
@@ -112,16 +170,37 @@ export async function computeStudentReport(
         exams: [],
       });
     }
-    const subjectGrades = allGrades.filter((g) => g.subjectId === subId);
+    // Get subject-specific grades first, then fall back to school-wide grades
+    const subjectGrades = allGrades.filter((g) => g.subjectId === subId || g.subjectId === null);
     const grade = subjectGrades.find(
       (g) => result.mark >= g.minMark && result.mark <= g.maxMark
     );
+    // Determine pass status: use grade if found, otherwise use 50% threshold
+    let isPass = false;
+    if (grade) {
+      isPass = grade.isPass;
+    } else {
+      isPass = result.mark >= 50;
+    }
+    
+    // Determine grade name: use configured grade or default scale
+    let gradeName = grade?.name;
+    if (!grade) {
+      // Show default grades when no configured grade matches
+      if (result.mark >= 90) gradeName = "A";
+      else if (result.mark >= 80) gradeName = "B";
+      else if (result.mark >= 70) gradeName = "C";
+      else if (result.mark >= 60) gradeName = "D";
+      else if (result.mark >= 50) gradeName = "E";
+      else gradeName = "F";
+    }
+    
     subjectMap.get(subId)!.exams.push({
       examName: result.exam.name,
       paper: result.exam.paper,
       mark: result.mark,
-      gradeName: grade?.name || "N/A",
-      isPass: grade?.isPass ?? false,
+      gradeName: gradeName || "N/A",
+      isPass,
     });
   }
 
@@ -134,18 +213,33 @@ export async function computeStudentReport(
             )
           : 0;
       const passCount = s.exams.filter((e) => e.isPass).length;
-      const subjectGrades = allGrades.filter(
-        (g) => g.subjectId === s.subjectId
-      );
+      // Get subject-specific grades first, then fall back to school-wide grades
+      const subjectGrades = allGrades.filter((g) => g.subjectId === s.subjectId || g.subjectId === null);
       const avgGrade = subjectGrades.find(
         (g) => avgMark >= g.minMark && avgMark <= g.maxMark
       );
+      // Determine pass status: use grade if found, otherwise use 50% threshold
+      let avgIsPass = false;
+      let avgGradeName = "N/A";
+      if (avgGrade) {
+        avgIsPass = avgGrade.isPass;
+        avgGradeName = avgGrade.name;
+      } else {
+        avgIsPass = avgMark >= 50;
+        // Show default grades when no configured grade matches
+        if (avgMark >= 90) avgGradeName = "A";
+        else if (avgMark >= 80) avgGradeName = "B";
+        else if (avgMark >= 70) avgGradeName = "C";
+        else if (avgMark >= 60) avgGradeName = "D";
+        else if (avgMark >= 50) avgGradeName = "E";
+        else avgGradeName = "F";
+      }
 
       return {
         subjectName: s.subjectName,
         averageMark: avgMark,
-        averageGrade: avgGrade?.name || "N/A",
-        averageIsPass: avgGrade?.isPass ?? false,
+        averageGrade: avgGradeName,
+        averageIsPass: avgIsPass,
         examsTaken: s.exams.length,
         examsPassed: passCount,
         passRate:
@@ -165,16 +259,49 @@ export async function computeStudentReport(
       : 0;
 
   const totalPassed = results.filter((r) => {
+    // Get subject-specific grades first, then fall back to school-wide grades
     const subjectGrades = allGrades.filter(
-      (g) => g.subjectId === r.exam.subjectId
+      (g) => g.subjectId === r.exam.subjectId || g.subjectId === null
     );
-    return subjectGrades
-      .filter((g) => g.isPass)
-      .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+    // If grades exist, check if mark matches a passing grade
+    if (subjectGrades.length > 0) {
+      const matchesPassingGrade = subjectGrades
+        .filter((g) => g.isPass)
+        .some((g) => r.mark >= g.minMark && r.mark <= g.maxMark);
+      if (matchesPassingGrade) {
+        console.log(`[PASS] Exam ${r.exam.name}: ${r.mark}% - matches grade`);
+        return true;
+      }
+    }
+    // Fallback: pass if >= 50% (either no grades or mark doesn't match any grade range)
+    const passes = r.mark >= 50;
+    console.log(`[${passes ? 'PASS' : 'FAIL'}] Exam ${r.exam.name}: ${r.mark}% - fallback 50% check`);
+    return passes;
   }).length;
+  
+  console.log(`[REPORT] Total exams: ${totalExams}, Passed: ${totalPassed}, Failed: ${totalExams - totalPassed}`);
 
   const overallPassRate =
     totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
+
+  // Calculate overall grade based on average mark
+  // Find any grade that matches the overall average
+  const overallGrade = allGrades.find(
+    (g) => overallAverage >= g.minMark && overallAverage <= g.maxMark
+  );
+  
+  // Determine overall grade name with fallback to default scale
+  let overallGradeName: string | null = null;
+  if (overallGrade) {
+    overallGradeName = overallGrade.name;
+  } else if (overallAverage >= 50) {
+    // Show default grades when no configured grade matches
+    if (overallAverage >= 90) overallGradeName = "A";
+    else if (overallAverage >= 80) overallGradeName = "B";
+    else if (overallAverage >= 70) overallGradeName = "C";
+    else if (overallAverage >= 60) overallGradeName = "D";
+    else overallGradeName = "F";
+  }
 
   const sortedSubjects = [...subjects].sort(
     (a, b) => a.averageMark - b.averageMark
@@ -187,9 +314,28 @@ export async function computeStudentReport(
       admissionNumber: student.admissionNumber,
       className: student.class?.name || "Unassigned",
     },
+    school: {
+      name: school.name || "Unknown School",
+      logo: school.reportSchoolLogo,
+      motto: school.reportSchoolMotto,
+      address: school.address,
+      phone: school.phone,
+      email: school.email,
+    },
+    classTeacher: student.class?.classTeacher || null,
+    reportSettings: {
+      showSchoolBranding: school.reportShowSchoolBranding,
+      showTeacherDetails: school.reportShowTeacherDetails,
+      showGrades: school.reportShowGrades,
+      showPassRates: school.reportShowPassRates,
+      showInsights: school.reportShowInsights,
+      showExamDetails: school.reportShowExamDetails,
+      showOverallAverage: school.reportShowOverallAverage,
+    },
     subjects,
     overall: {
       averageMark: overallAverage,
+      averageGrade: overallGradeName,
       totalSubjects: subjects.length,
       totalExams,
       passRate: overallPassRate,
@@ -213,6 +359,7 @@ export async function computeStudentReport(
             }
           : null,
     },
+    generatedAt: new Date(),
   };
 }
 
@@ -222,9 +369,10 @@ export async function computeStudentReport(
 
 function generateReportEmailHtml(
   report: StudentReportPayload,
-  schoolName: string,
   parentName: string
 ): string {
+  const settings = report.reportSettings;
+  
   const subjectRows = report.subjects
     .map(
       (s) => `
@@ -232,28 +380,30 @@ function generateReportEmailHtml(
       <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${s.subjectName}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">${s.examsTaken}</td>
       <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: bold; color: ${s.averageMark >= 50 ? "#16a34a" : "#dc2626"};">${s.averageMark}%</td>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+      ${settings.showGrades ? `<td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">
         <span style="background: ${s.averageIsPass ? "#dcfce7" : "#fecaca"}; color: ${s.averageIsPass ? "#166534" : "#991b1b"}; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600;">${s.averageGrade}</span>
-      </td>
-      <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">${s.passRate}%</td>
+      </td>` : ''}
+      ${settings.showPassRates ? `<td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: center;">${s.passRate}%</td>` : ''}
     </tr>`
     )
     .join("");
 
   const insightHtml = [];
-  if (report.insights.strongestSubject) {
-    insightHtml.push(
-      `<div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 10px;">
-        <strong style="color: #166534;">⭐ Strongest Subject:</strong> <span style="color: #15803d;">${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)</span>
-      </div>`
-    );
-  }
-  if (report.insights.weakestSubject) {
-    insightHtml.push(
-      `<div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 12px 16px; border-radius: 0 8px 8px 0;">
-        <strong style="color: #9a3412;">⚠ Needs Improvement:</strong> <span style="color: #c2410c;">${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)</span>
-      </div>`
-    );
+  if (settings.showInsights) {
+    if (report.insights.strongestSubject) {
+      insightHtml.push(
+        `<div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 10px;">
+          <strong style="color: #166534;">⭐ Strongest Subject:</strong> <span style="color: #15803d;">${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)</span>
+        </div>`
+      );
+    }
+    if (report.insights.weakestSubject) {
+      insightHtml.push(
+        `<div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 12px 16px; border-radius: 0 8px 8px 0;">
+          <strong style="color: #9a3412;">⚠ Needs Improvement:</strong> <span style="color: #c2410c;">${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)</span>
+        </div>`
+      );
+    }
   }
 
   return `
@@ -269,9 +419,12 @@ function generateReportEmailHtml(
           <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center;">
-              <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
-              <h1 style="margin: 0 0 4px 0; font-size: 24px;">Academic Report</h1>
-              <p style="margin: 0; opacity: 0.9;">${report.student.name} — ${report.student.className}</p>
+              ${settings.showSchoolBranding && report.school.logo ? `<img src="${report.school.logo}" alt="${report.school.name}" style="max-height: 80px; margin-bottom: 16px;" />` : '<div style="font-size: 48px; margin-bottom: 12px;">📊</div>'}
+              ${settings.showSchoolBranding ? `<h1 style="margin: 0 0 4px 0; font-size: 28px;">${report.school.name}</h1>` : ''}
+              ${settings.showSchoolBranding && report.school.motto ? `<p style="margin: 0 0 16px 0; opacity: 0.9; font-style: italic; font-size: 14px;">${report.school.motto}</p>` : ''}
+              <h2 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 600;">Academic Report</h2>
+              <p style="margin: 4px 0 0 0; opacity: 0.9;">${report.student.name} — ${report.student.className}</p>
+              <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: 13px;">Generated: ${new Date(report.generatedAt).toLocaleDateString()}</p>
             </div>
 
             <!-- Content -->
@@ -282,25 +435,41 @@ function generateReportEmailHtml(
                 (${report.student.admissionNumber}), enrolled in <strong>${report.student.className}</strong>.
               </p>
 
+              ${settings.showTeacherDetails && report.classTeacher ? `
+              <!-- Class Teacher -->
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Class Teacher</h3>
+                <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${report.classTeacher.name}</p>
+                ${report.classTeacher.email ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">📧 ${report.classTeacher.email}</p>` : ''}
+                ${report.classTeacher.phone ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">📞 ${report.classTeacher.phone}</p>` : ''}
+              </div>
+              ` : ''}
+
               <!-- Stats row -->
-              <div style="display: flex; gap: 12px; margin: 24px 0;">
-                <div style="flex: 1; background: #eff6ff; border-radius: 10px; padding: 16px; text-align: center;">
+              ${settings.showOverallAverage ? `
+              <div style="display: flex; gap: 12px; margin: 24px 0; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 100px; background: #eff6ff; border-radius: 10px; padding: 16px; text-align: center;">
                   <div style="font-size: 28px; font-weight: bold; color: ${report.overall.averageMark >= 50 ? "#16a34a" : "#dc2626"};">${report.overall.averageMark}%</div>
                   <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Average</div>
+                  ${settings.showGrades && report.overall.averageGrade ? `<div style="margin-top: 4px; font-size: 14px; font-weight: 600; color: #1d4ed8;">Grade: ${report.overall.averageGrade}</div>` : ''}
                 </div>
-                <div style="flex: 1; background: #f5f3ff; border-radius: 10px; padding: 16px; text-align: center;">
+                <div style="flex: 1; min-width: 100px; background: #f5f3ff; border-radius: 10px; padding: 16px; text-align: center;">
                   <div style="font-size: 28px; font-weight: bold; color: #7c3aed;">${report.overall.totalSubjects}</div>
                   <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Subjects</div>
                 </div>
-                <div style="flex: 1; background: #fdf4ff; border-radius: 10px; padding: 16px; text-align: center;">
+                <div style="flex: 1; min-width: 100px; background: #fdf4ff; border-radius: 10px; padding: 16px; text-align: center;">
                   <div style="font-size: 28px; font-weight: bold; color: #a21caf;">${report.overall.totalExams}</div>
-                  <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Exams</div>
+                  <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Total Exams</div>
                 </div>
-                <div style="flex: 1; background: #f0fdf4; border-radius: 10px; padding: 16px; text-align: center;">
+                ${settings.showPassRates ? `
+                <div style="flex: 1; min-width: 100px; background: #f0fdf4; border-radius: 10px; padding: 16px; text-align: center;">
                   <div style="font-size: 28px; font-weight: bold; color: ${report.overall.passRate >= 50 ? "#16a34a" : "#dc2626"};">${report.overall.passRate}%</div>
                   <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Pass Rate</div>
+                  <div style="margin-top: 6px; font-size: 11px; color: #6b7280;">${report.overall.totalPassed} passed, ${report.overall.totalFailed} failed</div>
                 </div>
+                ` : ''}
               </div>
+              ` : ''}
 
               <!-- Insights -->
               ${insightHtml.length > 0 ? `<div style="margin: 24px 0;">${insightHtml.join("")}</div>` : ""}
@@ -309,15 +478,15 @@ function generateReportEmailHtml(
               ${
                 report.subjects.length > 0
                   ? `
-              <h3 style="margin: 28px 0 12px 0; font-size: 16px; color: #374151;">Subject Breakdown</h3>
+              <h3 style="font-size: 18px; margin: 28px 0 12px 0; color: #111827;">Subject Performance</h3>
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background: #f9fafb;">
                     <th style="padding: 12px 16px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Subject</th>
                     <th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Exams</th>
                     <th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Average</th>
-                    <th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Grade</th>
-                    <th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Pass Rate</th>
+                    ${settings.showGrades ? '<th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Grade</th>' : ''}
+                    ${settings.showPassRates ? '<th style="padding: 12px 16px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Pass Rate</th>' : ''}
                   </tr>
                 </thead>
                 <tbody>
@@ -334,8 +503,12 @@ function generateReportEmailHtml(
 
             <!-- Footer -->
             <div style="background: #f9fafb; padding: 20px 30px; text-align: center; color: #9ca3af; font-size: 13px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0;"><strong>${schoolName}</strong></p>
-              <p style="margin: 4px 0 0 0;">Connect-Ed School Management System</p>
+              ${settings.showSchoolBranding ? `
+              <p style="margin: 0;"><strong>${report.school.name}</strong></p>
+              ${report.school.address ? `<p style="margin: 4px 0 0 0;">${report.school.address}</p>` : ''}
+              ${report.school.phone || report.school.email ? `<p style="margin: 4px 0 0 0;">${[report.school.phone, report.school.email].filter(Boolean).join(' • ')}</p>` : ''}
+              ` : ''}
+              <p style="margin: ${settings.showSchoolBranding ? '8px' : '0'} 0 0 0;">Connect-Ed School Management System</p>
             </div>
           </div>
         </div>
@@ -349,48 +522,79 @@ function generateReportEmailHtml(
 // ============================================
 
 function generateReportWhatsAppText(
-  report: StudentReportPayload,
-  schoolName: string
+  report: StudentReportPayload
 ): string {
+  const settings = report.reportSettings;
   const lines = [
     `📊 *Academic Report*`,
-    `🏫 ${schoolName}`,
+  ];
+
+  if (settings.showSchoolBranding) {
+    lines.push(`🏫 ${report.school.name}`);
+    if (report.school.motto) {
+      lines.push(`_${report.school.motto}_`);
+    }
+  }
+
+  lines.push(
     ``,
     `👤 *Student:* ${report.student.name}`,
     `📋 *Admission #:* ${report.student.admissionNumber}`,
-    `🏷️ *Class:* ${report.student.className}`,
-    ``,
-    `📈 *Overall Performance:*`,
-    `• Average Mark: *${report.overall.averageMark}%*`,
-    `• Subjects: ${report.overall.totalSubjects}`,
-    `• Exams Written: ${report.overall.totalExams}`,
-    `• Pass Rate: *${report.overall.passRate}%*`,
-    `• Passed: ${report.overall.totalPassed} | Failed: ${report.overall.totalFailed}`,
-  ];
+    `🏷️ *Class:* ${report.student.className}`
+  );
 
-  if (report.subjects.length > 0) {
-    lines.push(``, `📚 *Subject Results:*`);
-    for (const s of report.subjects) {
-      const icon = s.averageIsPass ? "✅" : "❌";
+  if (settings.showTeacherDetails && report.classTeacher) {
+    lines.push(`👨‍🏫 *Teacher:* ${report.classTeacher.name}`);
+  }
+
+  if (settings.showOverallAverage) {
+    lines.push(
+      ``,
+      `📈 *Overall Performance:*`,
+      `• Average Mark: *${report.overall.averageMark}%*${settings.showGrades && report.overall.averageGrade ? ` (Grade ${report.overall.averageGrade})` : ''}`,
+      `• Subjects: ${report.overall.totalSubjects}`,
+      `• Total Exams: ${report.overall.totalExams}`
+    );
+
+    if (settings.showPassRates) {
       lines.push(
-        `${icon} ${s.subjectName}: *${s.averageMark}%* (${s.averageGrade}) — ${s.examsTaken} exam(s)`
+        `• Pass Rate: *${report.overall.passRate}%*`,
+        `• Passed: ${report.overall.totalPassed} | Failed: ${report.overall.totalFailed}`
       );
     }
   }
 
-  if (report.insights.strongestSubject) {
-    lines.push(
-      ``,
-      `⭐ *Best Subject:* ${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)`
-    );
-  }
-  if (report.insights.weakestSubject) {
-    lines.push(
-      `⚠️ *Needs Improvement:* ${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)`
-    );
+  if (report.subjects.length > 0 && settings.showExamDetails) {
+    lines.push(``, `📚 *Subject Results:*`);
+    for (const s of report.subjects) {
+      const icon = s.averageIsPass ? "✅" : "❌";
+      let subjectLine = `${icon} ${s.subjectName}: *${s.averageMark}%*`;
+      if (settings.showGrades) {
+        subjectLine += ` (${s.averageGrade})`;
+      }
+      subjectLine += ` — ${s.examsTaken} exam(s)`;
+      if (settings.showPassRates) {
+        subjectLine += `, ${s.passRate}% pass rate`;
+      }
+      lines.push(subjectLine);
+    }
   }
 
-  lines.push(``, `_Sent via Connect-Ed_`);
+  if (settings.showInsights) {
+    if (report.insights.strongestSubject) {
+      lines.push(
+        ``,
+        `⭐ *Best Subject:* ${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)`
+      );
+    }
+    if (report.insights.weakestSubject) {
+      lines.push(
+        `⚠️ *Needs Improvement:* ${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)`
+      );
+    }
+  }
+
+  lines.push(``, `_Generated: ${new Date(report.generatedAt).toLocaleDateString()}_`, `_Sent via Connect-Ed_`);
 
   return lines.join("\n");
 }
@@ -518,17 +722,10 @@ export async function sendReportToParent(
     };
   }
 
-  // 3. Get school name
-  const school = await db.school.findUnique({
-    where: { id: schoolId },
-    select: { name: true },
-  });
-  const schoolName = school?.name || "Your School";
-
-  // 4. Send email
+  // 3. Send email
   let emailSent = false;
   if (parent.email) {
-    const html = generateReportEmailHtml(report, schoolName, parent.name);
+    const html = generateReportEmailHtml(report, parent.name);
     emailSent = await sendEmail({
       to: parent.email,
       subject: `Academic Report — ${report.student.name} (${report.student.className})`,
@@ -538,10 +735,10 @@ export async function sendReportToParent(
     });
   }
 
-  // 5. Send WhatsApp
+  // 4. Send WhatsApp
   let whatsappSent = false;
   if (parent.phone) {
-    const text = generateReportWhatsAppText(report, schoolName);
+    const text = generateReportWhatsAppText(report);
     whatsappSent = await sendWhatsAppReport(parent.phone, text, schoolId);
   }
 

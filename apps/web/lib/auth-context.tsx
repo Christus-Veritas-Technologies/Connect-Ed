@@ -29,12 +29,15 @@ interface School {
   isActive: boolean;
   signupFeePaid: boolean;
   onboardingComplete: boolean;
+  country?: string | null;
+  currency: "USD" | "ZAR" | "ZIG";
   termlyFee: number | null;
   currentTermNumber: number | null;
   currentTermYear: number | null;
   termStartDate: string | null;
   currentPeriodType: "TERM" | "HOLIDAY";
   holidayStartDate: string | null;
+  nextPaymentDate: string | null;
   address?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -50,7 +53,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<boolean>;
-  setAuthData: (user: User, school: School, userType: UserType) => void;
+  setAuthData: (user: User | null, school: School | null, userType: UserType | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         checkAuth,
-        setAuthData: (newUser: User, newSchool: School, newUserType: UserType) => {
+        setAuthData: (newUser: User | null, newSchool: School | null, newUserType: UserType | null) => {
           setUser(newUser);
           setSchool(newSchool);
           setUserType(newUserType);

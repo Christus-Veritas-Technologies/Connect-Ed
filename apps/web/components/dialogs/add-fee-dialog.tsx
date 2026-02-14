@@ -6,6 +6,7 @@ import { useCreateFee, useStudents } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -96,7 +97,14 @@ export function AddFeeDialog({ open, onOpenChange, onSuccess }: AddFeeDialogProp
               <SelectContent>
                 {students.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.firstName} {s.lastName}
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <span>{s.firstName} {s.lastName}</span>
+                      {s.class?.level && (
+                        <Badge variant="outline" className="text-[10px] capitalize ml-2">
+                          {s.class.level}
+                        </Badge>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

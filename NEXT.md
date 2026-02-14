@@ -1,40 +1,30 @@
-I created a new app called agent, this is and will be the whatsapp AI agent, it's structure like this:
-(1) Whatsapp - For whatsapp, we'll be using wwebjs, when sending messages ourselves, e.g initiating conversatio s with parents by sending a report to them, make sure you leave gaps for rate limiting, e.g wait 60 seconds before sending what needs to be sent, setu a queue system so that w don't get banned since the library is unoffocial
-(2) AI - Create an AI Agent with mastra and OpenAI, the Agent will gve access to tools that fetch relevant data throughout the app e.g whne speaking toa sbtduent (or teacher), it asks them for their emaila d apsword, it calls a function that verifies this dat(bevause ot cnm't do it itself since e.g the password is hashed, so it can't tell if what we have and what's  in the db agree) and then continues aethe convo, if the password is corrcet, now guve the agent their real name and data, they can now talk about their grades, trouble areas etc, give it ABSOLUTE SUPERPOWERS for each user
-- Give the agent memort, able to remember previous emssages in the chat
-- Give it tools as mentioned above
-- Give it guardrails for replying to relevant info only
-- Give it the user's data uin each message, what's available via wweb.js and what we receive from the backend at the start of the convo when we request their email and password
-- Don't allow it to perform CUD operations (don't give it these tools)
+Currently, we have plans for zimbabwe using paynow, a local payment processor
 
-Afyer you're done, create an endpoint that we can call with a phone number and message content to send a message, add newline and whatsapp formatting to the messages, here's a bit of info on whatsapp message formatting:
-"
-WhatsApp allows text formatting to add emphasis using simple symbols. Key formatting options include bolding with asterisks (*text*), italics with underscores (_text_), strikethrough with tildes (~text~), and monospace with backticks (```text```). Newer options (2024) include bulleted/numbered lists, block quotes, and inline code. 
-Formatting Options & Syntax
-Bold: Place an asterisk (*) on both sides of the text (e.g., *hello*).
-Italic: Place an underscore (_) on both sides of the text (e.g., _hello_).
-Strikethrough: Place a tilde (~) on both sides of the text (e.g., ~hello~).
-Monospace: Place three backticks (```) on both sides of the text (e.g., ```hello```).
-Bulleted List: Start the line with an asterisk (*) or hyphen (-) followed by a space (e.g., * item).
-Numbered List: Start the line with a number, a period, and a space (e.g., 1. item).
-Block Quote: Place an angle bracket (>) and a space before the text (e.g., > text).
-Inline Code: Place a backtick (`) on both sides of the text (e.g., `text`). 
-Tips
-Combining Formats: You can combine them, such as *_bold and italic_*.
-Context Menu: On mobile, you can highlight text and select formatting options (Bold, Italic, etc.) from the menu.
-New Lines: Use Shift + Enter for a new line without sending the message.
-Remove Formatting: Simply delete the special symbols surrounding the text. 
-"
+Now, we want to add support for South African Rand (ZAR), wjhich will affect all amounts in the app, that includes fees and the like, instead of "$300" for USD, we'll have "ZAR6000"
 
-Use this wheh send messaes, make sure that for stuff like sending reports, we use tenmplates rather than suing OpenAI (that will incur costs), matter of fact, add optimisations in certain places so we favir temlates above OpenAI for saving
+So do this:"
+(1) On the payments page, add 2 tabs:
+i - USD
+ii - ZAR
 
-And then for each whatsapp message, make sure it increases the school's "whatsapp message" quotta for their currentplan use the db package in the agent app (this is why we used this turborepo archutecture, ruse of code across multipe apps)
+Allow the visitor to select their prefrred currency
 
-And then register the new agent app in the sturborepo structure jsut like we did for the wbe app so that turborepo recognizes it and we can use the db package and others
+(2) When ZAR is eleected, don't use paynow, intsead...use dodopayments "products" like this:
+https://docs.dodopayments.com/features/products
 
-Make commits at each step, let's go
+We're using productd and not subsctiptions because:
+i - We have a combined cost here, that of the one-time setup fee and that of the first subscription, we'd have to setup product payment or the one-time fee and then subscipritons fo rht emonthly fee, which is added compelxity
+ii - Paynow does not have a recurring subscription modelm so we'd have a situation whereby we have a webhook or some automatic process to auto-send bills fr ppaynow but not for dodopayments, which creates a branch in logic
 
------------------------------------------
-Now for every role except receptionist, allow the onboarding page to show different content depending on the user's role and add content for the onboaridng (decide on what's needed per role) and make each step optional for all the onboarding steps then make it so thqt after inviitng a user (with the specified role) they are redirecte to onbaording when they login
 
-The  add a "receptionists" age to the admin sidenar and add content to tjis page, it should allow the admin to add / remove receptionists (auto-generate the password, send a welcome wmail, create the use rin the db, just like we're doign everywhere here)
+Using dodopayment p[roducts and [aynow ;logic allows us to create a unified step which allows us to send auto-re idners that work for both providerrs
+
+(3) In the onboaridng, add a requried step that requests the user to select their countyr,c urrently we have the options of "Zimbabwe" and "South Africa", the selected country then defines the currncy, USD for Zim and ZAR for SA
+
+Rther, use "R" instead of ZAR since that seems to be the official code for the south afaircna rand
+
+(4) Add a setting that again allows the user to select their currency but there is yet another option: "ZiG"
+
+So it's either USD: "$350", ZAR: "R4,800" or Zig: "ZiG 400,304,4039"
+
+Use the same logic as the existing one

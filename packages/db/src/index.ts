@@ -1,6 +1,6 @@
 // Re-export Prisma client and types
 export { db, PrismaClient } from "./client.js";
-export * from "@prisma/client";
+export { Prisma } from "./generated/prisma/client.js";
 
 // Re-export enums as constants for runtime use
 export const Role = {
@@ -23,6 +23,14 @@ export const NotificationType = {
   FEE_OVERDUE: "FEE_OVERDUE" as const,
   MESSAGE_SENT: "MESSAGE_SENT" as const,
   SYSTEM_ALERT: "SYSTEM_ALERT" as const,
+  SHARED_FILE: "SHARED_FILE" as const,
+} as const;
+
+export const SharedFileRecipientType = {
+  USER: "USER" as const,
+  STUDENT: "STUDENT" as const,
+  PARENT: "PARENT" as const,
+  ROLE: "ROLE" as const,
 } as const;
 
 export const NotificationPriority = {
@@ -35,6 +43,12 @@ export const NotificationPriority = {
 export const SchoolPeriodType = {
   TERM: "TERM" as const,
   HOLIDAY: "HOLIDAY" as const,
+} as const;
+
+export const Currency = {
+  USD: "USD" as const,
+  ZAR: "ZAR" as const,
+  ZIG: "ZIG" as const,
 } as const;
 
 export const ChatMessageType = {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "@repo/db";
-import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 import { successResponse, errors, errorResponse } from "../lib/response";
 import { computeStudentReport, sendReportToParent, sendReportsToParentsBulk } from "../lib/report-dispatch";
 
@@ -27,14 +27,25 @@ studentReports.get("/", requireAuth, async (c) => {
       });
       studentIds = students.map((s) => s.id);
     } else if (role === "TEACHER") {
-      // Teacher sees students from their classes
+      // Teacher sees students from their classes (both as subject teacher and class teacher)
       const teacherClasses = await db.teacherClass.findMany({
         where: { teacherId: userId },
         select: { classId: true },
       });
       const classIds = teacherClasses.map((tc) => tc.classId);
+      
+      // Also get classes where teacher is the class teacher
+      const classTeacherClasses = await db.class.findMany({
+        where: { classTeacherId: userId },
+        select: { id: true },
+      });
+      const classTeacherIds = classTeacherClasses.map((c) => c.id);
+      
+      // Combine both and remove duplicates
+      const allClassIds = [...new Set([...classIds, ...classTeacherIds])];
+      
       const students = await db.student.findMany({
-        where: { schoolId, classId: { in: classIds } },
+        where: { schoolId, classId: { in: allClassIds } },
         select: { id: true },
       });
       studentIds = students.map((s) => s.id);
@@ -95,11 +106,14 @@ studentReports.get("/:studentId", requireAuth, async (c) => {
 // ============================================
 
 // GET /student-reports/parent/my-children - Parent views their children's reports
-studentReports.get("/parent/my-children", requireParentAuth, async (c) => {
+studentReports.get("/parent/my-children", requireAuth, async (c) => {
   try {
-    const parentId = c.get("parentId");
-    const parent = c.get("parent");
-    const schoolId = parent.schoolId;
+    const role = c.get("role");
+    if (role !== ("PARENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const parentId = c.get("userId");
+    const schoolId = c.get("schoolId");
 
     const children = await db.student.findMany({
       where: { parentId, schoolId },
@@ -122,11 +136,14 @@ studentReports.get("/parent/my-children", requireParentAuth, async (c) => {
 // ============================================
 
 // GET /student-reports/student/my-report - Student views their own report
-studentReports.get("/student/my-report", requireStudentAuth, async (c) => {
+studentReports.get("/student/my-report", requireAuth, async (c) => {
   try {
-    const studentId = c.get("studentId");
-    const student = c.get("student");
-    const schoolId = student.schoolId;
+    const role = c.get("role");
+    if (role !== ("STUDENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const studentId = c.get("userId");
+    const schoolId = c.get("schoolId");
 
     const report = await computeStudentReport(studentId, schoolId);
     if (!report) return errors.notFound(c, "Student report");

@@ -99,7 +99,7 @@ export const step4ValidationSchema = yup.object().shape({
     .number()
     .required("Termly fee is required")
     .positive("Termly fee must be a positive amount")
-    .min(1, "Termly fee must be at least $1"),
+    .min(1, "Termly fee must be at least 1"),
 });
 
 export const step5ValidationSchema = yup.object().shape({

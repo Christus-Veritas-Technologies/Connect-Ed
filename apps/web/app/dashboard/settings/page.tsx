@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { PRICING } from "@/lib/pricing";
+import { PRICING, getPlanAmounts } from "@/lib/pricing";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { toast } from "sonner";
 import {
   useSchoolSettings,
@@ -13,7 +14,14 @@ import {
   useUpdateProfile,
   useSchoolUsers,
 } from "@/lib/hooks";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSubjects } from "@/lib/hooks/use-subjects";
+import {
+  useGrades,
+  useCreateGrade,
+  useDeleteGrade,
+  type Grade,
+} from "@/lib/hooks/use-exams";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -27,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Mail,
   MessageSquare,
@@ -39,7 +48,26 @@ import {
   MapPin,
   Copy,
   Check,
+  BarChart3,
+  User,
 } from "lucide-react";
+import { DashboardBreadcrumbs, FilterTabs } from "@/components/dashboard";
+
+const PLAN_SEAT_LIMITS = {
+  LITE: 10,
+  GROWTH: 30,
+  ENTERPRISE: 300,
+} as const;
+
+type PlanSeatKey = keyof typeof PLAN_SEAT_LIMITS;
+
+type QuotaMetric = {
+  label: string;
+  used: number;
+  limit: number;
+  unit: string;
+  helper: string;
+};
 
 export default function SettingsPage() {
   const { school: authSchool, user, checkAuth } = useAuth();
@@ -50,11 +78,18 @@ export default function SettingsPage() {
   const { data: notifData, isLoading: notifLoading } = useNotificationPrefs();
   const { data: profileData, isLoading: profileLoading } = useUserProfile();
   const { data: usersData } = useSchoolUsers();
+  const { data: subjectsData } = useSubjects();
+  const { data: gradesData, isLoading: gradesLoading } = useGrades();
 
   // Mutations
   const updateSchool = useUpdateSchool();
   const updateNotifPrefs = useUpdateNotificationPrefs();
   const updateProfile = useUpdateProfile();
+  const createGrade = useCreateGrade();
+  const deleteGrade = useDeleteGrade();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>(isAdmin ? "school" : "profile");
 
   // School form state
   const [schoolForm, setSchoolForm] = useState({
@@ -70,6 +105,15 @@ export default function SettingsPage() {
     name: "",
     phone: "",
   });
+
+  // Grade form state
+  const [gradeForm, setGradeForm] = useState({
+    name: "",
+    minMark: "",
+    maxMark: "",
+    isPass: true,
+  });
+  const [showGradeForm, setShowGradeForm] = useState(false);
 
   // Copy ID state
   const [copied, setCopied] = useState(false);
@@ -154,9 +198,61 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCreateGrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gradeForm.name || !gradeForm.minMark || !gradeForm.maxMark) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const minMark = parseInt(gradeForm.minMark);
+    const maxMark = parseInt(gradeForm.maxMark);
+
+    if (minMark < 0 || minMark > 100 || maxMark < 0 || maxMark > 100) {
+      toast.error("Marks must be between 0 and 100");
+      return;
+    }
+
+    if (minMark > maxMark) {
+      toast.error("Starting mark cannot be greater than ending mark");
+      return;
+    }
+
+    try {
+      await createGrade.mutateAsync({
+        name: gradeForm.name,
+        minMark,
+        maxMark,
+        isPass: gradeForm.isPass,
+      } as any);
+      toast.success("Grade created successfully");
+      setGradeForm({
+        name: "",
+        minMark: "",
+        maxMark: "",
+        isPass: true,
+      });
+      setShowGradeForm(false);
+    } catch (error) {
+      toast.error("Failed to create grade");
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId: string) => {
+    if (!confirm("Delete this grade? This cannot be undone.")) return;
+    try {
+      await deleteGrade.mutateAsync(gradeId);
+      toast.success("Grade deleted");
+    } catch (error) {
+      toast.error("Failed to delete grade");
+    }
+  };
+
   const prefs = notifData?.preferences;
   const profile = profileData?.user;
   const planPricing = authSchool?.plan ? PRICING[authSchool.plan] : null;
+  const schoolCurrency = (authSchool?.currency ?? "USD") as CurrencyCode;
+  const planAmounts = authSchool?.plan ? getPlanAmounts(authSchool.plan, schoolCurrency) : null;
 
   const notificationChannels = [
     {
@@ -191,203 +287,448 @@ export default function SettingsPage() {
     },
   ];
 
+  const planKey = (authSchool?.plan ?? "LITE") as PlanSeatKey;
+  const seatLimit = PLAN_SEAT_LIMITS[planKey] ?? 0;
+  const totalTeamMembers = usersData?.users?.length ?? 0;
+
+  const channelQuotaFields = [
+    {
+      label: "Emails",
+      used: authSchool?.emailUsed ?? 0,
+      limit: authSchool?.emailQuota ?? planPricing?.quotas?.email,
+      unit: "emails",
+      helper: "Monthly email quota",
+    },
+    {
+      label: "WhatsApp messages",
+      used: authSchool?.whatsappUsed ?? 0,
+      limit: authSchool?.whatsappQuota ?? planPricing?.quotas?.whatsapp,
+      unit: "messages",
+      helper: "Monthly WhatsApp quota",
+    },
+    {
+      label: "SMS messages",
+      used: authSchool?.smsUsed ?? 0,
+      limit: authSchool?.smsQuota ?? planPricing?.quotas?.sms,
+      unit: "messages",
+      helper: "Monthly SMS quota",
+    },
+  ];
+
+  const quotaMetrics: QuotaMetric[] = [
+    ...(seatLimit > 0
+      ? [
+        {
+          label: "Team seats",
+          used: totalTeamMembers,
+          limit: seatLimit,
+          unit: "accounts",
+          helper: "Admin, receptionist & teacher seats",
+        },
+      ]
+      : []),
+    ...channelQuotaFields
+      .map((entry) => {
+        if (!entry.limit) return null;
+        return {
+          label: entry.label,
+          used: entry.used,
+          limit: entry.limit,
+          unit: entry.unit,
+          helper: entry.helper,
+        };
+      })
+      .filter((metric): metric is QuotaMetric => Boolean(metric)),
+  ];
+
+  const quotaResetLabel = authSchool?.quotaResetDate
+    ? `Resets ${new Date(authSchool.quotaResetDate).toLocaleDateString()}`
+    : "Resets monthly";
+
   return (
     <div className="space-y-6">
+      <DashboardBreadcrumbs items={[{ label: "Settings" }]} />
+
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Personalize your account and manage preferences securely.
         </p>
       </div>
 
       <Tabs
-        defaultValue={isAdmin ? "school" : "profile"}
+        value={activeTab}
+        onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="bg-muted/50">
-          {isAdmin && (
-            <>
-              <TabsTrigger value="school">
-                School
-              </TabsTrigger>
-              <TabsTrigger value="notifications">
-                Notifications
-              </TabsTrigger>
-            </>
-          )}
-          <TabsTrigger value="profile">
-            Profile
-          </TabsTrigger>
-          {isAdmin && (
-            <>
-              <TabsTrigger value="billing">
-                Billing
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                Users
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
+        {/* Tab Navigation */}
+        <FilterTabs
+          tabs={[
+            ...(isAdmin ? [{ key: "school", label: "School" }] : []),
+            ...(isAdmin ? [{ key: "marks", label: "Marks" }] : []),
+            ...(isAdmin ? [{ key: "notifications", label: "Notifications" }] : []),
+            { key: "profile", label: "Profile" },
+            ...(isAdmin ? [{ key: "billing", label: "Billing" }] : []),
+            ...(isAdmin ? [{ key: "users", label: "Users" }] : []),
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
         {/* =============================================
             School Data Tab (Admin only)
         ============================================= */}
         {isAdmin && (
-          <TabsContent value="school" className="space-y-6">
-            <Card className="border-border/60">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">School Information</CardTitle>
-                <CardDescription>
-                  Update your school&apos;s details. This information is visible
-                  to all members.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {schoolLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <form onSubmit={handleUpdateSchool} className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolName">School Name</Label>
-                        <Input
-                          id="schoolName"
-                          value={schoolForm.name}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Enter school name"
-                        />
-                      </div>
+          <TabsContent value="school" className="space-y-8">
+            {/* School Information Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <Globe className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Workspace Details</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Basic workspace info details
+                  </p>
+                </div>
+              </div>
 
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolAddress">
-                          <MapPin className="inline h-4 w-4 mr-1" />
-                          Address
-                        </Label>
-                        <Input
-                          id="schoolAddress"
-                          value={schoolForm.address}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              address: e.target.value,
-                            })
-                          }
-                          placeholder="Enter school address"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="schoolPhone">
-                          <Phone className="inline h-4 w-4 mr-1" />
-                          Phone
-                        </Label>
-                        <Input
-                          id="schoolPhone"
-                          type="tel"
-                          value={schoolForm.phone}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              phone: e.target.value,
-                            })
-                          }
-                          placeholder="+234..."
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="schoolEmail">
-                          <Mail className="inline h-4 w-4 mr-1" />
-                          Email
-                        </Label>
-                        <Input
-                          id="schoolEmail"
-                          type="email"
-                          value={schoolForm.email}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              email: e.target.value,
-                            })
-                          }
-                          placeholder="contact@school.com"
-                        />
-                      </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="schoolWebsite">
-                          <Globe className="inline h-4 w-4 mr-1" />
-                          Website
-                        </Label>
-                        <Input
-                          id="schoolWebsite"
-                          type="url"
-                          value={schoolForm.website}
-                          onChange={(e) =>
-                            setSchoolForm({
-                              ...schoolForm,
-                              website: e.target.value,
-                            })
-                          }
-                          placeholder="https://www.school.com"
-                        />
-                      </div>
+              {schoolLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <form onSubmit={handleUpdateSchool} className="space-y-4 max-w-2xl">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolName" className="text-sm font-medium">School Name</Label>
+                      <Input
+                        id="schoolName"
+                        value={schoolForm.name}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            name: e.target.value,
+                          })
+                        }
+                        placeholder="Enter school name"
+                        className="bg-background"
+                      />
                     </div>
-
-                    <Separator />
 
                     <div className="space-y-2">
-                      <Label>School ID</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={authSchool?.id || ""}
-                          disabled
-                          className="font-mono text-sm bg-muted"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={handleCopyId}
-                        >
-                          {copied ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Use this ID when making cash payments
-                      </p>
+                      <Label htmlFor="schoolEmail" className="text-sm font-medium">Email</Label>
+                      <Input
+                        id="schoolEmail"
+                        type="email"
+                        value={schoolForm.email}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            email: e.target.value,
+                          })
+                        }
+                        placeholder="contact@school.com"
+                        className="bg-background"
+                      />
                     </div>
 
-                    <div className="flex justify-end">
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolPhone" className="text-sm font-medium">Phone</Label>
+                      <Input
+                        id="schoolPhone"
+                        type="tel"
+                        value={schoolForm.phone}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            phone: e.target.value,
+                          })
+                        }
+                        placeholder="+234..."
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolAddress" className="text-sm font-medium">Address</Label>
+                      <Input
+                        id="schoolAddress"
+                        value={schoolForm.address}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            address: e.target.value,
+                          })
+                        }
+                        placeholder="Enter school address"
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="schoolWebsite" className="text-sm font-medium">Website</Label>
+                      <Input
+                        id="schoolWebsite"
+                        type="url"
+                        value={schoolForm.website}
+                        onChange={(e) =>
+                          setSchoolForm({
+                            ...schoolForm,
+                            website: e.target.value,
+                          })
+                        }
+                        placeholder="https://www.school.com"
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={updateSchool.isPending}
+                      className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+                    >
+                      {updateSchool.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      Save
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* School ID Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <Copy className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">School ID</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Use this ID when making cash payments
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-w-2xl">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={authSchool?.id || ""}
+                      disabled
+                      className="font-mono text-sm bg-muted flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopyId}
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* =============================================
+            Marks/Grades Tab (Admin only)
+        ============================================= */}
+        {isAdmin && (
+          <TabsContent value="marks" className="space-y-8">
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Grading System</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Define grade ranges and pass/fail criteria that apply across all subjects in your school
+                  </p>
+                </div>
+              </div>
+
+              {gradesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-brand" />
+                </div>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Grade Definitions</CardTitle>
+                        <CardDescription>
+                          Configure grade ranges (e.g., A: 90-100, B: 80-89) that apply to all subjects across your school
+                        </CardDescription>
+                      </div>
                       <Button
-                        type="submit"
-                        disabled={updateSchool.isPending}
-                        className="gap-2"
+                        onClick={() => setShowGradeForm(!showGradeForm)}
+                        size="sm"
                       >
-                        {updateSchool.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
-                        Save Changes
+                        {showGradeForm ? "Cancel" : "Add Grade"}
                       </Button>
                     </div>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Add Grade Form */}
+                    {showGradeForm && (
+                      <form onSubmit={handleCreateGrade} className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="gradeName">Grade Symbol</Label>
+                            <Input
+                              id="gradeName"
+                              value={gradeForm.name}
+                              onChange={(e) =>
+                                setGradeForm({ ...gradeForm, name: e.target.value })
+                              }
+                              placeholder="e.g., A, B+, C"
+                              className="bg-background"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="gradeMin">Starting Mark (%)</Label>
+                              <Input
+                                id="gradeMin"
+                                type="number"
+                                min={0}
+                                max={99}
+                                value={gradeForm.minMark}
+                                onChange={(e) =>
+                                  setGradeForm({ ...gradeForm, minMark: e.target.value })
+                                }
+                                placeholder="e.g., 90"
+                                className="bg-background"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="gradeMax">Ending Mark (%)</Label>
+                              <Input
+                                id="gradeMax"
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={gradeForm.maxMark}
+                                onChange={(e) =>
+                                  setGradeForm({ ...gradeForm, maxMark: e.target.value })
+                                }
+                                placeholder="e.g., 100"
+                                className="bg-background"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="gradePass">Status</Label>
+                            <div className="flex items-center gap-2 pt-2">
+                              <Switch
+                                id="gradePass"
+                                checked={gradeForm.isPass}
+                                onCheckedChange={(checked) =>
+                                  setGradeForm({ ...gradeForm, isPass: checked })
+                                }
+                              />
+                              <Label htmlFor="gradePass" className="cursor-pointer text-sm">
+                                {gradeForm.isPass ? "Passing grade" : "Failing grade"}
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowGradeForm(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={createGrade.isPending}>
+                            {createGrade.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Creating...
+                              </>
+                            ) : (
+                              "Create Grade"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Grades List by Subject */}
+                    {(!gradesData?.grades || gradesData.grades.length === 0) && !showGradeForm ? (
+                      <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-sm font-medium mb-1">No grades defined yet</p>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Create grade ranges to enable automatic grading across all subjects
+                        </p>
+                        <Button onClick={() => setShowGradeForm(true)} size="sm">
+                          Add Your First Grade
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(gradesData?.grades || [])
+                          .sort((a: Grade, b: Grade) => b.minMark - a.minMark)
+                          .map((grade: Grade) => (
+                            <div
+                              key={grade.id}
+                              className="flex items-center justify-between p-3 border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="font-bold text-lg text-brand min-w-10">
+                                  {grade.name}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">Range:</span>
+                                  <span className="font-medium">
+                                    {grade.minMark}% - {grade.maxMark}%
+                                  </span>
+                                </div>
+                                <Badge
+                                  variant={grade.isPass ? "success" : "destructive"}
+                                  className="text-xs"
+                                >
+                                  {grade.isPass ? "Pass" : "Fail"}
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteGrade(grade.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         )}
 
@@ -395,98 +736,106 @@ export default function SettingsPage() {
             Notifications Tab (Admin only)
         ============================================= */}
         {isAdmin && (
-          <TabsContent value="notifications" className="space-y-6">
-            <Card className="border-border/60">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Notification Channels</CardTitle>
-                <CardDescription>
-                  Control which notification channels are enabled for your
-                  entire school. Disabling a channel will prevent{" "}
-                  <strong>all</strong> notifications of that type from being
-                  sent.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {notifLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="space-y-0">
-                    {notificationChannels.map((channel, index) => (
-                      <div key={channel.key}>
-                        <div className="flex items-center justify-between py-5">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                              <channel.icon className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-sm font-medium text-foreground">
-                                {channel.label}
-                              </Label>
-                              <p className="text-sm text-muted-foreground leading-snug">
-                                {channel.description}
-                              </p>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={channel.enabled}
-                            onCheckedChange={(value) =>
-                              handleToggleNotification(channel.key, value)
-                            }
-                            disabled={updateNotifPrefs.isPending}
-                          />
-                        </div>
-                        {index < notificationChannels.length - 1 && (
-                          <Separator />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="notifications" className="space-y-8">
+            {/* Notification Channels Section */}
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 rounded-lg bg-muted p-2">
+                  <BellRing className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Notification Channels</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Control which notification channels are enabled for your school
+                  </p>
+                </div>
+              </div>
 
-            {/* Quota Usage */}
+              {notifLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-0 max-w-2xl">
+                  {notificationChannels.map((channel, index) => (
+                    <div key={channel.key}>
+                      <div className="flex items-center justify-between py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                            <channel.icon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium text-foreground cursor-pointer">
+                              {channel.label}
+                            </Label>
+                            <p className="text-sm text-muted-foreground leading-snug">
+                              {channel.description}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={channel.enabled}
+                          onCheckedChange={(value) =>
+                            handleToggleNotification(channel.key, value)
+                          }
+                          disabled={updateNotifPrefs.isPending}
+                        />
+                      </div>
+                      {index < notificationChannels.length - 1 && (
+                        <Separator />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Quota Usage Section */}
             {schoolData?.school && (
-              <Card className="border-border/60">
-                <CardHeader className="space-y-1">
-                  <CardTitle className="text-lg">Notification Quota</CardTitle>
-                  <CardDescription>
-                    Your current usage for this billing period
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <QuotaItem
-                      label="Emails"
-                      used={schoolData.school.emailUsed}
-                      total={schoolData.school.emailQuota}
-                      icon={Mail}
-                    />
-                    <QuotaItem
-                      label="WhatsApp"
-                      used={schoolData.school.whatsappUsed}
-                      total={schoolData.school.whatsappQuota}
-                      icon={MessageSquare}
-                    />
-                    <QuotaItem
-                      label="SMS"
-                      used={schoolData.school.smsUsed}
-                      total={schoolData.school.smsQuota}
-                      icon={Smartphone}
-                    />
+              <div className="space-y-6">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 rounded-lg bg-muted p-2">
+                    <BarChart3 className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  {schoolData.school.quotaResetDate && (
-                    <p className="mt-4 text-xs text-muted-foreground">
-                      Quota resets on{" "}
-                      {new Date(
-                        schoolData.school.quotaResetDate
-                      ).toLocaleDateString()}
+                  <div>
+                    <h3 className="text-base font-semibold">Notification Quota</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your current usage for this billing period
                     </p>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3 max-w-3xl">
+                  <QuotaItem
+                    label="Emails"
+                    used={schoolData.school.emailUsed}
+                    total={schoolData.school.emailQuota}
+                    icon={Mail}
+                  />
+                  <QuotaItem
+                    label="WhatsApp"
+                    used={schoolData.school.whatsappUsed}
+                    total={schoolData.school.whatsappQuota}
+                    icon={MessageSquare}
+                  />
+                  <QuotaItem
+                    label="SMS"
+                    used={schoolData.school.smsUsed}
+                    total={schoolData.school.smsQuota}
+                    icon={Smartphone}
+                  />
+                </div>
+                {schoolData.school.quotaResetDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Quota resets on{" "}
+                    {new Date(
+                      schoolData.school.quotaResetDate
+                    ).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             )}
           </TabsContent>
         )}
@@ -494,163 +843,170 @@ export default function SettingsPage() {
         {/* =============================================
             Profile Tab (All users)
         ============================================= */}
-        <TabsContent value="profile" className="space-y-6">
-          <Card className="border-border/60">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">Profile Settings</CardTitle>
-              <CardDescription>
-                Manage your personal information and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {profileLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <TabsContent value="profile" className="space-y-8">
+          {/* Profile Settings Section */}
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 rounded-lg bg-muted p-2">
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">Profile Settings</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage your personal information
+                </p>
+              </div>
+            </div>
+
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-2xl">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profileName" className="text-sm font-medium">Full Name</Label>
+                    <Input
+                      id="profileName"
+                      value={profileForm.name}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Your name"
+                      className="bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profileEmail" className="text-sm font-medium">Email</Label>
+                    <Input
+                      id="profileEmail"
+                      value={profile?.email || ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Contact your admin to change your email
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profilePhone" className="text-sm font-medium">Phone</Label>
+                    <Input
+                      id="profilePhone"
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder="+234..."
+                      className="bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Role</Label>
+                    <div className="flex items-center h-10">
+                      <Badge variant="secondary" className="text-sm">
+                        {profile?.role}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="profileName">Full Name</Label>
-                      <Input
-                        id="profileName"
-                        value={profileForm.name}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            name: e.target.value,
-                          })
-                        }
-                        placeholder="Your name"
-                      />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="profileEmail">Email</Label>
-                      <Input
-                        id="profileEmail"
-                        value={profile?.email || ""}
-                        disabled
-                        className="bg-muted"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Contact your admin to change your email
-                      </p>
-                    </div>
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={updateProfile.isPending}
+                    className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+                  >
+                    {updateProfile.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
+                    Save
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="profilePhone">
-                        <Phone className="inline h-4 w-4 mr-1" />
-                        Phone
-                      </Label>
-                      <Input
-                        id="profilePhone"
-                        type="tel"
-                        value={profileForm.phone}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            phone: e.target.value,
-                          })
-                        }
-                        placeholder="+234..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Role</Label>
-                      <div className="flex items-center h-9">
-                        <Badge variant="secondary" className="text-sm">
-                          {profile?.role}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={updateProfile.isPending}
-                      className="gap-2"
-                    >
-                      {updateProfile.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      Save Profile
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+          <Separator />
 
           {/* User-level notification preferences */}
-          <Card className="border-border/60">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">My Notifications</CardTitle>
-              <CardDescription>
-                Control which notifications you personally receive. These
-                settings only affect your account.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {profileLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="space-y-0">
-                  <div className="flex items-center justify-between py-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                        <BellRing className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium text-foreground">
-                          In-App Notifications
-                        </Label>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Show notification badges and alerts in the dashboard
-                        </p>
-                      </div>
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 rounded-lg bg-muted p-2">
+                <BellRing className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">My Notifications</h3>
+                <p className="text-sm text-muted-foreground">
+                  Control which notifications you personally receive
+                </p>
+              </div>
+            </div>
+
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-0 max-w-2xl">
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                      <BellRing className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <Switch
-                      checked={profile?.notifyInApp ?? true}
-                      onCheckedChange={(value) =>
-                        handleToggleUserPref("notifyInApp", value)
-                      }
-                      disabled={updateProfile.isPending}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between py-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-xl bg-muted/50 p-2.5">
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-medium text-foreground">
-                          Email Notifications
-                        </Label>
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          Receive email alerts for important updates
-                        </p>
-                      </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium text-foreground cursor-pointer">
+                        In-App Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground leading-snug">
+                        Show notification badges and alerts in the dashboard
+                      </p>
                     </div>
-                    <Switch
-                      checked={profile?.notifyEmail ?? true}
-                      onCheckedChange={(value) =>
-                        handleToggleUserPref("notifyEmail", value)
-                      }
-                      disabled={updateProfile.isPending}
-                    />
                   </div>
+                  <Switch
+                    checked={profile?.notifyInApp ?? true}
+                    onCheckedChange={(value) =>
+                      handleToggleUserPref("notifyInApp", value)
+                    }
+                    disabled={updateProfile.isPending}
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <Separator />
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted/50 p-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium text-foreground cursor-pointer">
+                        Email Notifications
+                      </Label>
+                      <p className="text-sm text-muted-foreground leading-snug">
+                        Receive email alerts for important updates
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={profile?.notifyEmail ?? true}
+                    onCheckedChange={(value) =>
+                      handleToggleUserPref("notifyEmail", value)
+                    }
+                    disabled={updateProfile.isPending}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* =============================================
@@ -686,10 +1042,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-semibold">
-                      ${planPricing?.monthlyEstimate}/mo
+                      {planAmounts ? fmt(planAmounts.monthlyEstimate, schoolCurrency) : ""}/mo
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      (${planPricing?.perTermCost}/term)
+                      ({planAmounts ? fmt(planAmounts.perTermCost, schoolCurrency) : ""}/term)
                     </p>
                   </div>
                 </div>
@@ -701,14 +1057,58 @@ export default function SettingsPage() {
                 <CardTitle className="text-lg">Plan Features</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {planPricing?.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
+                  <div>
+                    <ul className="space-y-2">
+                      {planPricing?.features.map((feature, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {quotaMetrics.length > 0 && (
+                    <div className="space-y-4 rounded-2xl border border-border/50 bg-muted/40 p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">Quota usage</p>
+                        <p className="text-xs text-muted-foreground">{quotaResetLabel}</p>
+                      </div>
+                      <div className="space-y-3">
+                        {quotaMetrics.map((metric) => {
+                          const percent = metric.limit
+                            ? Math.min(100, Math.round((metric.used / metric.limit) * 100))
+                            : 0;
+                          return (
+                            <div
+                              key={metric.label}
+                              className="rounded-xl border border-border/60 bg-background/60 p-3"
+                            >
+                              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                <span>{metric.label}</span>
+                                <span className="font-semibold text-foreground">
+                                  {metric.limit
+                                    ? `${metric.used}/${metric.limit} ${metric.unit}`
+                                    : `${metric.used} ${metric.unit}`}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{metric.helper}</p>
+                              {metric.limit > 0 && (
+                                <div className="mt-3 h-1.5 rounded-full bg-muted">
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-brand to-emerald-500"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {authSchool?.plan !== "ENTERPRISE" && (
                   <>
@@ -725,6 +1125,44 @@ export default function SettingsPage() {
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Currency Setting */}
+            <Card className="border-border/60">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Currency</CardTitle>
+                <CardDescription>
+                  Choose the currency used for fees, expenses, and reports
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="max-w-xs">
+                  <Select
+                    value={schoolCurrency}
+                    onValueChange={async (value) => {
+                      try {
+                        await updateSchool.mutateAsync({ currency: value } as any);
+                        await checkAuth();
+                        toast.success("Currency updated");
+                      } catch {
+                        toast.error("Failed to update currency");
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="ZAR">ZAR (R)</SelectItem>
+                      <SelectItem value="ZIG">ZiG (ZiG)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This affects how amounts are displayed across the platform.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

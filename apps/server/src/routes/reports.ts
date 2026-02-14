@@ -137,25 +137,38 @@ reports.get("/financial", async (c) => {
     });
 
     // Get payments by period (monthly breakdown)
-    const paymentsByPeriod = await db.$queryRaw<{ period: string; amount: number; count: number }[]>`
-      SELECT 
-        TO_CHAR(date_trunc('month', "createdAt"), 'Mon YYYY') as period,
-        COALESCE(SUM("paidAmount"), 0)::float as amount,
-        COUNT(*)::int as count
-      FROM "Fee"
-      WHERE "schoolId" = ${schoolId}
-        AND "createdAt" >= ${startDate}
-        AND "createdAt" <= ${endDate}
-        AND status = 'PAID'
-      GROUP BY date_trunc('month', "createdAt")
-      ORDER BY date_trunc('month', "createdAt")
-    `;
+    const feePayments = await db.feePayment.findMany({
+      where: {
+        fee: {
+          schoolId,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+      },
+      select: {
+        createdAt: true,
+        amount: true,
+      },
+    });
 
-    const totalFeesExpected = allFees._sum.amount || 0;
-    const totalFeesCollected = paidFees._sum.paidAmount || 0;
-    const totalFeesPending = (pendingFees._sum.amount || 0) - (pendingFees._sum.paidAmount || 0);
-    const totalFeesOverdue = (overdueFees._sum.amount || 0) - (overdueFees._sum.paidAmount || 0);
-    const totalExpenses = expenses._sum.amount || 0;
+    // Group payments by month
+    const paymentsByPeriodMap = new Map<string, { amount: number; count: number }>();
+    feePayments.forEach((payment) => {
+      const monthKey = payment.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const existing = paymentsByPeriodMap.get(monthKey) || { amount: 0, count: 0 };
+      paymentsByPeriodMap.set(monthKey, {
+        amount: existing.amount + payment.amount.toNumber(),
+        count: existing.count + 1,
+      });
+    });
+    const paymentsByPeriod = Array.from(paymentsByPeriodMap.entries())
+      .map(([period, data]) => ({ period, ...data }))
+      .sort((a, b) => new Date(a.period).getTime() - new Date(b.period).getTime());
+
+    const totalFeesExpected = (allFees._sum.amount?.toNumber() || 0);
+    const totalFeesCollected = (paidFees._sum.paidAmount?.toNumber() || 0);
+    const totalFeesPending = (pendingFees._sum.amount?.toNumber() || 0) - (pendingFees._sum.paidAmount?.toNumber() || 0);
+    const totalFeesOverdue = (overdueFees._sum.amount?.toNumber() || 0) - (overdueFees._sum.paidAmount?.toNumber() || 0);
+    const totalExpenses = (expenses._sum.amount?.toNumber() || 0);
     const netIncome = totalFeesCollected - totalExpenses;
     const collectionRate = totalFeesExpected > 0 ? Math.round((totalFeesCollected / totalFeesExpected) * 100) : 0;
 
@@ -232,13 +245,20 @@ reports.get("/managerial", async (c) => {
     }
 
     // Get teacher and student statistics
-    const [totalTeachers, totalStudents, totalParents, activeTeachers, activeStudents] = await Promise.all([
+    const [totalTeachers, totalStudents, activeTeachers, activeStudents] = await Promise.all([
       db.user.count({ where: { schoolId, role: "TEACHER" } }),
       db.student.count({ where: { schoolId } }),
-      db.user.count({ where: { schoolId, role: "PARENT" } }),
       db.user.count({ where: { schoolId, role: "TEACHER", createdAt: { gte: startDate, lte: endDate } } }),
       db.student.count({ where: { schoolId, createdAt: { gte: startDate, lte: endDate } } }),
     ]);
+
+    // Count parents through students
+    const uniqueParents = await db.student.findMany({
+      where: { schoolId, parentId: { not: null } },
+      select: { parentId: true },
+      distinct: ['parentId'],
+    });
+    const totalParents = uniqueParents.length;
 
     // Get class distribution
     const classDistribution = await db.class.findMany({
@@ -257,32 +277,33 @@ reports.get("/managerial", async (c) => {
       where: { schoolId, role: "TEACHER" },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        name: true,
         _count: {
           select: {
             classesTeaching: true,
           },
         },
       },
-      orderBy: { lastName: "asc" },
     });
 
     // Calculate students per teacher for workload
     const teacherWorkloadWithStudents = await Promise.all(
       teacherWorkload.map(async (teacher) => {
-        const totalStudents = await db.student.count({
-          where: {
-            schoolId,
-            class: {
-              classTeacherId: teacher.id,
-            },
-          },
+        // Fetch classes assigned to this teacher, then count students in those classes
+        const classes = await db.class.findMany({
+          where: { schoolId, classTeacherId: teacher.id },
+          select: { id: true },
         });
+        const classIds = classes.map((cl) => cl.id);
+        const totalStudents = classIds.length
+          ? await db.student.count({
+              where: { schoolId, classId: { in: classIds } },
+            })
+          : 0;
         return {
           id: teacher.id,
-          name: `${teacher.firstName} ${teacher.lastName}`,
-          classesAssigned: teacher._count.classesTeaching,
+          name: teacher.name,
+          classesAssigned: classes.length,
           studentsTotal: totalStudents,
         };
       })
@@ -370,7 +391,7 @@ reports.post("/export-pdf", async (c) => {
     const { title, subtitle, headers, rows, footer } = body;
 
     if (!title || !headers || !rows) {
-      return errors.badRequest(c, "Missing required fields: title, headers, rows");
+      return c.json({ error: "Missing required fields: title, headers, rows" }, 400);
     }
 
     const schoolId = c.get("schoolId");

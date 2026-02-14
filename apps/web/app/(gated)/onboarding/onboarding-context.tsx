@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 
 interface OnboardingData {
+  country?: string;
+  currency?: string;
   step1?: {
     schoolName: string;
     address: string;
@@ -45,6 +47,7 @@ interface OnboardingContextType {
   data: OnboardingData;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  updateCountry: (country: string, currency: string) => void;
   updateStep1: (data: OnboardingData["step1"]) => void;
   updateStep2: (data: OnboardingData["step2"]) => void;
   updateStep3: (data: OnboardingData["step3"]) => void;
@@ -80,6 +83,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
           // Reconstruct onboarding data from saved progress
           const loadedData: OnboardingData = {};
+
+          if (progress.country) {
+            loadedData.country = progress.country;
+            loadedData.currency = progress.currency || undefined;
+          }
 
           if (progress.schoolName) {
             loadedData.step1 = {
@@ -177,6 +185,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       };
 
       // Map step data to database fields
+      if (stepData.country) {
+        payload.country = stepData.country;
+        payload.currency = stepData.currency;
+      }
+
       if (stepData.step1) {
         payload.schoolName = stepData.step1.schoolName;
         payload.address = stepData.step1.address;
@@ -221,46 +234,53 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateCountry = (country: string, currency: string) => {
+    console.log("[Onboarding Context] Saving country:", country, currency);
+    const newData = { ...data, country, currency };
+    setData(newData);
+    saveProgress({ country, currency }, 1);
+  };
+
   const updateStep1 = (step1Data: OnboardingData["step1"]) => {
     console.log("[Onboarding Context] Saving step1:", step1Data);
     const newData = { ...data, step1: step1Data };
     setData(newData);
-    saveProgress({ step1: step1Data }, 1);
+    saveProgress({ ...data, step1: step1Data }, 2);
   };
 
   const updateStep2 = (step2Data: OnboardingData["step2"]) => {
     console.log("[Onboarding Context] Saving step2:", step2Data);
     const newData = { ...data, step2: step2Data };
     setData(newData);
-    saveProgress({ ...data, step2: step2Data }, 2);
+    saveProgress({ ...data, step2: step2Data }, 3);
   };
 
   const updateStep3 = (step3Data: OnboardingData["step3"]) => {
     console.log("[Onboarding Context] Saving step3:", step3Data);
     const newData = { ...data, step3: step3Data };
     setData(newData);
-    saveProgress({ ...data, step3: step3Data }, 3);
+    saveProgress({ ...data, step3: step3Data }, 4);
   };
 
   const updateStep4 = (step4Data: OnboardingData["step4"]) => {
     console.log("[Onboarding Context] Saving step4:", step4Data);
     const newData = { ...data, step4: step4Data };
     setData(newData);
-    saveProgress({ ...data, step4: step4Data }, 4);
+    saveProgress({ ...data, step4: step4Data }, 5);
   };
 
   const updateStep5 = (step5Data: OnboardingData["step5"]) => {
     console.log("[Onboarding Context] Saving step5:", step5Data);
     const newData = { ...data, step5: step5Data };
     setData(newData);
-    saveProgress({ ...data, step5: step5Data }, 5);
+    saveProgress({ ...data, step5: step5Data }, 6);
   };
 
   const updateStep6 = (step6Data: OnboardingData["step6"]) => {
     console.log("[Onboarding Context] Saving step6 (grades):", step6Data);
     const newData = { ...data, step6: step6Data };
     setData(newData);
-    saveProgress({ ...data, step6: step6Data }, 6);
+    saveProgress({ ...data, step6: step6Data }, 7);
   };
 
   const clearProgress = async () => {
@@ -280,6 +300,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         data,
         currentStep,
         setCurrentStep,
+        updateCountry,
         updateStep1,
         updateStep2,
         updateStep3,

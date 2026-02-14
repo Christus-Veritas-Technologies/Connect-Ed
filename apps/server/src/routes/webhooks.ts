@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import { db, Plan, PaymentStatus, PaymentType } from "@repo/db";
 import { createHmac } from "crypto";
 import { PLAN_FEATURES } from "../lib/auth";
+import { fmtServer, type CurrencyCode } from "../lib/currency";
+import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 
 const webhooks = new Hono();
 
@@ -35,104 +38,159 @@ webhooks.post("/dodo", async (c) => {
 
     const event = JSON.parse(payload);
 
-    console.log("Received Dodo webhook:", event.event_type);
+    // Support both SDK field names: type/metadata (correct) and event_type/custom_data (legacy)
+    const eventType = event.type || event.event_type;
+    console.log("Received Dodo webhook:", eventType);
 
-    switch (event.event_type) {
+    switch (eventType) {
       case "payment.succeeded": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData) break;
 
-        const { school_id: schoolId, plan_type: planType, is_signup: isSignup } = customData;
+        const intermediatePaymentId = customData.intermediate_payment_id;
+        const paymentId = event.data.payment_id;
 
-        if (!schoolId || !planType) {
-          console.error("Missing custom_data in webhook");
+        // Look up IntermediatePayment by reference (payment_id) or metadata
+        let intermediatePayment = intermediatePaymentId
+          ? await db.intermediatePayment.findUnique({
+              where: { id: intermediatePaymentId },
+              include: { user: true, school: true },
+            })
+          : paymentId
+            ? await db.intermediatePayment.findFirst({
+                where: { reference: paymentId },
+                include: { user: true, school: true },
+              })
+            : null;
+
+        if (!intermediatePayment) {
+          console.error("No IntermediatePayment found for Dodo webhook", { intermediatePaymentId, paymentId });
           break;
         }
 
-        // Get plan pricing for quotas
-        const planFeatures = PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES];
+        if (intermediatePayment.paid) {
+          console.log(`IntermediatePayment ${intermediatePayment.id} already marked paid, skipping`);
+          break;
+        }
 
-        if (isSignup === "true") {
-          // Signup payment - mark as paid and set plan
-          await db.school.update({
-            where: { id: schoolId },
+        // Same activation flow as PayNow callback
+        const planFeatures = PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES];
+
+        await db.$transaction(async (tx) => {
+          await tx.intermediatePayment.update({
+            where: { id: intermediatePayment.id },
+            data: { paid: true },
+          });
+
+          await tx.school.update({
+            where: { id: intermediatePayment.schoolId },
             data: {
-              plan: planType as Plan,
               signupFeePaid: true,
+              plan: intermediatePayment.plan,
+              nextPaymentDate: (() => { const d = new Date(); d.setDate(d.getDate() + 31); return d; })(),
               emailQuota: planFeatures.emailQuota,
               whatsappQuota: planFeatures.whatsappQuota,
               smsQuota: planFeatures.smsQuota,
             },
           });
+        });
 
-          // Update payment record
-          await db.schoolPayment.updateMany({
-            where: {
-              schoolId,
-              status: PaymentStatus.PENDING,
-              type: PaymentType.SIGNUP_FEE,
-            },
-            data: {
-              status: PaymentStatus.COMPLETED,
-              reference: event.data.payment_id,
-            },
+        // Notification + email (mirroring PayNow callback)
+        const currency = (intermediatePayment.school?.currency || "USD") as CurrencyCode;
+        await createNotification({
+          schoolId: intermediatePayment.schoolId,
+          title: "Payment Received",
+          message: `Payment of ${fmtServer(intermediatePayment.amount, currency)} for ${intermediatePayment.plan} plan has been successfully processed.`,
+          type: "PAYMENT_SUCCESS",
+          priority: "HIGH",
+          actionUrl: "/payments",
+          metadata: {
+            paymentId: intermediatePayment.id,
+            amount: intermediatePayment.amount.toString(),
+            plan: intermediatePayment.plan,
+          },
+          actorName: intermediatePayment.user.name,
+        });
+
+        const prefs = await getSchoolNotificationPrefs(intermediatePayment.schoolId);
+        if (prefs.email) {
+          await sendEmail({
+            to: intermediatePayment.user.email,
+            subject: "Payment Successful - Connect-Ed",
+            html: generatePaymentSuccessEmail({
+              name: intermediatePayment.user.name,
+              amount: Number(intermediatePayment.amount),
+              plan: intermediatePayment.plan,
+              transactionId: intermediatePayment.id,
+              currency,
+            }),
+            schoolId: intermediatePayment.schoolId,
+            type: "SALES",
           });
-
-          console.log(`School ${schoolId} signup payment completed, plan: ${planType}`);
-        } else {
-          // Recurring payment - activate school
-          await db.school.update({
-            where: { id: schoolId },
-            data: {
-              isActive: true,
-              // Reset quotas on payment
-              emailUsed: 0,
-              whatsappUsed: 0,
-              smsUsed: 0,
-              quotaResetDate: new Date(),
-            },
-          });
-
-          // Update payment record
-          await db.schoolPayment.updateMany({
-            where: {
-              schoolId,
-              status: PaymentStatus.PENDING,
-              type: PaymentType.TERM_PAYMENT,
-            },
-            data: {
-              status: PaymentStatus.COMPLETED,
-              reference: event.data.payment_id,
-            },
-          });
-
-          console.log(`School ${schoolId} term payment completed`);
         }
 
+        console.log(`Dodo payment succeeded for school ${intermediatePayment.schoolId}, plan: ${intermediatePayment.plan}`);
         break;
       }
 
       case "payment.failed": {
-        const customData = event.data.custom_data;
-        if (!customData?.school_id) break;
+        const customData = event.data.metadata || event.data.custom_data;
+        const intermediatePaymentId = customData?.intermediate_payment_id;
+        const paymentId = event.data.payment_id;
 
-        // Update payment record
-        await db.schoolPayment.updateMany({
-          where: {
-            schoolId: customData.school_id,
-            status: PaymentStatus.PENDING,
-          },
-          data: {
-            status: PaymentStatus.FAILED,
-          },
-        });
+        // Try to find the IntermediatePayment
+        const failedPayment = intermediatePaymentId
+          ? await db.intermediatePayment.findUnique({
+              where: { id: intermediatePaymentId },
+              include: { user: true, school: true },
+            })
+          : paymentId
+            ? await db.intermediatePayment.findFirst({
+                where: { reference: paymentId },
+                include: { user: true, school: true },
+              })
+            : null;
 
-        console.log(`Payment failed for school ${customData.school_id}`);
+        if (failedPayment) {
+          const failCurrency = (failedPayment.school?.currency || "USD") as CurrencyCode;
+          await createNotification({
+            schoolId: failedPayment.schoolId,
+            title: "Payment Failed",
+            message: `Payment of ${fmtServer(failedPayment.amount, failCurrency)} for ${failedPayment.plan} plan failed to process.`,
+            type: "PAYMENT_FAILED",
+            priority: "HIGH",
+            actionUrl: "/payments",
+            metadata: {
+              paymentId: failedPayment.id,
+              amount: failedPayment.amount.toString(),
+              plan: failedPayment.plan,
+            },
+            actorName: failedPayment.user.name,
+          });
+
+          const failPrefs = await getSchoolNotificationPrefs(failedPayment.schoolId);
+          if (failPrefs.email) {
+            await sendEmail({
+              to: failedPayment.user.email,
+              subject: "Payment Failed - Connect-Ed",
+              html: generatePaymentFailedEmail({
+                name: failedPayment.user.name,
+                amount: Number(failedPayment.amount),
+                plan: failedPayment.plan,
+                currency: failCurrency,
+              }),
+              schoolId: failedPayment.schoolId,
+              type: "SALES",
+            });
+          }
+        }
+
+        console.log(`Dodo payment failed`, { intermediatePaymentId, paymentId });
         break;
       }
 
       case "subscription.active": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData?.school_id) break;
 
         // Update school status
@@ -150,7 +208,7 @@ webhooks.post("/dodo", async (c) => {
       case "subscription.on_hold":
       case "subscription.cancelled":
       case "subscription.expired": {
-        const customData = event.data.custom_data;
+        const customData = event.data.metadata || event.data.custom_data;
         if (!customData?.school_id) break;
 
         // Deactivate school
@@ -166,7 +224,7 @@ webhooks.post("/dodo", async (c) => {
       }
 
       default:
-        console.log(`Unhandled webhook event: ${event.event_type}`);
+        console.log(`Unhandled webhook event: ${eventType}`);
     }
 
     return c.json({ received: true });

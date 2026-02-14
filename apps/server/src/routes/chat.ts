@@ -10,7 +10,6 @@ import { syncChatMembers } from "../lib/chat-sync";
 import {
   verifyAccessToken,
   verifyParentAccessToken,
-  verifyStudentAccessToken,
 } from "../lib/auth";
 import { z } from "zod";
 
@@ -31,16 +30,36 @@ async function authenticateChatUser(authHeader: string | undefined): Promise<Cha
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
 
-  // Try staff token first
-  const staffPayload = await verifyAccessToken(token);
-  if (staffPayload) {
-    const user = await db.user.findUnique({ where: { id: staffPayload.sub }, select: { id: true, name: true, role: true } });
+  // Try staff/student token first (both use type: "access")
+  const accessPayload = await verifyAccessToken(token);
+  if (accessPayload) {
+    // Check if it's a student
+    if (accessPayload.role === ("STUDENT" as any)) {
+      const student = await db.student.findUnique({
+        where: { id: accessPayload.sub },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (!student) return null;
+      return {
+        memberId: student.id,
+        memberType: "STUDENT",
+        role: "STUDENT",
+        schoolId: accessPayload.schoolId,
+        name: `${student.firstName} ${student.lastName}`,
+      };
+    }
+    
+    // Otherwise it's staff (admin/teacher/receptionist)
+    const user = await db.user.findUnique({ 
+      where: { id: accessPayload.sub }, 
+      select: { id: true, name: true, role: true } 
+    });
     if (!user) return null;
     return {
       memberId: user.id,
       memberType: "USER",
       role: user.role,
-      schoolId: staffPayload.schoolId,
+      schoolId: accessPayload.schoolId,
       name: user.name,
     };
   }
@@ -60,23 +79,6 @@ async function authenticateChatUser(authHeader: string | undefined): Promise<Cha
       schoolId: parentPayload.schoolId,
       name: parent.name,
       childrenIds: parent.children.map((c) => c.id),
-    };
-  }
-
-  // Try student token
-  const studentPayload = await verifyStudentAccessToken(token);
-  if (studentPayload) {
-    const student = await db.student.findUnique({
-      where: { id: studentPayload.sub },
-      select: { id: true, firstName: true, lastName: true },
-    });
-    if (!student) return null;
-    return {
-      memberId: student.id,
-      memberType: "STUDENT",
-      role: "STUDENT",
-      schoolId: studentPayload.schoolId,
-      name: `${student.firstName} ${student.lastName}`,
     };
   }
 
@@ -100,11 +102,25 @@ chat.get("/rooms", async (c) => {
   try {
     const user = getChatUser(c);
 
-    const memberships = await db.chatMember.findMany({
-      where: { memberType: user.memberType, memberId: user.memberId },
-      select: { classId: true },
-    });
-    const classIds = memberships.map((m) => m.classId);
+    let classIds: string[] = [];
+
+    // For students, get class from their student record directly
+    if (user.memberType === "STUDENT") {
+      const student = await db.student.findUnique({
+        where: { id: user.memberId },
+        select: { classId: true },
+      });
+      if (student?.classId) {
+        classIds = [student.classId];
+      }
+    } else {
+      // For staff/parents, use chatMembers table
+      const memberships = await db.chatMember.findMany({
+        where: { memberType: user.memberType, memberId: user.memberId },
+        select: { classId: true },
+      });
+      classIds = memberships.map((m) => m.classId);
+    }
 
     const classes = await db.class.findMany({
       where: { id: { in: classIds } },

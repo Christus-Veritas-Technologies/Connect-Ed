@@ -48,6 +48,8 @@ settings.get("/school", requireRole(Role.ADMIN), async (c) => {
         termStartDate: true,
         currentPeriodType: true,
         holidayStartDate: true,
+        country: true,
+        currency: true,
         notifyEmail: true,
         notifyWhatsapp: true,
         notifySms: true,
@@ -80,6 +82,7 @@ settings.patch("/school", requireRole(Role.ADMIN), zValidator("json", updateScho
         phone: data.phone,
         email: data.email || undefined,
         website: data.website || undefined,
+        currency: data.currency || undefined,
       },
       select: {
         id: true,
@@ -89,6 +92,8 @@ settings.patch("/school", requireRole(Role.ADMIN), zValidator("json", updateScho
         email: true,
         website: true,
         plan: true,
+        country: true,
+        currency: true,
       },
     });
 
@@ -172,6 +177,41 @@ const userPrefsSchema = z.object({
 settings.get("/profile", async (c) => {
   try {
     const userId = c.get("userId");
+    const role = c.get("role");
+
+    // Students are stored in the Student table, not User
+    if (role === ("STUDENT" as any)) {
+      const student = await db.student.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          notifyInApp: true,
+          notifyEmail: true,
+          createdAt: true,
+        },
+      });
+
+      if (!student) {
+        return errors.notFound(c, "Student");
+      }
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          phone: student.phone,
+          role: "STUDENT",
+          notifyInApp: student.notifyInApp ?? true,
+          notifyEmail: student.notifyEmail ?? true,
+          createdAt: student.createdAt,
+        },
+      });
+    }
 
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -202,7 +242,47 @@ settings.get("/profile", async (c) => {
 settings.patch("/profile", zValidator("json", userPrefsSchema), async (c) => {
   try {
     const userId = c.get("userId");
+    const role = c.get("role");
     const data = c.req.valid("json");
+
+    // Students are stored in the Student table
+    if (role === ("STUDENT" as any)) {
+      const updateData: any = {};
+      if (data.notifyInApp !== undefined) updateData.notifyInApp = data.notifyInApp;
+      if (data.notifyEmail !== undefined) updateData.notifyEmail = data.notifyEmail;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.name) {
+        const parts = data.name.trim().split(/\s+/);
+        updateData.firstName = parts[0];
+        updateData.lastName = parts.slice(1).join(" ") || parts[0];
+      }
+
+      const student = await db.student.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          notifyInApp: true,
+          notifyEmail: true,
+        },
+      });
+
+      return successResponse(c, {
+        user: {
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          phone: student.phone,
+          role: "STUDENT",
+          notifyInApp: student.notifyInApp,
+          notifyEmail: student.notifyEmail,
+        },
+      });
+    }
 
     const user = await db.user.update({
       where: { id: userId },
@@ -464,6 +544,84 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
     });
   } catch (error) {
     console.error("Start term error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// =============================================
+// Report Settings (Admin only)
+// =============================================
+
+// GET /settings/report - Get report configuration settings
+settings.get("/report", requireRole(Role.ADMIN), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        reportShowSchoolBranding: true,
+        reportShowTeacherDetails: true,
+        reportShowGrades: true,
+        reportShowPassRates: true,
+        reportShowInsights: true,
+        reportShowExamDetails: true,
+        reportShowOverallAverage: true,
+        reportSchoolLogo: true,
+        reportSchoolMotto: true,
+      },
+    });
+
+    if (!school) {
+      return errors.notFound(c, "School");
+    }
+
+    return successResponse(c, { settings: school });
+  } catch (error) {
+    console.error("Get report settings error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// PATCH /settings/report - Update report configuration settings
+const updateReportSettingsSchema = z.object({
+  reportShowSchoolBranding: z.boolean().optional(),
+  reportShowTeacherDetails: z.boolean().optional(),
+  reportShowGrades: z.boolean().optional(),
+  reportShowPassRates: z.boolean().optional(),
+  reportShowInsights: z.boolean().optional(),
+  reportShowExamDetails: z.boolean().optional(),
+  reportShowOverallAverage: z.boolean().optional(),
+  reportSchoolLogo: z.string().optional().nullable(),
+  reportSchoolMotto: z.string().optional().nullable(),
+});
+
+settings.patch("/report", requireRole(Role.ADMIN), zValidator("json", updateReportSettingsSchema), async (c) => {
+  try {
+    const schoolId = c.get("schoolId");
+    const data = c.req.valid("json");
+
+    const school = await db.school.update({
+      where: { id: schoolId },
+      data: {
+        ...data,
+      },
+      select: {
+        reportShowSchoolBranding: true,
+        reportShowTeacherDetails: true,
+        reportShowGrades: true,
+        reportShowPassRates: true,
+        reportShowInsights: true,
+        reportShowExamDetails: true,
+        reportShowOverallAverage: true,
+        reportSchoolLogo: true,
+        reportSchoolMotto: true,
+      },
+    });
+
+    return successResponse(c, { settings: school, message: "Report settings updated successfully" });
+  } catch (error) {
+    console.error("Update report settings error:", error);
     return errors.internalError(c);
   }
 });

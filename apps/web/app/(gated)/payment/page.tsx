@@ -1,79 +1,182 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   CheckmarkCircle02Icon,
   ArrowRight01Icon,
+  InformationCircleIcon,
+  Logout01Icon,
 } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth-context";
+import { useLogout } from "@/lib/hooks";
 import { api } from "@/lib/api";
-import { PRICING } from "@/lib/pricing";
+import { PRICING, getPlanAmounts } from "@/lib/pricing";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import type { Plan } from "@repo/db";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type Plan = "LITE" | "GROWTH" | "ENTERPRISE";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
+type PaymentCurrency = "USD" | "ZAR";
+
+interface PlanStatus {
+  monthlyPaymentPaid: boolean;
+  onceOffPaymentPaid: boolean;
+  paid: boolean;
+}
+
 export default function PaymentPage() {
-  const { user } = useAuth();
+  const { user, school } = useAuth();
+  const logoutMutation = useLogout();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
-  const [isManualPayment, setIsManualPayment] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
+    school?.currency === "ZAR" ? "ZAR" : "USD"
+  );
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
-  const pricing = PRICING[selectedPlan];
-  
-  // If manual payment, only charge monthly. Otherwise, charge signup + monthly
-  const paymentAmount = isManualPayment 
-    ? pricing.monthlyEstimate 
-    : pricing.signupFee + pricing.monthlyEstimate;
-
-  const handleManualPaymentToggle = (checked: boolean) => {
-    setIsManualPayment(checked);
-    setError("");
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
-  const handlePayOnline = async () => {
+  // Fetch plan payment status on mount
+  useEffect(() => {
+    const fetchPlanStatus = async () => {
+      try {
+        const data = await api.get<PlanStatus>("/payments/plan-status");
+        setPlanStatus(data);
+      } catch {
+        // No plan payment record yet — everything is unpaid
+        setPlanStatus({ monthlyPaymentPaid: false, onceOffPaymentPaid: false, paid: false });
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+    fetchPlanStatus();
+  }, []);
+
+  const planMeta = PRICING[selectedPlan];
+  const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
+
+  // Determine what's already paid
+  const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
+  const setupAlreadyPaid = planStatus?.onceOffPaymentPaid ?? false;
+
+  // Calculate remaining amounts
+  const setupFeeRemaining = setupAlreadyPaid ? 0 : amounts.signupFee;
+  const monthlyRemaining = monthlyAlreadyPaid ? 0 : amounts.monthlyEstimate;
+  const totalRemaining = setupFeeRemaining + monthlyRemaining;
+
+  // Determine the payment type the server should use
+  const getPaymentType = (): string => {
+    if (monthlyAlreadyPaid && !setupAlreadyPaid) return "SETUP_ONLY";
+    return "FULL";
+  };
+
+  const handlePayOnline = async (monthlyOnly = false) => {
     setIsPaymentLoading(true);
     setError("");
 
-    try {
-      const response = await api.post<{
-        checkoutUrl: string;
-        intermediatePaymentId: string;
-      }>("/payments/create-checkout", {
-        planType: selectedPlan,
-        paymentType: isManualPayment ? "TERM_PAYMENT" : "SIGNUP",
-        email: user?.email,
-      });
+    const paymentType = monthlyOnly ? "MONTHLY_ONLY" : getPaymentType();
 
-      // Redirect to PayNow checkout
-      window.location.href = response.checkoutUrl;
+    try {
+      if (paymentCurrency === "ZAR") {
+        const response = await api.post<{
+          checkoutUrl: string;
+          paymentId: string;
+        }>("/payments/create-dodo-checkout", {
+          planType: selectedPlan,
+          paymentType,
+          email: user?.email,
+          currency: "ZAR",
+        });
+        window.location.href = response.checkoutUrl;
+      } else {
+        const response = await api.post<{
+          checkoutUrl: string;
+          intermediatePaymentId: string;
+        }>("/payments/create-checkout", {
+          planType: selectedPlan,
+          paymentType,
+          email: user?.email,
+        });
+        window.location.href = response.checkoutUrl;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
       setIsPaymentLoading(false);
     }
   };
 
+  if (isLoadingStatus) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="size-10 rounded-full border-4 border-brand border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading payment status...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* Dev Logout Button */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <HugeiconsIcon icon={Logout01Icon} size={16} />
+            Logout (Dev)
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-bold">Choose Your Plan</h1>
+        <h1 className="text-3xl font-bold">
+          {monthlyAlreadyPaid ? "Complete Your Setup" : "Choose Your Plan"}
+        </h1>
         <p className="text-muted-foreground mt-2">
-          Select the plan that best fits your school&apos;s needs
+          {monthlyAlreadyPaid
+            ? "Your first month\u2019s fee has been paid. Complete the one-time setup fee to get started."
+            : "Select the plan that best fits your school\u2019s needs"}
         </p>
+      </motion.div>
+
+      {/* Currency Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="flex justify-center"
+      >
+        <Tabs
+          value={paymentCurrency}
+          onValueChange={(v) => setPaymentCurrency(v as PaymentCurrency)}
+        >
+          <TabsList>
+            <TabsTrigger value="USD">USD ($)</TabsTrigger>
+            <TabsTrigger value="ZAR">ZAR (R)</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </motion.div>
 
       {error && (
@@ -85,7 +188,8 @@ export default function PaymentPage() {
       {/* Plan Cards */}
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map((plan, index) => {
-          const planPricing = PRICING[plan];
+          const planInfo = PRICING[plan];
+          const planAmounts = getPlanAmounts(plan, paymentCurrency);
           const isSelected = selectedPlan === plan;
           const isPopular = plan === "GROWTH";
 
@@ -99,11 +203,10 @@ export default function PaymentPage() {
               <Card
                 hover
                 onClick={() => setSelectedPlan(plan)}
-                className={`relative cursor-pointer transition-all ${
-                  isSelected 
-                    ? "bg-brand border-brand ring-4 ring-brand/20" 
-                    : "bg-muted/40"
-                }`}
+                className={`relative cursor-pointer transition-all ${isSelected
+                  ? "bg-brand border-brand ring-4 ring-brand/20"
+                  : "bg-muted/40"
+                  }`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -113,41 +216,40 @@ export default function PaymentPage() {
 
                 <CardHeader className="text-center pb-4">
                   <CardTitle className={`text-xl ${isSelected ? "text-white" : ""}`}>
-                    {planPricing.name}
+                    {planInfo.name}
                   </CardTitle>
                   <CardDescription className={isSelected ? "text-blue-100" : ""}>
-                    {planPricing.description}
+                    {planInfo.description}
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-6">
                   <div className="text-center">
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                        ${planPricing.signupFee}
-                      </span>
-                      <span className={isSelected ? "text-blue-100" : "text-muted-foreground"}>
-                        signup
-                      </span>
+                    <div className="flex items-baseline justify-center gap-2">
+                      <div>
+                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Setup fee (one-time)</div>
+                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
+                          {fmt(planAmounts.signupFee, paymentCurrency)}
+                        </span>
+                      </div>
+                      <span className={`text-lg mt-6 ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>+</span>
+                      <div>
+                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Then monthly</div>
+                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
+                          {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
+                        </span>
+                      </div>
                     </div>
-                    <p className={`text-sm mt-1 ${
-                      isSelected 
-                        ? "text-blue-100" 
-                        : "text-muted-foreground"
-                    }`}>
-                      + ${planPricing.perTermCost}/term (~${planPricing.monthlyEstimate}/mo)
-                    </p>
                   </div>
 
                   <ul className="space-y-3">
-                    {planPricing.features.slice(0, 6).map((feature, i) => (
+                    {planInfo.features.slice(0, 6).map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <HugeiconsIcon
                           icon={CheckmarkCircle02Icon}
                           size={18}
-                          className={`shrink-0 mt-0.5 ${
-                            isSelected ? "text-blue-200" : "text-success"
-                          }`}
+                          className={`shrink-0 mt-0.5 ${isSelected ? "text-blue-200" : "text-success"
+                            }`}
                         />
                         <span className={isSelected ? "text-white" : ""}>
                           {feature}
@@ -158,11 +260,10 @@ export default function PaymentPage() {
 
                   <Button
                     variant={isSelected ? "secondary" : "outline"}
-                    className={`w-full ${
-                      isSelected 
-                        ? "bg-white text-brand hover:bg-white/90" 
-                        : ""
-                    }`}
+                    className={`w-full ${isSelected
+                      ? "bg-white text-brand hover:bg-white/90"
+                      : ""
+                      }`}
                     onClick={() => setSelectedPlan(plan)}
                   >
                     {isSelected ? "Selected" : "Select Plan"}
@@ -183,63 +284,113 @@ export default function PaymentPage() {
         <Card className="max-w-xl mx-auto">
           <CardHeader>
             <CardTitle>Payment Summary</CardTitle>
+            {monthlyAlreadyPaid && !setupAlreadyPaid && (
+              <Alert className="mt-3 border-success/30 bg-success/5">
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-success" />
+                <AlertDescription className="text-success">
+                  Your first month&apos;s fee has been confirmed! Only the setup fee remains.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
-            {!isManualPayment && (
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span>Signup Fee ({pricing.name})</span>
-                  <span className="font-semibold">${pricing.signupFee}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span>First Month</span>
-                  <span className="font-semibold">${pricing.monthlyEstimate}</span>
-                </div>
+            {/* Line items */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="font-medium">
+                  Setup Fee ({planMeta.name}){" "}
+                  <span className="text-xs text-muted-foreground">one-time</span>
+                </span>
+                {setupAlreadyPaid ? (
+                  <Badge variant="outline" className="text-success border-success/40">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} className="mr-1" />
+                    Paid
+                  </Badge>
+                ) : (
+                  <span className="font-semibold">{fmt(amounts.signupFee, paymentCurrency)}</span>
+                )}
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="font-medium">
+                  First Month Charge{" "}
+                  <span className="text-xs text-muted-foreground">recurring</span>
+                </span>
+                {monthlyAlreadyPaid ? (
+                  <Badge variant="outline" className="text-success border-success/40">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} className="mr-1" />
+                    Paid
+                  </Badge>
+                ) : (
+                  <span className="font-semibold">{fmt(amounts.monthlyEstimate, paymentCurrency)}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Total */}
+            {totalRemaining > 0 && (
+              <div className="flex justify-between py-2 text-lg font-bold">
+                <span>Total Due Today</span>
+                <span className="text-brand">{fmt(totalRemaining, paymentCurrency)}</span>
               </div>
             )}
 
-            <div className="flex justify-between py-2 text-lg font-bold">
-              <span>Total Due Today</span>
-              <span className="text-brand">${paymentAmount}</span>
-            </div>
-
-            {/* Manual Payment Option */}
-            <div className="p-4 rounded-xl bg-muted border border-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="manual-payment" className="font-medium cursor-pointer">
-                    Already paid signup fee?
-                  </Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {isManualPayment
-                      ? "Great! Pay only the monthly fee online"
-                      : "Toggle this and pay only the monthly fee"}
-                  </p>
-                </div>
-                <Switch
-                  id="manual-payment"
-                  checked={isManualPayment}
-                  onCheckedChange={handleManualPaymentToggle}
+            {/* Info box — show when both are unpaid */}
+            {!monthlyAlreadyPaid && !setupAlreadyPaid && (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded">
+                <HugeiconsIcon
+                  icon={InformationCircleIcon}
+                  size={16}
+                  className="shrink-0 mt-0.5"
                 />
+                <span>
+                  <strong>Setup fee:</strong> Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is
+                  charged only once. You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every
+                  month after that.
+                </span>
               </div>
-            </div>
+            )}
 
-            <Button
-              className="w-full"
-              size="lg"
-              loading={isPaymentLoading}
-              onClick={handlePayOnline}
-            >
-              {!isPaymentLoading && (
-                <>
-                  Pay ${paymentAmount} Now
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                </>
-              )}
-            </Button>
+            {/* Payment buttons */}
+            {totalRemaining > 0 ? (
+              <div className="space-y-3">
+                <Button
+                  className="w-full"
+                  size="lg"
+                  loading={isPaymentLoading}
+                  onClick={() => handlePayOnline(false)}
+                >
+                  {!isPaymentLoading && (
+                    <>
+                      Pay {fmt(totalRemaining, paymentCurrency)} Now
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
+                    </>
+                  )}
+                </Button>
+
+                {/* Show "Pay first month only" option only when both are still unpaid */}
+                {!monthlyAlreadyPaid && !setupAlreadyPaid && (
+                  <button
+                    type="button"
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 underline underline-offset-4"
+                    onClick={() => handlePayOnline(true)}
+                    disabled={isPaymentLoading}
+                  >
+                    Pay first month only ({fmt(amounts.monthlyEstimate, paymentCurrency)})
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={32} className="text-success mx-auto mb-2" />
+                <p className="font-semibold text-success">All payments complete!</p>
+                <p className="text-sm text-muted-foreground mt-1">Redirecting to setup...</p>
+              </div>
+            )}
 
             <p className="text-xs text-center text-muted-foreground">
-              Secure payment powered by PayNow
+              {paymentCurrency === "ZAR"
+                ? "Secure payment powered by Dodo Payments"
+                : "Secure payment powered by PayNow"}
             </p>
           </CardContent>
         </Card>

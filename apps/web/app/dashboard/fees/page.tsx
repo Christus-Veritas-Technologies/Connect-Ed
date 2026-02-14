@@ -4,19 +4,22 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Money01Icon,
-  Add01Icon,
-  Cancel01Icon,
-  CheckmarkCircle02Icon,
-  TimeQuarterIcon,
-  Calendar01Icon,
-  AlertCircleIcon,
-  FileDownloadIcon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+  Plus,
+  Loader2,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Download,
+  FileDown,
+  X,
+  MoreVertical,
+} from "lucide-react";
 import { useFees, useFeeStats, useRecordPayment } from "@/lib/hooks";
+import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
+import { fmt, type CurrencyCode } from "@/lib/currency";
 import { AddFeeDialog } from "@/components/dialogs/add-fee-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +48,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DashboardBreadcrumbs,
+  PageHeader,
+  StatsCard,
+  FilterTabs,
+} from "@/components/dashboard";
+
+// ─── Types ───────────────────────────────────────────────────
 
 interface Fee {
   id: string;
@@ -61,6 +72,10 @@ interface Fee {
   };
 }
 
+type PaymentMethodOption = "CASH" | "BANK_TRANSFER" | "ONLINE";
+
+// ─── Main Page ───────────────────────────────────────────────
+
 export default function FeesPage() {
   const searchParams = useSearchParams();
 
@@ -72,13 +87,24 @@ export default function FeesPage() {
   const [customDateTo, setCustomDateTo] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState<Fee | null>(null);
+  const [search, setSearch] = useState("");
+  const { school } = useAuth();
 
-  const [paymentForm, setPaymentForm] = useState({
+  const getDefaultTermNumber = () =>
+    (school?.currentTermNumber ?? 1).toString();
+  const getDefaultTermYear = () =>
+    (school?.currentTermYear ?? new Date().getFullYear()).toString();
+  const getDefaultPaymentForm = () => ({
     amount: "",
-    paymentMethod: "CASH" as "CASH" | "BANK_TRANSFER" | "ONLINE",
+    paymentMethod: "CASH" as PaymentMethodOption,
     reference: "",
     notes: "",
+    termNumber: getDefaultTermNumber(),
+    termYear: getDefaultTermYear(),
   });
+
+  const [paymentForm, setPaymentForm] = useState(getDefaultPaymentForm);
+  const resetPaymentForm = () => setPaymentForm(getDefaultPaymentForm());
 
   // Compute date filters from time period
   const getDateFilters = () => {
@@ -87,22 +113,36 @@ export default function FeesPage() {
       case "this_week": {
         const dayOfWeek = now.getDay();
         const start = new Date(now);
-        start.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+        start.setDate(
+          now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)
+        );
+        return {
+          dateFrom: start.toISOString().split("T")[0],
+          dateTo: now.toISOString().split("T")[0],
+        };
       }
       case "this_month": {
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+        return {
+          dateFrom: start.toISOString().split("T")[0],
+          dateTo: now.toISOString().split("T")[0],
+        };
       }
       case "this_term": {
         const month = now.getMonth();
         const termStartMonth = month < 4 ? 0 : month < 8 ? 4 : 8;
         const start = new Date(now.getFullYear(), termStartMonth, 1);
-        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+        return {
+          dateFrom: start.toISOString().split("T")[0],
+          dateTo: now.toISOString().split("T")[0],
+        };
       }
       case "this_year": {
         const start = new Date(now.getFullYear(), 0, 1);
-        return { dateFrom: start.toISOString().split("T")[0], dateTo: now.toISOString().split("T")[0] };
+        return {
+          dateFrom: start.toISOString().split("T")[0],
+          dateTo: now.toISOString().split("T")[0],
+        };
       }
       case "custom":
         return {
@@ -116,21 +156,46 @@ export default function FeesPage() {
 
   const dateFilters = getDateFilters();
 
-  // Query hooks
+  // ── Data fetching ──
   const { data: feesData, isLoading } = useFees({
     status: filter !== "all" ? filter.toUpperCase() : undefined,
-    term: termFilter && termFilter !== "all_terms" ? parseInt(termFilter) : undefined,
-    year: yearFilter && yearFilter !== "all_years" ? parseInt(yearFilter) : undefined,
+    term:
+      termFilter && termFilter !== "all_terms"
+        ? parseInt(termFilter)
+        : undefined,
+    year:
+      yearFilter && yearFilter !== "all_years"
+        ? parseInt(yearFilter)
+        : undefined,
     dateFrom: dateFilters.dateFrom,
     dateTo: dateFilters.dateTo,
   });
   const { data: feeStats } = useFeeStats();
   const recordPaymentMutation = useRecordPayment();
+  const baseYear = school?.currentTermYear ?? new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, idx) => baseYear - 2 + idx);
 
-  const fees = feesData?.fees || [];
+  const fees: Fee[] = feesData?.fees || [];
+
+  // Client-side search filter
+  const filteredFees = fees.filter((fee) =>
+    search
+      ? `${fee.student.firstName} ${fee.student.lastName}`
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      fee.description.toLowerCase().includes(search.toLowerCase()) ||
+      fee.student.admissionNumber
+        .toLowerCase()
+        .includes(search.toLowerCase())
+      : true
+  );
+
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showPaymentModal) return;
+
+    const parsedTermNumber = Number(paymentForm.termNumber);
+    const parsedTermYear = Number(paymentForm.termYear);
 
     recordPaymentMutation.mutate(
       {
@@ -140,11 +205,17 @@ export default function FeesPage() {
           paymentMethod: paymentForm.paymentMethod,
           reference: paymentForm.reference || undefined,
           notes: paymentForm.notes || undefined,
+          termNumber: Number.isFinite(parsedTermNumber)
+            ? parsedTermNumber
+            : undefined,
+          termYear: Number.isFinite(parsedTermYear)
+            ? parsedTermYear
+            : undefined,
         },
       },
       {
         onSuccess: () => {
-          setPaymentForm({ amount: "", paymentMethod: "CASH", reference: "", notes: "" });
+          resetPaymentForm();
           setShowPaymentModal(null);
         },
       }
@@ -153,21 +224,26 @@ export default function FeesPage() {
 
   const getStatusVariant = (status: Fee["status"]) => {
     switch (status) {
-      case "PAID": return "success";
-      case "PARTIAL": return "warning";
-      case "OVERDUE": return "destructive";
-      default: return "default";
+      case "PAID":
+        return "success";
+      case "PARTIAL":
+        return "warning";
+      case "OVERDUE":
+        return "destructive";
+      default:
+        return "default";
     }
   };
 
-  const paymentFormError = recordPaymentMutation.error instanceof ApiError
-    ? recordPaymentMutation.error.message
-    : recordPaymentMutation.error?.message;
+  const paymentFormError =
+    recordPaymentMutation.error instanceof ApiError
+      ? recordPaymentMutation.error.message
+      : recordPaymentMutation.error?.message;
 
-  // Export all fee records as CSV
+  // ── Export helpers ──
   const handleExportFeesCSV = () => {
-    if (fees.length === 0) return;
-    const exportData = fees.map((fee) => ({
+    if (filteredFees.length === 0) return;
+    const exportData = filteredFees.map((fee) => ({
       student: `${fee.student.firstName} ${fee.student.lastName}`,
       admissionNumber: fee.student.admissionNumber,
       description: fee.description,
@@ -194,13 +270,13 @@ export default function FeesPage() {
   };
 
   const handleExportFeesPDF = () => {
-    if (fees.length === 0) return;
-    const exportData = fees.map((fee) => ({
+    if (filteredFees.length === 0) return;
+    const exportData = filteredFees.map((fee) => ({
       student: `${fee.student.firstName} ${fee.student.lastName}`,
       description: fee.description,
-      amount: `$${fee.amount.toLocaleString()}`,
-      paid: `$${fee.paidAmount.toLocaleString()}`,
-      outstanding: `$${(fee.amount - fee.paidAmount).toLocaleString()}`,
+      amount: fmt(fee.amount, school?.currency as CurrencyCode),
+      paid: fmt(fee.paidAmount, school?.currency as CurrencyCode),
+      outstanding: fmt(fee.amount - fee.paidAmount, school?.currency as CurrencyCode),
       status: fee.status,
     }));
     exportToPDF(
@@ -218,10 +294,9 @@ export default function FeesPage() {
     );
   };
 
-  // Export students owing
   const handleExportOwingCSV = () => {
     if (!feeStats || feeStats.studentsOwing.length === 0) return;
-    const exportData = feeStats.studentsOwing.map((s) => ({
+    const exportData = feeStats.studentsOwing.map((s: any) => ({
       student: `${s.firstName} ${s.lastName}`,
       admissionNumber: s.admissionNumber,
       className: s.className,
@@ -241,11 +316,11 @@ export default function FeesPage() {
 
   const handleExportOwingPDF = () => {
     if (!feeStats || feeStats.studentsOwing.length === 0) return;
-    const exportData = feeStats.studentsOwing.map((s) => ({
+    const exportData = feeStats.studentsOwing.map((s: any) => ({
       student: `${s.firstName} ${s.lastName}`,
       admissionNumber: s.admissionNumber,
       className: s.className,
-      totalOwed: `$${s.totalOwed.toLocaleString()}`,
+      totalOwed: fmt(s.totalOwed, school?.currency as CurrencyCode),
     }));
     exportToPDF(
       exportData,
@@ -262,125 +337,88 @@ export default function FeesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <DashboardBreadcrumbs items={[{ label: "Fees" }]} />
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Fees
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track student fees and payments
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportFeesCSV} disabled={fees.length === 0}>
-            <HugeiconsIcon icon={FileDownloadIcon} size={16} />
-            CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportFeesPDF} disabled={fees.length === 0}>
-            <HugeiconsIcon icon={FileDownloadIcon} size={16} />
-            PDF
-          </Button>
-          <Button onClick={() => setShowAddModal(true)}>
-            <HugeiconsIcon icon={Add01Icon} size={20} />
-            Create New Fee Record
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Fees"
+        subtitle="Track student fees and payments"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by student or description..."
+        action={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportFeesCSV}
+              title="Export CSV"
+              disabled={filteredFees.length === 0}
+            >
+              <Download className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportFeesPDF}
+              title="Export PDF"
+              disabled={filteredFees.length === 0}
+            >
+              <FileDown className="size-4" />
+            </Button>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="size-4" />
+              Create Fee
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="overflow-hidden border-l-4 border-l-green-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Fees Paid This Term</p>
-                  <p className="text-2xl font-semibold mt-1 text-green-600">
-                    ${(feeStats?.feesPaidThisTerm || 0).toLocaleString()}
-                  </p>
-                  {feeStats && (
-                    <p className="text-xs text-muted-foreground mt-1">Term {feeStats.termNumber}</p>
-                  )}
-                </div>
-                <div className="p-3 rounded-xl bg-green-100 dark:bg-green-950">
-                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={24} className="text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="overflow-hidden border-l-4 border-l-orange-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Unpaid Fees This Term</p>
-                  <p className="text-2xl font-semibold mt-1 text-orange-600">
-                    ${(feeStats?.unpaidFeesThisTerm || 0).toLocaleString()}
-                  </p>
-                  {feeStats && (
-                    <p className="text-xs text-muted-foreground mt-1">Term {feeStats.termNumber}</p>
-                  )}
-                </div>
-                <div className="p-3 rounded-xl bg-orange-100 dark:bg-orange-950">
-                  <HugeiconsIcon icon={TimeQuarterIcon} size={24} className="text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card className="overflow-hidden border-l-4 border-l-blue-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Fees Paid This Year</p>
-                  <p className="text-2xl font-semibold mt-1 text-blue-600">
-                    ${(feeStats?.feesPaidThisYear || 0).toLocaleString()}
-                  </p>
-                  {feeStats && (
-                    <p className="text-xs text-muted-foreground mt-1">{feeStats.currentYear}</p>
-                  )}
-                </div>
-                <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-950">
-                  <HugeiconsIcon icon={Calendar01Icon} size={24} className="text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <Card className="overflow-hidden border-l-4 border-l-red-500">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Unpaid This Year</p>
-                  <p className="text-2xl font-semibold mt-1 text-red-600">
-                    ${(feeStats?.unpaidFeesThisYear || 0).toLocaleString()}
-                  </p>
-                  {feeStats && (
-                    <p className="text-xs text-muted-foreground mt-1">{feeStats.currentYear}</p>
-                  )}
-                </div>
-                <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950">
-                  <HugeiconsIcon icon={AlertCircleIcon} size={24} className="text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <StatsCard
+          label="Paid This Term"
+          value={fmt(feeStats?.feesPaidThisTerm || 0, school?.currency as CurrencyCode)}
+          icon={<CheckCircle className="size-6" />}
+          color="green"
+          meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
+          delay={0.1}
+        />
+        <StatsCard
+          label="Unpaid This Term"
+          value={fmt(feeStats?.unpaidFeesThisTerm || 0, school?.currency as CurrencyCode)}
+          icon={<Clock className="size-6" />}
+          color="orange"
+          meta={feeStats ? `Term ${feeStats.termNumber}` : undefined}
+          delay={0.2}
+        />
+        <StatsCard
+          label="Paid This Year"
+          value={fmt(feeStats?.feesPaidThisYear || 0, school?.currency as CurrencyCode)}
+          icon={<DollarSign className="size-6" />}
+          color="blue"
+          meta={feeStats ? `${feeStats.currentYear}` : undefined}
+          delay={0.3}
+        />
+        <StatsCard
+          label="Unpaid This Year"
+          value={fmt(feeStats?.unpaidFeesThisYear || 0, school?.currency as CurrencyCode)}
+          icon={<AlertCircle className="size-6" />}
+          color="red"
+          meta={feeStats ? `${feeStats.currentYear}` : undefined}
+          delay={0.4}
+        />
       </div>
 
-      {/* Filters */}
+      {/* Filters Card */}
       <Card>
         <CardContent className="py-4 space-y-4">
           {/* Time Period Presets */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground mr-1">Period:</span>
+            <span className="text-sm font-medium text-muted-foreground mr-1">
+              Period:
+            </span>
             {[
               { value: "all", label: "All Time" },
               { value: "this_week", label: "This Week" },
@@ -404,7 +442,9 @@ export default function FeesPage() {
           {timePeriod === "custom" && (
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">From:</Label>
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                  From:
+                </Label>
                 <Input
                   type="date"
                   value={customDateFrom}
@@ -413,7 +453,9 @@ export default function FeesPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">To:</Label>
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                  To:
+                </Label>
                 <Input
                   type="date"
                   value={customDateTo}
@@ -426,19 +468,17 @@ export default function FeesPage() {
 
           {/* Status + Term/Year Filters */}
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex flex-wrap gap-2">
-              {["all", "pending", "partial", "paid", "overdue"].map((f) => (
-                <Button
-                  key={f}
-                  variant={filter === f ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(f)}
-                  className="capitalize"
-                >
-                  {f}
-                </Button>
-              ))}
-            </div>
+            <FilterTabs
+              tabs={[
+                { key: "all", label: "All" },
+                { key: "pending", label: "Pending" },
+                { key: "partial", label: "Partial" },
+                { key: "paid", label: "Paid" },
+                { key: "overdue", label: "Overdue" },
+              ]}
+              active={filter}
+              onChange={setFilter}
+            />
 
             <div className="h-6 w-px bg-border hidden sm:block" />
 
@@ -449,8 +489,13 @@ export default function FeesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all_years">All Years</SelectItem>
-                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                  {Array.from(
+                    { length: 5 },
+                    (_, i) => new Date().getFullYear() - i
+                  ).map((y) => (
+                    <SelectItem key={y} value={y.toString()}>
+                      {y}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -467,135 +512,156 @@ export default function FeesPage() {
                 </SelectContent>
               </Select>
 
-              {(termFilter && termFilter !== "all_terms" || yearFilter && yearFilter !== "all_years") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setTermFilter(""); setYearFilter(""); }}
-                  className="text-muted-foreground"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
-                  Clear
-                </Button>
-              )}
+              {((termFilter && termFilter !== "all_terms") ||
+                (yearFilter && yearFilter !== "all_years")) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTermFilter("");
+                      setYearFilter("");
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    <X className="size-4" />
+                    Clear
+                  </Button>
+                )}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Fees Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="size-8 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-            </div>
-          ) : fees.length === 0 ? (
-            <div className="text-center py-12">
-              <HugeiconsIcon icon={Money01Icon} size={48} className="mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No fees found</p>
-              <Button onClick={() => setShowAddModal(true)}>
-                <HugeiconsIcon icon={Add01Icon} size={20} />
-                Create New Fee Record
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <AnimatePresence>
-                  {fees.map((fee, index) => (
-                    <motion.tr
-                      key={fee.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group"
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-8 animate-spin text-brand" />
+        </div>
+      ) : filteredFees.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl">
+          <DollarSign className="size-12 text-muted-foreground mb-4" />
+          <p className="text-lg font-semibold mb-1">No fees found</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Create a fee record to track payments
+          </p>
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="size-4" />
+            Create Fee
+          </Button>
+        </div>
+      ) : (
+        <div className="border rounded-xl overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Student</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Paid</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <AnimatePresence>
+                {filteredFees.map((fee, index) => (
+                  <motion.tr
+                    key={fee.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="group hover:bg-muted/50"
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">
+                          {fee.student.firstName} {fee.student.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {fee.student.admissionNumber}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {fee.description}
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      ${fee.amount.toLocaleString()}
+                    </TableCell>
+                    <TableCell
+                      className={
+                        fee.paidAmount > 0
+                          ? "text-green-600 font-semibold"
+                          : ""
+                      }
                     >
-                      <TableCell>
-                        <div>
-                          <p className="font-semibold">
-                            {fee.student.firstName} {fee.student.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {fee.student.admissionNumber}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{fee.description}</TableCell>
-                      <TableCell className="font-semibold">
-                        ${fee.amount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className={fee.paidAmount > 0 ? "text-success font-semibold" : ""}>
-                        ${fee.paidAmount.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(fee.dueDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(fee.status)}>
-                          {fee.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {fee.status !== "PAID" && (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setShowPaymentModal(fee);
-                              setPaymentForm({
-                                amount: String(fee.amount - fee.paidAmount),
-                                paymentMethod: "CASH",
-                                reference: "",
-                                notes: "",
-                              });
-                            }}
-                          >
-                            Create New Fee Payment
-                          </Button>
-                        )}
-                      </TableCell>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      ${fee.paidAmount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {new Date(fee.dueDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(fee.status)}>
+                        {fee.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {fee.status !== "PAID" && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setShowPaymentModal(fee);
+                            setPaymentForm({
+                              ...getDefaultPaymentForm(),
+                              amount: String(fee.amount - fee.paidAmount),
+                            });
+                          }}
+                        >
+                          Record Payment
+                        </Button>
+                      )}
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-      {/* Students Owing Table */}
+      {/* Students Owing */}
       {feeStats && feeStats.studentsOwing.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <HugeiconsIcon icon={AlertCircleIcon} size={20} className="text-red-500" />
+                  <AlertCircle className="size-5 text-red-500" />
                   Students Owing
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {feeStats.studentsOwing.length} student{feeStats.studentsOwing.length !== 1 ? "s" : ""} with outstanding fees
+                  {feeStats.studentsOwing.length} student
+                  {feeStats.studentsOwing.length !== 1 ? "s" : ""} with
+                  outstanding fees
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleExportOwingCSV}>
-                  <HugeiconsIcon icon={FileDownloadIcon} size={16} />
-                  CSV
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportOwingCSV}
+                  title="Export CSV"
+                >
+                  <Download className="size-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleExportOwingPDF}>
-                  <HugeiconsIcon icon={FileDownloadIcon} size={16} />
-                  PDF
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportOwingPDF}
+                  title="Export PDF"
+                >
+                  <FileDown className="size-4" />
                 </Button>
               </div>
             </div>
@@ -611,28 +677,29 @@ export default function FeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {feeStats.studentsOwing.map((student, index) => (
-                  <motion.tr
-                    key={student.studentId}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group"
-                  >
-                    <TableCell>
-                      <p className="font-semibold">
-                        {student.firstName} {student.lastName}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {student.admissionNumber}
-                    </TableCell>
-                    <TableCell>{student.className}</TableCell>
-                    <TableCell className="text-right font-bold text-red-600">
-                      ${student.totalOwed.toLocaleString()}
-                    </TableCell>
-                  </motion.tr>
-                ))}
+                {feeStats.studentsOwing.map(
+                  (student: any, index: number) => (
+                    <motion.tr
+                      key={student.studentId}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                    >
+                      <TableCell>
+                        <p className="font-medium">
+                          {student.firstName} {student.lastName}
+                        </p>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {student.admissionNumber}
+                      </TableCell>
+                      <TableCell>{student.className}</TableCell>
+                      <TableCell className="text-right font-bold text-red-600">
+                        ${student.totalOwed.toLocaleString()}
+                      </TableCell>
+                    </motion.tr>
+                  )
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -644,25 +711,40 @@ export default function FeesPage() {
         open={showAddModal}
         onOpenChange={setShowAddModal}
         onSuccess={() => {
-          // Refresh fees list
           window.location.reload();
         }}
       />
 
       {/* Record Payment Dialog */}
-      <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
+      <Dialog
+        open={!!showPaymentModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetPaymentForm();
+            setShowPaymentModal(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Fee Payment</DialogTitle>
+            <DialogTitle>Record Payment</DialogTitle>
           </DialogHeader>
 
           {showPaymentModal && (
             <>
               <div className="text-sm text-muted-foreground mb-2">
-                {showPaymentModal.student.firstName} {showPaymentModal.student.lastName} - {showPaymentModal.description}
+                {showPaymentModal.student.firstName}{" "}
+                {showPaymentModal.student.lastName} -{" "}
+                {showPaymentModal.description}
               </div>
               <div className="mb-4">
-                Outstanding: <span className="font-bold">${(showPaymentModal.amount - showPaymentModal.paidAmount).toLocaleString()}</span>
+                Outstanding:{" "}
+                <span className="font-bold">
+                  $
+                  {(
+                    showPaymentModal.amount - showPaymentModal.paidAmount
+                  ).toLocaleString()}
+                </span>
               </div>
             </>
           )}
@@ -679,10 +761,19 @@ export default function FeesPage() {
               <Input
                 type="number"
                 min="0"
-                max={showPaymentModal ? showPaymentModal.amount - showPaymentModal.paidAmount : undefined}
+                max={
+                  showPaymentModal
+                    ? showPaymentModal.amount - showPaymentModal.paidAmount
+                    : undefined
+                }
                 step="0.01"
                 value={paymentForm.amount}
-                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                onChange={(e) =>
+                  setPaymentForm({
+                    ...paymentForm,
+                    amount: e.target.value,
+                  })
+                }
                 required
               />
             </div>
@@ -691,8 +782,11 @@ export default function FeesPage() {
               <Label>Payment Method</Label>
               <Select
                 value={paymentForm.paymentMethod}
-                onValueChange={(value: "CASH" | "BANK_TRANSFER" | "ONLINE") =>
-                  setPaymentForm({ ...paymentForm, paymentMethod: value })
+                onValueChange={(value: PaymentMethodOption) =>
+                  setPaymentForm({
+                    ...paymentForm,
+                    paymentMethod: value,
+                  })
                 }
               >
                 <SelectTrigger>
@@ -706,12 +800,62 @@ export default function FeesPage() {
               </Select>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Term</Label>
+                <Select
+                  value={paymentForm.termNumber}
+                  onValueChange={(value) =>
+                    setPaymentForm({ ...paymentForm, termNumber: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Term 1</SelectItem>
+                    <SelectItem value="2">Term 2</SelectItem>
+                    <SelectItem value="3">Term 3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Year</Label>
+                <Select
+                  value={paymentForm.termYear}
+                  onValueChange={(value) =>
+                    setPaymentForm({ ...paymentForm, termYear: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Choose the term and year this payment should cover (helps when
+              paying ahead).
+            </p>
+
             <div className="space-y-2">
               <Label>Reference (optional)</Label>
               <Input
                 placeholder="Receipt number or reference"
                 value={paymentForm.reference}
-                onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                onChange={(e) =>
+                  setPaymentForm({
+                    ...paymentForm,
+                    reference: e.target.value,
+                  })
+                }
               />
             </div>
 
@@ -720,12 +864,26 @@ export default function FeesPage() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => setShowPaymentModal(null)}
+                onClick={() => {
+                  resetPaymentForm();
+                  setShowPaymentModal(null);
+                }}
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" loading={recordPaymentMutation.isPending}>
-                {!recordPaymentMutation.isPending && "Create Fee Payment"}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={recordPaymentMutation.isPending}
+              >
+                {recordPaymentMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Record Payment"
+                )}
               </Button>
             </div>
           </form>
