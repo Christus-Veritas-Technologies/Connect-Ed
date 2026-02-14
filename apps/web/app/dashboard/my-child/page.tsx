@@ -17,6 +17,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
+import { useParentChildren } from "@/lib/hooks/use-parent-children";
 import { fmt, type CurrencyCode } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ const getFeeColumns = (currency?: CurrencyCode): ColumnDef<ChildData["fees"][0]>
 
 export default function MyChildPage() {
     const { school } = useAuth();
+    const { childrenCount } = useParentChildren();
     const currency = school?.currency as CurrencyCode;
     const examColumns = useMemo(() => getExamColumns(), []);
     const feeColumns = useMemo(() => getFeeColumns(currency), [currency]);
@@ -160,10 +162,10 @@ export default function MyChildPage() {
 
     return (
         <div className="space-y-6">
-            <DashboardBreadcrumbs items={[{ label: "My Child", href: "/dashboard/my-child" }]} />
+            <DashboardBreadcrumbs items={[{ label: childrenCount === 1 ? "My Child" : "My Children", href: "/dashboard/my-child" }]} />
 
             <div>
-                <h1 className="text-2xl font-semibold">My Child</h1>
+                <h1 className="text-2xl font-semibold">{childrenCount === 1 ? "My Child" : "My Children"}</h1>
                 <p className="text-sm text-muted-foreground">
                     Detailed view of your {data.children.length === 1 ? "child" : "children"}'s academic progress and fees
                 </p>
