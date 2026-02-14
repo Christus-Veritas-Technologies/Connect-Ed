@@ -285,183 +285,78 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left Column */}
-        <div className="lg:col-span-8 space-y-6">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="rounded-2xl border bg-card p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Latest Exam Marks</h2>
-                  <p className="text-sm text-muted-foreground">Most recent results per subject</p>
-                </div>
-                <Badge variant="outline" className="gap-2">
-                  <HugeiconsIcon icon={Target01Icon} size={14} />
-                  Instant updates
-                </Badge>
+      {/* Latest Exam Marks */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Latest Exam Marks</h2>
+              <p className="text-sm text-muted-foreground">Most recent results per subject</p>
+            </div>
+            <Badge variant="outline" className="gap-2">
+              <HugeiconsIcon icon={Target01Icon} size={14} />
+              Instant updates
+            </Badge>
+          </div>
+          <div className="mt-4">
+            {data.latestExams.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+                No exam results yet.
               </div>
-              <div className="mt-4">
-                {data.latestExams.length === 0 ? (
-                  <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-                    No exam results yet.
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={examColumns}
-                    data={data.latestExams}
-                    exportFileName="my-latest-marks"
-                  />
+            ) : (
+              <DataTable
+                columns={examColumns}
+                data={data.latestExams}
+                exportFileName="my-latest-marks"
+              />
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Report Highlights */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <div className="rounded-2xl border bg-card p-5">
+          <h2 className="text-lg font-semibold">Report Highlights</h2>
+          <p className="text-sm text-muted-foreground">Strengths and areas to focus</p>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-success/30 bg-success/5 p-4">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={ArrowUp01Icon} className="size-5 text-success" />
+                <p className="text-sm font-semibold">Strongest Subject</p>
+              </div>
+              <div className="mt-2">
+                <p className="font-semibold">
+                  {data.reportSnapshot.strongestSubject?.subjectName || "N/A"}
+                </p>
+                {data.reportSnapshot.strongestSubject && (
+                  <p className="text-sm text-muted-foreground">
+                    {data.reportSnapshot.strongestSubject.mark}% • Grade {data.reportSnapshot.strongestSubject.grade}
+                  </p>
                 )}
               </div>
             </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <div className="rounded-2xl border bg-card p-5">
-              <h2 className="text-lg font-semibold">Report Highlights</h2>
-              <p className="text-sm text-muted-foreground">Strengths and areas to focus</p>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-success/30 bg-success/5 p-4">
-                  <div className="flex items-center gap-2">
-                    <HugeiconsIcon icon={ArrowUp01Icon} className="size-5 text-success" />
-                    <p className="text-sm font-semibold">Strongest Subject</p>
-                  </div>
-                  <div className="mt-2">
-                    <p className="font-semibold">
-                      {data.reportSnapshot.strongestSubject?.subjectName || "N/A"}
-                    </p>
-                    {data.reportSnapshot.strongestSubject && (
-                      <p className="text-sm text-muted-foreground">
-                        {data.reportSnapshot.strongestSubject.mark}% • Grade {data.reportSnapshot.strongestSubject.grade}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-                  <div className="flex items-center gap-2">
-                    <HugeiconsIcon icon={ArrowDown01Icon} className="size-5 text-warning" />
-                    <p className="text-sm font-semibold">Areas for Improvement</p>
-                  </div>
-                  <div className="mt-2">
-                    <p className="font-semibold">
-                      {data.reportSnapshot.weakestSubject?.subjectName || "N/A"}
-                    </p>
-                    {data.reportSnapshot.weakestSubject && (
-                      <p className="text-sm text-muted-foreground">
-                        {data.reportSnapshot.weakestSubject.mark}% • Grade {data.reportSnapshot.weakestSubject.grade}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Right Column */}
-        <div className="lg:col-span-4 space-y-6">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <div className="rounded-2xl border bg-card p-5">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={UserIcon} className="size-5 text-brand" />
-                <h3 className="text-base font-semibold">My Class</h3>
+                <HugeiconsIcon icon={ArrowDown01Icon} className="size-5 text-warning" />
+                <p className="text-sm font-semibold">Areas for Improvement</p>
               </div>
-              {data.class ? (
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Class</span>
-                    <span className="font-medium">{data.class.name}</span>
-                  </div>
-                  {data.class.level && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Level</span>
-                      <Badge variant="outline" className="capitalize">
-                        {data.class.level}
-                      </Badge>
-                    </div>
-                  )}
-                  {data.class.teacher && (
-                    <div className="rounded-xl bg-muted/40 p-3">
-                      <p className="text-xs text-muted-foreground">Class Teacher</p>
-                      <p className="font-medium">{data.class.teacher.name}</p>
-                      <a href={`mailto:${data.class.teacher.email}`} className="text-sm text-brand hover:underline">
-                        {data.class.teacher.email}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-muted-foreground">No class assigned yet.</p>
-              )}
-            </div>
-          </motion.div>
-
-          <div className="rounded-2xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={School01Icon} className="size-5 text-brand" />
-              <h3 className="text-base font-semibold">Subjects</h3>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {data.class?.subjects?.length ? (
-                data.class.subjects.map((subject) => (
-                  <Badge key={subject.id} variant="secondary">
-                    {subject.name}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-sm text-muted-foreground">No subjects assigned.</span>
-              )}
+              <div className="mt-2">
+                <p className="font-semibold">
+                  {data.reportSnapshot.weakestSubject?.subjectName || "N/A"}
+                </p>
+                {data.reportSnapshot.weakestSubject && (
+                  <p className="text-sm text-muted-foreground">
+                    {data.reportSnapshot.weakestSubject.mark}% • Grade {data.reportSnapshot.weakestSubject.grade}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <div className="rounded-2xl border bg-card p-5">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Money01Icon} className="size-5 text-brand" />
-                <h3 className="text-base font-semibold">Fee Status</h3>
-              </div>
-              <div className="mt-4 space-y-3">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Payment progress</span>
-                    <span className="font-medium text-foreground">{Math.round(paymentProgress)}%</span>
-                  </div>
-                  <Progress value={paymentProgress} className="h-2" />
-                </div>
-                <div className="rounded-xl bg-muted/40 p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Balance</span>
-                    <span className="font-semibold text-warning">{fmt(data.feeSummary.balance, currency)}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Paid</span>
-                    <span>{fmt(data.feeSummary.totalPaid, currency)}</span>
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  {data.feeSummary.balance === 0 ? (
-                    <Badge variant="success" className="gap-2">
-                      <HugeiconsIcon icon={CheckmarkCircle01Icon} className="size-4" />
-                      All Fees Paid
-                    </Badge>
-                  ) : data.feeSummary.overdueFees > 0 ? (
-                    <Badge variant="destructive" className="gap-2">
-                      <HugeiconsIcon icon={AlertCircleIcon} className="size-4" />
-                      Overdue fees
-                    </Badge>
-                  ) : (
-                    <Badge variant="warning" className="gap-2">
-                      <HugeiconsIcon icon={TimeQuarterIcon} className="size-4" />
-                      {fmt(data.feeSummary.balance, currency)} outstanding
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
+      {/* Fee Details */}
       {data.fees.length > 0 && (
         <div className="rounded-2xl border bg-card p-5">
           <div className="flex items-center justify-between">
