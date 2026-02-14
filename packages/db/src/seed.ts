@@ -1,8 +1,15 @@
-import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { Plan, Role } from "./index.js";
+import { PrismaClient, Plan, Role, PaymentType, PaymentStatus, PaymentMethod } from "./index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+
+const prisma = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString,
+    }),
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  });
 
 async function main() {
   console.log("🌱 Seeding database...");
@@ -195,9 +202,9 @@ async function main() {
   await prisma.schoolPayment.create({
     data: {
       amount: 750 + 30, // Signup fee + first month
-      type: "SIGNUP_FEE",
-      status: "COMPLETED",
-      paymentMethod: "ONLINE",
+      type: PaymentType.SIGNUP_FEE,
+      status: PaymentStatus.COMPLETED,
+      paymentMethod: PaymentMethod.ONLINE,
       reference: "dodo_session_demo123",
       schoolId: school.id,
     },
