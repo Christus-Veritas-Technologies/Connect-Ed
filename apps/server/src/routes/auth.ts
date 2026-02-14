@@ -434,6 +434,16 @@ auth.post("/refresh", async (c) => {
         return errors.forbidden(c);
       }
 
+      console.log("[AUTH REFRESH] Parent found:", {
+        parentId: parent.id,
+        parentName: parent.name,
+        childrenCount: parent.children?.length || 0,
+        children: parent.children?.map((s: any) => ({
+          id: s.id,
+          name: `${s.firstName} ${s.lastName}`,
+        })) || [],
+      });
+
       const newAccessToken = await generateAccessToken({
         userId: parent.id,
         schoolId: parent.schoolId,
