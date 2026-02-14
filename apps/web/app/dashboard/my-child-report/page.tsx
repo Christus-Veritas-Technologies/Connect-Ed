@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart3, ArrowLeft, Loader2 } from "lucide-react";
 import { useParentChildrenReports } from "@/lib/hooks/use-student-reports";
+import { useParentChildren } from "@/lib/hooks/use-parent-children";
 
 import { StudentReportFull } from "../components/student-report-card";
 import {
@@ -18,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { DashboardBreadcrumbs } from "@/components/dashboard";
 
 export default function MyChildReportPage() {
+  const { childrenCount } = useParentChildren();
   const { data, isLoading } = useParentChildrenReports();
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
 
@@ -69,15 +71,15 @@ export default function MyChildReportPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <DashboardBreadcrumbs items={[{ label: "My Children's Reports" }]} />
+      <DashboardBreadcrumbs items={[{ label: childrenCount === 1 ? "My Child's Report" : "My Children's Reports" }]} />
 
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">
-          My Children&apos;s Reports
+          {childrenCount === 1 ? "My Child's Report" : "My Children's Reports"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Academic performance reports for your children
+          Academic performance {childrenCount === 1 ? "report for your child" : "reports for your children"}
         </p>
       </div>
 
