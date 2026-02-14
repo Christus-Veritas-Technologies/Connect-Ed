@@ -41,7 +41,7 @@ parents.get("/", async (c) => {
 
     const skip = (page - 1) * limit;
 
-    const where: Parameters<typeof db.parent.findMany>[0]["where"] = {
+    const where: any = {
       schoolId,
       ...(search && {
         OR: [

@@ -100,7 +100,7 @@ webhooks.post("/dodo", async (c) => {
         await createNotification({
           schoolId: intermediatePayment.schoolId,
           title: "Payment Received",
-          message: `Payment of ${fmtServer(intermediatePayment.amount, currency)} for ${intermediatePayment.plan} plan has been successfully processed.`,
+          message: `Payment of ${fmtServer(Number(intermediatePayment.amount), currency)} for ${intermediatePayment.plan} plan has been successfully processed.`,
           type: "PAYMENT_SUCCESS",
           priority: "HIGH",
           actionUrl: "/payments",
@@ -156,7 +156,7 @@ webhooks.post("/dodo", async (c) => {
           await createNotification({
             schoolId: failedPayment.schoolId,
             title: "Payment Failed",
-            message: `Payment of ${fmtServer(failedPayment.amount, failCurrency)} for ${failedPayment.plan} plan failed to process.`,
+            message: `Payment of ${fmtServer(Number(failedPayment.amount), failCurrency)} for ${failedPayment.plan} plan failed to process.`,
             type: "PAYMENT_FAILED",
             priority: "HIGH",
             actionUrl: "/payments",

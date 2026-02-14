@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import type { Plan, Role } from "@repo/db";
+import { Role, Plan } from "@repo/db";
 import { verifyAccessToken, verifyParentAccessToken, verifyStudentAccessToken, type AccessTokenPayload, type ParentAccessTokenPayload, type StudentAccessTokenPayload } from "../lib/auth";
 import { errors } from "../lib/response";
 
@@ -9,8 +9,8 @@ declare module "hono" {
     user: AccessTokenPayload;
     userId: string;
     schoolId: string;
-    role: Role;
-    plan: Plan;
+    role: (typeof Role)[keyof typeof Role];
+    plan: (typeof Plan)[keyof typeof Plan];
     // Parent context
     parentId: string;
     parent: ParentAccessTokenPayload;
@@ -94,7 +94,7 @@ export const requireStudentAuth = createMiddleware(async (c, next) => {
 });
 
 // Role-based access middleware
-export const requireRole = (...allowedRoles: Role[]) =>
+export const requireRole = (...allowedRoles: Array<(typeof Role)[keyof typeof Role]>) =>
   createMiddleware(async (c, next) => {
     const role = c.get("role");
 
@@ -106,7 +106,7 @@ export const requireRole = (...allowedRoles: Role[]) =>
   });
 
 // Plan-based access middleware
-export const requirePlan = (...allowedPlans: Plan[]) =>
+export const requirePlan = (...allowedPlans: Array<(typeof Plan)[keyof typeof Plan]>) =>
   createMiddleware(async (c, next) => {
     const plan = c.get("plan");
 

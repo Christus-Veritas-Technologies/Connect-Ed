@@ -320,7 +320,7 @@ chat.post("/rooms/:classId/messages", async (c) => {
         senderRole: user.role,
         senderName: user.name || "Unknown",
         senderAvatar: null,
-        type: messageType as ChatMessageType,
+        type: messageType as (typeof ChatMessageType)[keyof typeof ChatMessageType],
         content,
         metadata: metadata ? (metadata as Record<string, string | number | boolean | null>) : undefined,
         targetStudentId: targetStudentId || metadata?.studentId as string || null,

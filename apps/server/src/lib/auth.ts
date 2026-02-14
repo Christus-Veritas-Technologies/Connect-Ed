@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
-import type { Plan, Role } from "@repo/db";
+import { Role, Plan } from "@repo/db";
 import type { Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 
@@ -18,8 +18,8 @@ const REFRESH_TOKEN_EXPIRY = "7d";
 export interface AccessTokenPayload extends JWTPayload {
   sub: string; // User ID
   schoolId: string;
-  role: Role;
-  plan: Plan;
+  role: (typeof Role)[keyof typeof Role];
+  plan: (typeof Plan)[keyof typeof Plan];
   type: "access";
 }
 
@@ -32,7 +32,7 @@ export interface RefreshTokenPayload extends JWTPayload {
 export interface ParentAccessTokenPayload extends JWTPayload {
   sub: string; // Parent ID
   schoolId: string;
-  plan: Plan;
+  plan: (typeof Plan)[keyof typeof Plan];
   type: "parent_access";
 }
 
@@ -45,7 +45,7 @@ export interface ParentRefreshTokenPayload extends JWTPayload {
 export interface StudentAccessTokenPayload extends JWTPayload {
   sub: string; // Student ID
   schoolId: string;
-  plan: Plan;
+  plan: (typeof Plan)[keyof typeof Plan];
   type: "student_access";
 }
 
@@ -59,8 +59,8 @@ export interface StudentRefreshTokenPayload extends JWTPayload {
 export async function generateAccessToken(payload: {
   userId: string;
   schoolId: string;
-  role: Role;
-  plan: Plan;
+  role: (typeof Role)[keyof typeof Role];
+  plan: (typeof Plan)[keyof typeof Plan];
 }): Promise<string> {
   return new SignJWT({
     sub: payload.userId,
@@ -125,7 +125,7 @@ export async function verifyRefreshToken(
 export async function generateParentAccessToken(payload: {
   parentId: string;
   schoolId: string;
-  plan: Plan;
+  plan: (typeof Plan)[keyof typeof Plan];
 }): Promise<string> {
   return new SignJWT({
     sub: payload.parentId,
@@ -189,7 +189,7 @@ export async function verifyParentRefreshToken(
 export async function generateStudentAccessToken(payload: {
   studentId: string;
   schoolId: string;
-  plan: Plan;
+  plan: (typeof Plan)[keyof typeof Plan];
 }): Promise<string> {
   return new SignJWT({
     sub: payload.studentId,
@@ -309,10 +309,10 @@ export const PLAN_FEATURES = {
 
 // Check if plan has access to a feature
 export function planHasFeature(
-  plan: Plan,
+  plan: (typeof Plan)[keyof typeof Plan],
   feature: keyof (typeof PLAN_FEATURES)["LITE"]
 ): boolean {
-  return !!PLAN_FEATURES[plan][feature];
+  return !!PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES][feature];
 }
 
 /**

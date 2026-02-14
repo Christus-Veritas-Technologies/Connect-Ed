@@ -166,10 +166,10 @@ fees.get("/", async (c) => {
     }
 
     // Build where clause
-    const where: Parameters<typeof db.fee.findMany>[0]["where"] = {
+    const where: any = {
       schoolId,
       ...(studentId && { studentId }),
-      ...(status && { status: status as FeeStatus }),
+      ...(status && { status: status as (typeof FeeStatus)[keyof typeof FeeStatus] }),
       ...(filter === "overdue" && {
         status: { not: FeeStatus.PAID },
         dueDate: { lt: new Date() },
@@ -289,12 +289,12 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
     }
 
     // Calculate total paid including this payment
-    const totalPaid = fee.payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalPaid = fee.payments.reduce((sum, p) => sum + Number(p.amount), 0);
     const newTotal = totalPaid + data.amount;
 
     // Determine new fee status
-    let newStatus: FeeStatus;
-    if (newTotal >= fee.amount) {
+    let newStatus: (typeof FeeStatus)[keyof typeof FeeStatus];
+    if (newTotal >= Number(fee.amount)) {
       newStatus = FeeStatus.PAID;
     } else if (newTotal > 0) {
       newStatus = FeeStatus.PARTIAL;
@@ -308,7 +308,7 @@ fees.post("/:id/payments", zValidator("json", recordPaymentSchema), async (c) =>
         data: {
           feeId,
           amount: data.amount,
-          paymentMethod: data.paymentMethod as PaymentMethod,
+          paymentMethod: data.paymentMethod as (typeof PaymentMethod)[keyof typeof PaymentMethod],
           reference: data.reference,
           notes: data.notes,
           schoolId,
@@ -436,7 +436,7 @@ fees.delete("/payments/:paymentId", async (c) => {
       0
     );
 
-    let newStatus: FeeStatus;
+    let newStatus: (typeof FeeStatus)[keyof typeof FeeStatus];
     if (remainingPaid >= Number(fee.amount)) {
       newStatus = FeeStatus.PAID;
     } else if (remainingPaid > 0) {

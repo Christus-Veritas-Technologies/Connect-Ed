@@ -46,8 +46,11 @@ export const errors = {
   forbidden: (c: Context) =>
     errorResponse(c, "FORBIDDEN", "You do not have permission to access this resource", 403),
 
-  notFound: (c: Context, resource = "Resource") =>
+  notFound: (c: Context, resource: string = "Resource") =>
     errorResponse(c, "NOT_FOUND", `${resource} not found`, 404),
+
+  badRequest: (c: Context, message: string = "Bad request") =>
+    errorResponse(c, "BAD_REQUEST", message, 400),
 
   validationError: (c: Context, details: unknown) =>
     errorResponse(c, "VALIDATION_ERROR", "Invalid request data", 400, details),

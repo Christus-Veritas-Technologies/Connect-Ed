@@ -171,7 +171,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     });
 
     if (!school) {
-      return errors.notFound(c, { error: "School not found" });
+      return errors.notFound(c, "School not found");
     }
 
     // Get plan payment status
@@ -299,7 +299,7 @@ payments.post("/callback", async (c) => {
     });
 
     if (!intermediatePayment) {
-      return errors.notFound(c, { error: "Payment not found" });
+        return errors.notFound(c, "Payment not found");
     }
 
     // Update intermediate payment and school in a transaction
@@ -352,7 +352,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Received",
-        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan has been successfully processed.`,
+        message: `Payment of ${fmtServer(Number(intermediatePayment.amount), (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan has been successfully processed.`,
         type: "PAYMENT_SUCCESS",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -386,7 +386,7 @@ payments.post("/callback", async (c) => {
       await createNotification({
         schoolId: intermediatePayment.schoolId,
         title: "Payment Failed",
-        message: `Payment of ${fmtServer(intermediatePayment.amount, (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan failed to process.`,
+        message: `Payment of ${fmtServer(Number(intermediatePayment.amount), (intermediatePayment.school?.currency || "USD") as CurrencyCode)} for ${intermediatePayment.plan} plan failed to process.`,
         type: "PAYMENT_FAILED",
         priority: "HIGH",
         actionUrl: "/payments",
@@ -434,7 +434,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
     });
 
     if (!intermediatePayment) {
-      return errors.notFound(c, { error: "Payment not found" });
+      return errors.notFound(c, "Payment not found");
     }
 
     // If payment isn't marked as paid yet, update it now along with school
@@ -464,21 +464,21 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
           planPaymentData.paid = true;
         }
 
-        await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
+        await upsertPlanPayment(tx, intermediatePayment!.schoolId, planPaymentData);
 
         // Only set signupFeePaid when the setup fee is included
         const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
         // Update school's payment status and plan details
         await tx.school.update({
-          where: { id: intermediatePayment.schoolId },
+          where: { id: intermediatePayment!.schoolId },
           data: {
             ...(shouldMarkSignupPaid && { signupFeePaid: true }),
-            plan: intermediatePayment.plan,
+            plan: intermediatePayment!.plan,
             nextPaymentDate: getNextPaymentDate(),
-            emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
-            whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-            smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
+            emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
+            whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
+            smsQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].smsQuota,
           },
         });
       });
@@ -596,7 +596,7 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
           status: PaymentStatus.COMPLETED,
           paymentMethod: PaymentMethod.CASH,
           reference: reference || `manual_${Date.now()}`,
-          notes,
+          // notes field doesn't exist in SchoolPayment model
         },
       });
 
@@ -660,7 +660,7 @@ payments.get("/", requireAuth, async (c) => {
 // POST /payments/test-complete/:intermediatePaymentId - Mark payment as paid (development only)
 payments.post("/test-complete/:intermediatePaymentId", async (c) => {
   if (process.env.NODE_ENV === "production") {
-    return errors.notFound(c, { error: "Not found" });
+    return errors.notFound(c, "Not found");
   }
 
   try {
@@ -673,7 +673,7 @@ payments.post("/test-complete/:intermediatePaymentId", async (c) => {
     });
 
     if (!intermediatePayment) {
-      return errors.notFound(c, { error: "Payment not found" });
+      return errors.notFound(c, "Payment not found");
     }
 
     // Update payment and school in transaction (same as callback)

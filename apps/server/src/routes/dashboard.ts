@@ -204,18 +204,18 @@ dashboard.get("/stats", requireAuth, async (c) => {
       ? ((thisMonthStudents - lastMonthStudents) / lastMonthStudents) * 100 
       : thisMonthStudents > 0 ? 100 : 0;
 
-    const totalFees = feeStats._sum.amount || 0;
-    const collectedFees = feeStats._sum.paidAmount || 0;
+    const totalFees = Number(feeStats._sum.amount || 0);
+    const collectedFees = Number(feeStats._sum.paidAmount || 0);
     const pendingFees = totalFees - collectedFees;
     
-    const thisMonthCollected = thisMonthCollections._sum.amount || 0;
-    const lastMonthCollected = lastMonthCollections._sum.amount || 0;
+    const thisMonthCollected = Number(thisMonthCollections._sum.amount || 0);
+    const lastMonthCollected = Number(lastMonthCollections._sum.amount || 0);
     const collectionsTrend = lastMonthCollected > 0 
       ? ((thisMonthCollected - lastMonthCollected) / lastMonthCollected) * 100 
       : thisMonthCollected > 0 ? 100 : 0;
 
-    const totalExpenses = expenseStats._sum.amount || 0;
-    const lastMonthExpenses = lastMonthExpenseStats._sum.amount || 0;
+    const totalExpenses = Number(expenseStats._sum.amount || 0);
+    const lastMonthExpenses = Number(lastMonthExpenseStats._sum.amount || 0);
     const expensesTrend = lastMonthExpenses > 0 
       ? ((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
       : totalExpenses > 0 ? 100 : 0;
@@ -327,7 +327,7 @@ dashboard.get("/overdue-fees", requireAuth, async (c) => {
         id: f.id,
         amount: f.amount,
         paidAmount: f.paidAmount,
-        balance: f.amount - f.paidAmount,
+        balance: Number(f.amount) - Number(f.paidAmount),
         dueDate: f.dueDate,
         description: f.description,
         student: {
@@ -1040,7 +1040,6 @@ dashboard.get("/my-child-class", requireAuth, async (c) => {
             subjects: {
               include: {
                 subject: { select: { id: true, name: true, code: true } },
-                teacher: { select: { id: true, name: true, email: true } },
               },
             },
             students: {
@@ -1071,7 +1070,7 @@ dashboard.get("/my-child-class", requireAuth, async (c) => {
             id: s.subject.id,
             name: s.subject.name,
             code: s.subject.code,
-            teacher: s.teacher ? { id: s.teacher.id, name: s.teacher.name } : null,
+            teacher: null, // SubjectClass doesn't have teacher relation
           })),
           totalStudents: child.class.students.length,
         } : null,
@@ -1280,11 +1279,11 @@ dashboard.get("/student", requireAuth, async (c) => {
     const strongestSubject = sorted.length > 0 ? sorted[sorted.length - 1] : null;
 
     // Calculate fee summary (minimal for dashboard)
-    const totalFees = student.fees.reduce((acc, f) => acc + f.amount, 0);
-    const totalPaid = student.fees.reduce((acc, f) => acc + f.paidAmount, 0);
+    const totalFees = student.fees.reduce((acc, f) => acc + Number(f.amount), 0);
+    const totalPaid = student.fees.reduce((acc, f) => acc + Number(f.paidAmount), 0);
     const overdueFees = student.fees
       .filter((f) => f.status === FeeStatus.OVERDUE)
-      .reduce((acc, f) => acc + (f.amount - f.paidAmount), 0);
+      .reduce((acc, f) => acc + (Number(f.amount) - Number(f.paidAmount)), 0);
 
     return successResponse(c, {
       school: {
@@ -1345,7 +1344,7 @@ dashboard.get("/student", requireAuth, async (c) => {
         description: fee.description,
         amount: fee.amount,
         paidAmount: fee.paidAmount,
-        balance: fee.amount - fee.paidAmount,
+        balance: Number(fee.amount) - Number(fee.paidAmount),
         dueDate: fee.dueDate,
         status: fee.status,
         payments: fee.payments.map((p) => ({
@@ -1520,7 +1519,6 @@ dashboard.get("/student/exams", requireAuth, async (c) => {
           id: result.exam.id,
           name: result.exam.name,
           paper: result.exam.paper,
-          totalMarks: result.exam.totalMarks,
           subject: result.exam.subject,
         },
       };
@@ -1530,7 +1528,7 @@ dashboard.get("/student/exams", requireAuth, async (c) => {
     const totalExams = formattedResults.length;
     const averageMark =
       totalExams > 0
-        ? formattedResults.reduce((sum, r) => sum + (r.mark / r.exam.totalMarks) * 100, 0) / totalExams
+        ? formattedResults.reduce((sum, r) => sum + r.mark, 0) / totalExams
         : 0;
     const passCount = formattedResults.filter((r) => r.isPass).length;
     const failCount = totalExams - passCount;
@@ -1539,7 +1537,7 @@ dashboard.get("/student/exams", requireAuth, async (c) => {
     const subjectAverages = new Map<string, { name: string; total: number; count: number }>();
     formattedResults.forEach((result) => {
       const subjectName = result.exam.subject.name;
-      const percentage = (result.mark / result.exam.totalMarks) * 100;
+      const percentage = result.mark; // Use raw mark since totalMarks not available
       const existing = subjectAverages.get(subjectName);
       if (existing) {
         existing.total += percentage;

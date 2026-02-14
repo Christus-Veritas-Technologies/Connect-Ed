@@ -190,7 +190,7 @@ announcements.post("/:id/comments", requireAuth, async (c) => {
     // Set the appropriate commenter field based on role
     if (role === ("STUDENT" as any)) {
       commentData.studentId = userId;
-    } else if (role === "PARENT") {
+    } else if (role === ("PARENT" as any)) {
       commentData.parentId = userId;
     } else {
       // Admin, Teacher, Receptionist
