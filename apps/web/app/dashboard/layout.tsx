@@ -240,6 +240,7 @@ function AppSidebar({ pathname, user, school, logout }: {
   console.log("[AppSidebar] User role:", user.role, "Is parent:", user.role === "PARENT");
 
   // Filter sections based on user role and school plan
+  // Keep Management and Academics sections for parents even if empty (they'll show parent children links)
   const filteredSections = navSections.map(section => ({
     ...section,
     items: section.items.filter((item) => {
@@ -247,7 +248,13 @@ function AppSidebar({ pathname, user, school, logout }: {
       if (item.plans && !item.plans.includes(school.plan)) return false;
       return true;
     }),
-  })).filter(section => section.items.length > 0);
+  })).filter(section => {
+    // Always keep Management and Academics for parents (even if no items)
+    if (user.role === "PARENT" && (section.label === "Management" || section.label === "Academics")) {
+      return true;
+    }
+    return section.items.length > 0;
+  });
 
   return (
     <Sidebar className="border-none">
