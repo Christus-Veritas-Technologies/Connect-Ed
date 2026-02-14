@@ -18,6 +18,15 @@ export function useParentChildren(): UseParentChildrenReturn {
   // Get children count from auth context
   const childrenCount = user?.children?.length || 0;
   
+  // Debug logging
+  console.log("[useParentChildren] Debug Info:", {
+    userRole: user?.role,
+    childrenArray: user?.children,
+    childrenCount: childrenCount,
+    isLoading: authLoading,
+    user: user,
+  });
+  
   return {
     childrenCount,
     isLoading: authLoading,
