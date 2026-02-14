@@ -11,6 +11,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { api } from "@/lib/api";
+import { useParentChildren } from "@/lib/hooks/use-parent-children";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DashboardBreadcrumbs } from "@/components/dashboard/breadcrumbs";
@@ -43,6 +44,7 @@ interface MyChildClassResponse {
 }
 
 export default function MyChildClassPage() {
+    const { childrenCount } = useParentChildren();
     const { data, isLoading, error } = useQuery({
         queryKey: ["dashboard", "my-child-class"],
         queryFn: () => api.get<MyChildClassResponse>("/dashboard/my-child-class"),
@@ -69,10 +71,10 @@ export default function MyChildClassPage() {
 
     return (
         <div className="space-y-6">
-            <DashboardBreadcrumbs items={[{ label: "My Child's Class", href: "/dashboard/my-child-class" }]} />
+            <DashboardBreadcrumbs items={[{ label: childrenCount === 1 ? "My Child's Class" : "My Children's Class", href: "/dashboard/my-child-class" }]} />
 
             <div>
-                <h1 className="text-2xl font-semibold">My Child's Class</h1>
+                <h1 className="text-2xl font-semibold">{childrenCount === 1 ? "My Child's Class" : "My Children's Class"}</h1>
                 <p className="text-sm text-muted-foreground">Class details, subjects, and teachers</p>
             </div>
 
