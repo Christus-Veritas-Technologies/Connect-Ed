@@ -17,8 +17,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /var/www/app
-            git pull origin main
-            bun install
-            bun run build
+            cd /var/www/app && \
+            git fetch origin && \
+            git reset --hard origin/main && \
+            bun install --frozen-lockfile && \
+            bun run build && \
             pm2 reload all
