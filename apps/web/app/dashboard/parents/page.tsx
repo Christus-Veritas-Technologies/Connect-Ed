@@ -105,7 +105,7 @@ function ParentCard({
                     )}
 
                     {/* Avatar */}
-                    <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-3">
+                    <div className="w-full aspect-square rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-3">
                         <span className="text-3xl font-bold text-white">
                             {getInitials(parent.name)}
                         </span>
@@ -186,7 +186,7 @@ export default function ParentsPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedParent, setSelectedParent] = useState<any>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+    const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>();
 
     // ── Data fetching ──
     const { data, isLoading } = useParents({
@@ -226,18 +226,18 @@ export default function ParentsPage() {
         filterTab === "all"
             ? allParents
             : filterTab === "active"
-                ? allParents.filter((p) => p.isActive)
-                : allParents.filter((p) => !p.isActive);
+                ? allParents.filter((p: any) => p.isActive)
+                : allParents.filter((p: any) => !p.isActive);
 
     // Recent 8 parents for the top grid (only when not searching)
     const recentParents = !debouncedSearch ? filteredParents.slice(0, 8) : [];
 
     // Stats — derived from the full dataset
     const totalParents = pagination.total;
-    const activeParents = allParents.filter((p) => p.isActive).length;
-    const inactiveParents = allParents.filter((p) => !p.isActive).length;
+    const activeParents = allParents.filter((p: any) => p.isActive).length;
+    const inactiveParents = allParents.filter((p: any) => !p.isActive).length;
     const totalChildren = allParents.reduce(
-        (sum, p) => sum + (p.children?.length || 0),
+        (sum: number, p: any) => sum + (p.children?.length || 0),
         0
     );
 
@@ -254,7 +254,7 @@ export default function ParentsPage() {
         if (selectedIds.size === filteredParents.length) {
             setSelectedIds(new Set());
         } else {
-            setSelectedIds(new Set(filteredParents.map((p) => p.id)));
+            setSelectedIds(new Set(filteredParents.map((p: any) => p.id)));
         }
     };
 
@@ -300,7 +300,7 @@ export default function ParentsPage() {
             return;
         const ids = Array.from(selectedIds);
         ids.forEach((id) => {
-            deleteMutation.mutate(id, {
+            deleteMutation.mutate(id as string, {
                 onSuccess: () => {
                     setSelectedIds((prev) => {
                         const next = new Set(prev);
@@ -317,12 +317,12 @@ export default function ParentsPage() {
     const handleExportCSV = () => {
         const toExport =
             selectedIds.size > 0
-                ? filteredParents.filter((p) => selectedIds.has(p.id))
+                ? filteredParents.filter((p: any) => selectedIds.has(p.id))
                 : filteredParents;
         if (toExport.length === 0) return;
 
         exportDataAsCSV(
-            toExport.map((p) => ({
+            toExport.map((p: any) => ({
                 Name: p.name,
                 Email: p.email,
                 Phone: p.phone || "—",
@@ -337,12 +337,12 @@ export default function ParentsPage() {
     const handleExportPDF = () => {
         const toExport =
             selectedIds.size > 0
-                ? filteredParents.filter((p) => selectedIds.has(p.id))
+                ? filteredParents.filter((p: any) => selectedIds.has(p.id))
                 : filteredParents;
         if (toExport.length === 0) return;
 
         exportToPDF(
-            toExport.map((p) => ({
+            toExport.map((p: any) => ({
                 name: p.name,
                 email: p.email,
                 phone: p.phone || "—",
@@ -453,14 +453,14 @@ export default function ParentsPage() {
             <div className="flex items-center justify-between">
                 <FilterTabs
                     tabs={[
-                        { value: "all", label: "All" },
-                        { value: "active", label: "Active" },
-                        { value: "inactive", label: "Inactive" },
+                        { key: "all", label: "All" },
+                        { key: "active", label: "Active" },
+                        { key: "inactive", label: "Inactive" },
                     ]}
-                    value={filterTab}
+                    active={filterTab}
                     onChange={setFilterTab}
                 />
-                <ViewToggle value={viewMode} onChange={setViewMode} />
+                <ViewToggle mode={viewMode} onChange={setViewMode} />
             </div>
 
             {/* Bulk actions */}
@@ -469,8 +469,7 @@ export default function ParentsPage() {
                     <BulkActions
                         count={selectedIds.size}
                         onDelete={handleBulkDelete}
-                        onSelectAll={selectAll}
-                        allSelected={selectedIds.size === filteredParents.length}
+                        onClearSelection={() => setSelectedIds(new Set())}
                     />
                 )}
             </AnimatePresence>
@@ -482,6 +481,7 @@ export default function ParentsPage() {
                 </div>
             ) : filteredParents.length === 0 ? (
                 <EmptyState
+                    icon={<Users className="size-12" />}
                     title="No parents found"
                     description={
                         debouncedSearch
@@ -561,7 +561,7 @@ export default function ParentsPage() {
                                             </TableCell>
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="size-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                                                    <div className="size-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                                                         {getInitials(parent.name)}
                                                     </div>
                                                     {parent.name}
@@ -642,7 +642,10 @@ export default function ParentsPage() {
                 <Pagination
                     page={page}
                     totalPages={pagination.totalPages}
+                    total={pagination.total}
+                    limit={pagination.limit}
                     onPageChange={setPage}
+                    noun="parents"
                 />
             )}
 
