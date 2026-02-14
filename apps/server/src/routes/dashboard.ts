@@ -1452,4 +1452,126 @@ dashboard.get("/notifications/unread-counts", requireAuth, async (c) => {
   }
 });
 
+// GET /dashboard/student/exams - Get student's exam results
+dashboard.get("/student/exams", requireAuth, async (c) => {
+  try {
+    const role = c.get("role");
+    if (role !== ("STUDENT" as any)) {
+      return errors.forbidden(c);
+    }
+    const studentId = c.get("userId");
+    const schoolId = c.get("schoolId");
+    const subjectId = c.req.query("subjectId");
+
+    // Build query filter
+    const where: any = {
+      studentId,
+      exam: { schoolId },
+    };
+    if (subjectId) {
+      where.exam.subjectId = subjectId;
+    }
+
+    // Get all exam results for the student
+    const examResults = await db.examResult.findMany({
+      where,
+      include: {
+        exam: {
+          include: {
+            subject: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Get grades for pass/fail determination
+    const allGrades = await db.grade.findMany({ where: { schoolId } });
+
+    // Transform results
+    const formattedResults = examResults.map((result) => {
+      // Determine if pass based on grades
+      const subjectGrades = allGrades.filter(
+        (g) => g.subjectId === result.exam.subjectId || g.subjectId === null
+      );
+      const grade = subjectGrades.find(
+        (g) => result.mark >= g.minMark && result.mark <= g.maxMark
+      );
+      const isPass = grade ? grade.isPass : result.mark >= 50;
+
+      // Determine grade name
+      let gradeName = grade?.name || "N/A";
+      if (!grade) {
+        if (result.mark >= 90) gradeName = "A";
+        else if (result.mark >= 80) gradeName = "B";
+        else if (result.mark >= 70) gradeName = "C";
+        else if (result.mark >= 60) gradeName = "D";
+        else if (result.mark >= 50) gradeName = "E";
+        else gradeName = "F";
+      }
+
+      return {
+        id: result.id,
+        mark: result.mark,
+        grade: gradeName,
+        isPass,
+        createdAt: result.createdAt,
+        exam: {
+          id: result.exam.id,
+          name: result.exam.name,
+          paper: result.exam.paper,
+          totalMarks: result.exam.totalMarks,
+          subject: result.exam.subject,
+        },
+      };
+    });
+
+    // Calculate stats
+    const totalExams = formattedResults.length;
+    const averageMark =
+      totalExams > 0
+        ? formattedResults.reduce((sum, r) => sum + (r.mark / r.exam.totalMarks) * 100, 0) / totalExams
+        : 0;
+    const passCount = formattedResults.filter((r) => r.isPass).length;
+    const failCount = totalExams - passCount;
+
+    // Calculate subject averages for best/weakest
+    const subjectAverages = new Map<string, { name: string; total: number; count: number }>();
+    formattedResults.forEach((result) => {
+      const subjectName = result.exam.subject.name;
+      const percentage = (result.mark / result.exam.totalMarks) * 100;
+      const existing = subjectAverages.get(subjectName);
+      if (existing) {
+        existing.total += percentage;
+        existing.count += 1;
+      } else {
+        subjectAverages.set(subjectName, { name: subjectName, total: percentage, count: 1 });
+      }
+    });
+
+    const subjects = Array.from(subjectAverages.values()).map((s) => ({
+      name: s.name,
+      average: s.total / s.count,
+    }));
+
+    const bestSubject = subjects.length > 0 ? subjects.reduce((best, s) => (s.average > best.average ? s : best)) : null;
+    const weakestSubject = subjects.length > 0 ? subjects.reduce((weak, s) => (s.average < weak.average ? s : weak)) : null;
+
+    return successResponse(c, {
+      examResults: formattedResults,
+      stats: {
+        totalExams,
+        averageMark: Math.round(averageMark * 10) / 10,
+        passCount,
+        failCount,
+        bestSubject,
+        weakestSubject,
+      },
+    });
+  } catch (error) {
+    console.error("Student exams error:", error);
+    return errors.internalError(c);
+  }
+});
+
 export default dashboard;
