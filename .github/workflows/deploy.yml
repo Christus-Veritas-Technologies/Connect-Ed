@@ -17,10 +17,11 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            export PATH="$HOME/.bun/bin:$PATH" && \
-            cd /var/www/app && \
-            git fetch origin && \
-            git reset --hard origin/main && \
-            bun install --frozen-lockfile && \
-            bun run build && \
+            set -e
+            export PATH="$HOME/.bun/bin:$PATH"
+            cd /var/www/app
+            git fetch origin
+            git reset --hard origin/main
+            bun install --frozen-lockfile
+            bun run build
             pm2 reload all
