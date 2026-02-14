@@ -183,11 +183,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       return errors.badRequest(c, "One or more students not found");
     }
 
-    // Separate students into two groups
-    const studentsWithoutParent = students.filter(s => !s.parentId);
-    const studentsWithParent = students.filter(s => s.parentId);
-
-    console.log(`[POST /parents] Students without parent: ${studentsWithoutParent.length}, with parent: ${studentsWithParent.length}`);
+    console.log(`[POST /parents] Linking ${students.length} student(s) to new parent`);
 
     // Generate random password
     const generatedPassword = generateRandomPassword();
@@ -206,34 +202,16 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       },
     });
 
-    // Link students without parents directly
-    if (studentsWithoutParent.length > 0) {
+    // Link all selected students to the new parent (allows multiple parents per student via separate parent records)
+    if (students.length > 0) {
       await db.student.updateMany({
         where: {
-          id: { in: studentsWithoutParent.map(s => s.id) },
+          id: { in: students.map(s => s.id) },
         },
         data: {
           parentId: parent.id,
         },
       });
-    }
-
-    // Create parent requests for students who already have a parent
-    const parentRequests = [];
-    if (studentsWithParent.length > 0) {
-      for (const student of studentsWithParent) {
-        parentRequests.push(
-          db.parentRequest.create({
-            data: {
-              requestingParentId: parent.id,
-              existingParentId: student.parentId!,
-              studentId: student.id,
-              schoolId,
-            },
-          })
-        );
-      }
-      await Promise.all(parentRequests);
     }
 
     // Fetch parent with children
@@ -260,17 +238,9 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       select: { id: true },
     });
 
-    const linkedChildrenNames = studentsWithoutParent.map((s) => `${s.firstName} ${s.lastName}`).join(", ");
-    const requestedChildrenNames = studentsWithParent.map((s) => `${s.firstName} ${s.lastName}`).join(", ");
-    
-    let adminMessage = `${fullName} has been added`;
-    if (studentsWithoutParent.length > 0) {
-      adminMessage += ` and linked to: ${linkedChildrenNames}`;
-    }
-    if (studentsWithParent.length > 0) {
-      adminMessage += studentsWithoutParent.length > 0 ? `. Requests sent for: ${requestedChildrenNames}` : ` with requests pending for: ${requestedChildrenNames}`;
-    }
-    adminMessage += ".";
+    const linkedChildrenNames = students.map((s) => `${s.firstName} ${s.lastName}`).join(", ");
+
+    const adminMessage = `${fullName} has been added and linked to: ${linkedChildrenNames}.`;
 
     for (const admin of admins) {
       notifications.push(
@@ -288,14 +258,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     }
 
     // 2. Welcome notification for new parent
-    let parentMessage = "";
-    if (studentsWithoutParent.length > 0 && studentsWithParent.length === 0) {
-      parentMessage = `You've been linked to your ${studentsWithoutParent.length > 1 ? "children" : "child"}: ${linkedChildrenNames}. Check your email for login credentials.`;
-    } else if (studentsWithoutParent.length === 0 && studentsWithParent.length > 0) {
-      parentMessage = `Requests have been sent to existing parents for: ${requestedChildrenNames}. You'll be notified once they accept.`;
-    } else {
-      parentMessage = `You've been linked to: ${linkedChildrenNames}. Requests sent for: ${requestedChildrenNames}.`;
-    }
+    const parentMessage = `You've been linked to your ${students.length > 1 ? "children" : "child"}: ${linkedChildrenNames}. Check your email for login credentials.`;
 
     notifications.push(
       createNotification({
@@ -310,28 +273,6 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       })
     );
 
-    // 3. Notify existing parents about new parent requests
-    for (const student of studentsWithParent) {
-      notifications.push(
-        createNotification({
-          type: NotificationType.SYSTEM_ALERT,
-          priority: NotificationPriority.HIGH,
-          title: "New Parent Request",
-          message: `${fullName} has requested to be added as a parent for ${student.firstName} ${student.lastName}. Please review and respond.`,
-          actionUrl: `/dashboard/parent-requests`,
-          schoolId,
-          userId: null,
-          metadata: { 
-            role: "PARENT",
-            parentId: student.parentId,
-            requestingParentName: fullName,
-            studentName: `${student.firstName} ${student.lastName}`,
-          },
-          actorName: fullName,
-        })
-      );
-    }
-
     // Execute all notifications
     await Promise.all(notifications);
 
@@ -341,13 +282,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
       getSchoolNotificationPrefs(schoolId),
     ]);
 
-    let emailAdditionalInfo = "";
-    if (studentsWithoutParent.length > 0) {
-      emailAdditionalInfo = `You have been linked to your ${studentsWithoutParent.length > 1 ? "children" : "child"}: ${linkedChildrenNames}.`;
-    }
-    if (studentsWithParent.length > 0) {
-      emailAdditionalInfo += studentsWithoutParent.length > 0 ? ` Requests have been sent for: ${requestedChildrenNames}.` : `Requests have been sent to existing parents for: ${requestedChildrenNames}. You will be notified once they accept.`;
-    }
+    const emailAdditionalInfo = `You have been linked to your ${students.length > 1 ? "children" : "child"}: ${linkedChildrenNames}.`;
 
     if (prefs.email) {
       await sendEmail({
@@ -358,7 +293,7 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
           email: parent.email,
           password: generatedPassword,
           role: "PARENT",
-          schoolName: school?.name,
+          schoolName: school?.name || undefined,
           additionalInfo: emailAdditionalInfo,
         }),
         schoolId,
@@ -367,26 +302,19 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     }
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${fullName} (${parent.id})`);
-    console.log(`[POST /parents] Direct links: ${studentsWithoutParent.length}, Requests: ${studentsWithParent.length}`);
+    console.log(`[POST /parents] Linked students: ${students.length}`);
     
-    // Return parent with generated password and request info
+    // Return parent with generated password and linked student info
     return successResponse(
       c,
       {
         parent: parentWithChildren,
         password: generatedPassword,
-        linkedStudents: studentsWithoutParent.map(s => ({
+        linkedStudents: students.map(s => ({
           id: s.id,
           firstName: s.firstName,
           lastName: s.lastName,
           admissionNumber: s.admissionNumber,
-        })),
-        requestedStudents: studentsWithParent.map(s => ({
-          id: s.id,
-          firstName: s.firstName,
-          lastName: s.lastName,
-          admissionNumber: s.admissionNumber,
-          existingParentName: s.parent?.name,
         })),
       },
       201
