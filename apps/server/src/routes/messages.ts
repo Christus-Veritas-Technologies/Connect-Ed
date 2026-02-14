@@ -106,7 +106,7 @@ messages.post("/send-reminders", zValidator("json", sendRemindersSchema), async 
 
     for (const fee of fees) {
       const studentName = `${fee.student.firstName} ${fee.student.lastName}`;
-      const amountDue = fee.amount - (fee.paidAmount || 0);
+      const amountDue = Number(fee.amount) - Number(fee.paidAmount || 0);
 
       for (const channel of channels) {
         // Check quota
@@ -146,12 +146,11 @@ messages.post("/send-reminders", zValidator("json", sendRemindersSchema), async 
         await db.messageLog.create({
           data: {
             schoolId,
-            type: channel.toUpperCase() as MessageType,
+            type: channel.toUpperCase() as (typeof MessageType)[keyof typeof MessageType],
             recipient,
             subject: `Fee Reminder for ${studentName}`,
             content: `Dear Parent/Guardian,\n\nThis is a reminder that ${studentName} has an outstanding fee of ${fmtServer(amountDue, (school.currency || "USD") as CurrencyCode)} due on ${fee.dueDate.toLocaleDateString()}.\n\nPlease make the payment at your earliest convenience.`,
             status: MessageStatus.SENT, // Would be PENDING until confirmed
-            feeId: fee.id,
           },
         });
 

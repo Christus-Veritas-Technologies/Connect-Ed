@@ -282,11 +282,18 @@ teachers.patch("/:id", async (c) => {
 
     const existing = await db.user.findFirst({
       where: { id, schoolId, role: Role.TEACHER },
+      include: {
+        classesTeaching: { select: { classId: true } },
+      },
     });
 
     if (!existing) {
       return errors.notFound(c, "Teacher");
     }
+
+    // Store old class IDs for chat sync
+    const oldClassIds = existing.classesTeaching.map((tc) => tc.classId);
+    const newClassIds = data.classIds !== undefined ? data.classIds : oldClassIds;
 
     // If email is being changed, check for uniqueness
     if (data.email && data.email.toLowerCase() !== existing.email) {

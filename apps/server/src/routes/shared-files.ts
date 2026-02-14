@@ -86,7 +86,7 @@ staffRoutes.post("/upload", async (c) => {
     if (recipientsRaw) {
       try {
         const recipients = JSON.parse(recipientsRaw);
-        await shareFileWithRecipients(sharedFile.id, recipients, schoolId, user.name);
+        await shareFileWithRecipients(sharedFile.id, recipients, schoolId, (user as any)?.name || "Unknown");
       } catch {
         // File uploaded successfully, sharing failed — not critical
         console.error("Failed to share file with recipients");
@@ -308,7 +308,7 @@ staffRoutes.post("/:id/share", zValidator("json", shareSchema), async (c) => {
       return errors.notFound(c, "File");
     }
 
-    await shareFileWithRecipients(fileId, recipients, schoolId, user.name);
+    await shareFileWithRecipients(fileId, recipients, schoolId, (user as any)?.name || "Unknown");
 
     return successResponse(c, { message: "File shared successfully" });
   } catch (error) {

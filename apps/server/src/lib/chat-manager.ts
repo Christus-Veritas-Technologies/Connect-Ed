@@ -154,7 +154,7 @@ export async function handleIncomingMessage(
         senderRole: ws.data.role,
         senderName: ws.data.name,
         senderAvatar: null,
-        type: messageType as ChatMessageType,
+        type: messageType as (typeof ChatMessageType)[keyof typeof ChatMessageType],
         content,
         metadata: metadata || undefined,
         targetStudentId,

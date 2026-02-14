@@ -79,7 +79,7 @@ notifications.post("/:id/read", requireAuth, async (c) => {
     });
 
     if (!notification) {
-      return errors.notFound(c, { error: "Notification not found" });
+      return errors.notFound(c, "Notification not found");
     }
 
     const updated = await db.notification.update({
@@ -173,7 +173,7 @@ notifications.delete("/:id", requireAuth, async (c) => {
     });
 
     if (!notification) {
-      return errors.notFound(c, { error: "Notification not found" });
+      return errors.notFound(c, "Notification not found");
     }
 
     await db.notification.delete({
@@ -195,8 +195,8 @@ export async function createNotification(params: {
   userId?: string;
   title: string;
   message: string;
-  type: NotificationType;
-  priority?: NotificationPriority;
+  type: (typeof NotificationType)[keyof typeof NotificationType];
+  priority?: (typeof NotificationPriority)[keyof typeof NotificationPriority];
   actionUrl?: string;
   metadata?: any;
   actorName?: string;

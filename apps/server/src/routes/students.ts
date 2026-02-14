@@ -28,7 +28,7 @@ students.get("/", async (c) => {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: Parameters<typeof db.student.findMany>[0]["where"] = {
+    const where: any = {
       schoolId,
       ...(search && {
         OR: [
@@ -319,7 +319,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
             email: student.email,
             password: generatedPassword,
             role: "STUDENT",
-            schoolName: school?.name,
+            schoolName: school?.name || "School",
           }),
           schoolId,
           type: "KIN",

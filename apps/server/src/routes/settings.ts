@@ -189,8 +189,6 @@ settings.get("/profile", async (c) => {
           lastName: true,
           email: true,
           phone: true,
-          notifyInApp: true,
-          notifyEmail: true,
           createdAt: true,
         },
       });
@@ -206,8 +204,8 @@ settings.get("/profile", async (c) => {
           email: student.email,
           phone: student.phone,
           role: "STUDENT",
-          notifyInApp: student.notifyInApp ?? true,
-          notifyEmail: student.notifyEmail ?? true,
+          notifyInApp: true, // Default for students
+          notifyEmail: true, // Default for students
           createdAt: student.createdAt,
         },
       });
@@ -266,8 +264,6 @@ settings.patch("/profile", zValidator("json", userPrefsSchema), async (c) => {
           lastName: true,
           email: true,
           phone: true,
-          notifyInApp: true,
-          notifyEmail: true,
         },
       });
 
@@ -278,8 +274,8 @@ settings.patch("/profile", zValidator("json", userPrefsSchema), async (c) => {
           email: student.email,
           phone: student.phone,
           role: "STUDENT",
-          notifyInApp: student.notifyInApp,
-          notifyEmail: student.notifyEmail,
+          notifyInApp: true, // Default for students
+          notifyEmail: true, // Default for students
         },
       });
     }
@@ -412,7 +408,7 @@ settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
           subject: `Holiday Period - ${updatedSchool.name}`,
           html: generatePeriodChangeEmail({
             name: user.name,
-            schoolName: updatedSchool.name,
+            schoolName: updatedSchool.name || "School",
             action: "ended",
             termNumber: school.currentTermNumber!,
             termYear: school.currentTermYear!,
@@ -522,7 +518,7 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
           subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
           html: generatePeriodChangeEmail({
             name: user.name,
-            schoolName: updatedSchool.name,
+            schoolName: updatedSchool.name || "School",
             action: "started",
             termNumber: data.termNumber,
             termYear: data.year,
