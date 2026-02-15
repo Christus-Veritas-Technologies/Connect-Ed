@@ -5,6 +5,8 @@ import { PLAN_FEATURES } from "../lib/auth";
 import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
+import { sendWhatsApp } from "../lib/whatsapp";
+import { sendSms } from "../lib/sms";
 
 const webhooks = new Hono();
 
@@ -129,6 +131,14 @@ webhooks.post("/dodo", async (c) => {
           });
         }
 
+        const successMsg = `✅ Payment of ${fmtServer(Number(intermediatePayment.amount), currency)} for your ${intermediatePayment.plan} plan has been processed successfully.`;
+        if (prefs.whatsapp && intermediatePayment.user.phone) {
+          await sendWhatsApp({ phone: intermediatePayment.user.phone, content: successMsg, schoolId: intermediatePayment.schoolId });
+        }
+        if (prefs.sms && intermediatePayment.user.phone) {
+          await sendSms({ phone: intermediatePayment.user.phone, content: successMsg, schoolId: intermediatePayment.schoolId });
+        }
+
         console.log(`Dodo payment succeeded for school ${intermediatePayment.schoolId}, plan: ${intermediatePayment.plan}`);
         break;
       }
@@ -182,6 +192,14 @@ webhooks.post("/dodo", async (c) => {
               schoolId: failedPayment.schoolId,
               type: "SALES",
             });
+          }
+
+          const failMsg = `⚠️ Your payment of ${fmtServer(Number(failedPayment.amount), failCurrency)} for the ${failedPayment.plan} plan failed. Please try again or contact support.`;
+          if (failPrefs.whatsapp && failedPayment.user.phone) {
+            await sendWhatsApp({ phone: failedPayment.user.phone, content: failMsg, schoolId: failedPayment.schoolId });
+          }
+          if (failPrefs.sms && failedPayment.user.phone) {
+            await sendSms({ phone: failedPayment.user.phone, content: failMsg, schoolId: failedPayment.schoolId });
           }
         }
 

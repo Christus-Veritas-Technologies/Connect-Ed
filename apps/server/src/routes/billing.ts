@@ -6,6 +6,9 @@ import {
   generateLockdownEmail,
   generateFinalWarningEmail,
 } from "../lib/email";
+import { sendWhatsApp } from "../lib/whatsapp";
+import { sendSms } from "../lib/sms";
+import { getSchoolNotificationPrefs } from "./notifications";
 
 const billing = new Hono();
 
@@ -39,7 +42,7 @@ billing.post("/check-overdue", async (c) => {
       include: {
         users: {
           where: { role: "ADMIN", isActive: true },
-          select: { email: true, name: true },
+          select: { email: true, name: true, phone: true },
         },
       },
     });
@@ -58,58 +61,125 @@ billing.post("/check-overdue", async (c) => {
       const adminName = school.users[0]?.name || "Admin";
       const schoolName = school.name || "Your School";
 
+      // Check notification preferences for this school
+      const prefs = await getSchoolNotificationPrefs(school.id);
+
       if (daysOverdue < 3) {
         // Grace period — send daily reminder (day 0, 1, 2 → grace day 1, 2, 3)
         const graceDay = daysOverdue + 1;
 
         for (const email of adminEmails) {
-          await sendEmail({
-            to: email,
-            subject: `Payment Reminder (Day ${graceDay} of 3) – ${schoolName}`,
-            html: generateGraceReminderEmail({
-              name: adminName,
-              schoolName,
-              graceDay,
-              dueDate: school.nextPaymentDate,
-              plan: school.plan,
-            }),
-            schoolId: school.id,
-            type: "SALES",
-          });
+          if (prefs.email) {
+            await sendEmail({
+              to: email,
+              subject: `Payment Reminder (Day ${graceDay} of 3) – ${schoolName}`,
+              html: generateGraceReminderEmail({
+                name: adminName,
+                schoolName,
+                graceDay,
+                dueDate: school.nextPaymentDate,
+                plan: school.plan,
+              }),
+              schoolId: school.id,
+              type: "SALES",
+            });
+          }
+        }
+
+        // Send WhatsApp + SMS to admins with phone numbers
+        for (const user of school.users) {
+          if (user.phone) {
+            if (prefs.whatsapp) {
+              await sendWhatsApp({
+                phone: user.phone,
+                content: `⏰ *Payment Reminder (Day ${graceDay}/3)*\n\nHi ${user.name},\n\nYour payment for *${schoolName}* is overdue. You have *${3 - graceDay} day${3 - graceDay !== 1 ? "s" : ""}* left before access is suspended.\n\nPlease make your payment as soon as possible.\n\n_Connect-Ed_`,
+                schoolId: school.id,
+              });
+            }
+            if (prefs.sms) {
+              await sendSms({
+                phone: user.phone,
+                content: `Payment Reminder: Day ${graceDay}/3 for ${schoolName}. ${3 - graceDay} day(s) left before access is suspended. Pay now. - Connect-Ed`,
+                schoolId: school.id,
+              });
+            }
+          }
         }
 
         graceReminders++;
       } else if (daysOverdue === 3) {
-        // Day 4 — lockdown just kicked in. Send the final warning email.
+        // Day 4 — lockdown just kicked in. Send the final warning.
         for (const email of adminEmails) {
-          await sendEmail({
-            to: email,
-            subject: `⚠️ Access Suspended – ${schoolName}`,
-            html: generateLockdownEmail({
-              name: adminName,
-              schoolName,
-              plan: school.plan,
-            }),
-            schoolId: school.id,
-            type: "SALES",
-          });
+          if (prefs.email) {
+            await sendEmail({
+              to: email,
+              subject: `⚠️ Access Suspended – ${schoolName}`,
+              html: generateLockdownEmail({
+                name: adminName,
+                schoolName,
+                plan: school.plan,
+              }),
+              schoolId: school.id,
+              type: "SALES",
+            });
+          }
+        }
+
+        for (const user of school.users) {
+          if (user.phone) {
+            if (prefs.whatsapp) {
+              await sendWhatsApp({
+                phone: user.phone,
+                content: `🔒 *Access Suspended*\n\nHi ${user.name},\n\nAccess to *${schoolName}* on Connect-Ed has been suspended due to non-payment.\n\nAll users have been locked out. Pay now to restore access immediately.\n\n_Connect-Ed_`,
+                schoolId: school.id,
+              });
+            }
+            if (prefs.sms) {
+              await sendSms({
+                phone: user.phone,
+                content: `ACCESS SUSPENDED: ${schoolName} has been locked due to non-payment. Pay now to restore access. - Connect-Ed`,
+                schoolId: school.id,
+              });
+            }
+          }
         }
 
         lockdowns++;
       } else if (daysOverdue === 7) {
         // Day 8 — final "your school will be removed" email
         for (const email of adminEmails) {
-          await sendEmail({
-            to: email,
-            subject: `🚨 Final Notice: School Removal – ${schoolName}`,
-            html: generateFinalWarningEmail({
-              name: adminName,
-              schoolName,
-              plan: school.plan,
-            }),
-            schoolId: school.id,
-            type: "SALES",
-          });
+          if (prefs.email) {
+            await sendEmail({
+              to: email,
+              subject: `🚨 Final Notice: School Removal – ${schoolName}`,
+              html: generateFinalWarningEmail({
+                name: adminName,
+                schoolName,
+                plan: school.plan,
+              }),
+              schoolId: school.id,
+              type: "SALES",
+            });
+          }
+        }
+
+        for (const user of school.users) {
+          if (user.phone) {
+            if (prefs.whatsapp) {
+              await sendWhatsApp({
+                phone: user.phone,
+                content: `🚨 *FINAL NOTICE*\n\nHi ${user.name},\n\n*${schoolName}* will be permanently removed from Connect-Ed if payment is not received immediately.\n\nAll data will be deleted. This action is irreversible.\n\nPay now to prevent this.\n\n_Connect-Ed_`,
+                schoolId: school.id,
+              });
+            }
+            if (prefs.sms) {
+              await sendSms({
+                phone: user.phone,
+                content: `FINAL NOTICE: ${schoolName} will be removed from Connect-Ed. Pay immediately to prevent permanent data deletion. - Connect-Ed`,
+                schoolId: school.id,
+              });
+            }
+          }
         }
 
         alreadyLocked++;

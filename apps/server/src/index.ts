@@ -21,6 +21,7 @@ import {
 
 // Import routes
 import auth from "./routes/auth";
+import admins from "./routes/admins";
 import students from "./routes/students";
 import parents from "./routes/parents";
 import fees from "./routes/fees";
@@ -93,6 +94,7 @@ app.get("/health", (c) => {
 
 // Mount routes
 app.route("/auth", auth);
+app.route("/admins", admins);
 app.route("/students", students);
 app.route("/parents", parents);
 app.route("/fees", fees);

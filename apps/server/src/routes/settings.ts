@@ -7,6 +7,7 @@ import { updateSchoolSchema, startTermSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePeriodChangeEmail } from "../lib/email";
+import { notifyGeneric } from "../lib/notify";
 import { sendAllReportsToParents } from "../lib/report-dispatch";
 
 const settings = new Hono();
@@ -376,14 +377,12 @@ settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
       },
     });
 
-    // Check school notification preferences
-    const prefs = await getSchoolNotificationPrefs(schoolId);
-
-    // Create notification and send email to each user (respecting preferences)
+    // Create notification and send email/whatsapp/sms to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
       // Create in-app notification (createNotification already checks prefs)
       await createNotification({
@@ -401,23 +400,24 @@ settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
         actorName: "Connect-Ed",
       });
 
-      // Send email notification (only if email notifications enabled)
-      if (prefs.email) {
-        await sendEmail({
-          to: user.email,
-          subject: `Holiday Period - ${updatedSchool.name}`,
-          html: generatePeriodChangeEmail({
-            name: user.name,
-            schoolName: updatedSchool.name || "School",
-            action: "ended",
-            termNumber: school.currentTermNumber!,
-            termYear: school.currentTermYear!,
-            newPeriod: "holiday",
-          }),
-          schoolId,
-          type: "NOREPLY",
-        });
-      }
+      // Send multi-channel notification
+      await notifyGeneric({
+        schoolId,
+        email: user.email,
+        phone: user.phone || undefined,
+        subject: `Holiday Period - ${updatedSchool.name}`,
+        emailHtml: generatePeriodChangeEmail({
+          name: user.name,
+          schoolName: updatedSchool.name || "School",
+          action: "ended",
+          termNumber: school.currentTermNumber!,
+          termYear: school.currentTermYear!,
+          newPeriod: "holiday",
+        }),
+        whatsappContent: `🌴 *Holiday Period Started*\n\nHi ${user.name},\n\nTerm ${school.currentTermNumber} of ${school.currentTermYear} at *${updatedSchool.name}* has ended. Enjoy the holiday break!\n\n_Sent via Connect-Ed_`,
+        smsContent: `Holiday Period: Term ${school.currentTermNumber} at ${updatedSchool.name} has ended. Enjoy the break!`,
+        emailType: "NOREPLY",
+      });
     });
 
     await Promise.all(notificationPromises);
@@ -486,14 +486,12 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
       },
     });
 
-    // Check school notification preferences
-    const prefs = await getSchoolNotificationPrefs(schoolId);
-
-    // Create notification and send email to each user (respecting preferences)
+    // Create notification and send email/whatsapp/sms to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
       // Create in-app notification (createNotification already checks prefs)
       await createNotification({
@@ -511,23 +509,24 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
         actorName: "Connect-Ed",
       });
 
-      // Send email notification (only if email notifications enabled)
-      if (prefs.email) {
-        await sendEmail({
-          to: user.email,
-          subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
-          html: generatePeriodChangeEmail({
-            name: user.name,
-            schoolName: updatedSchool.name || "School",
-            action: "started",
-            termNumber: data.termNumber,
-            termYear: data.year,
-            newPeriod: "term",
-          }),
-          schoolId,
-          type: "NOREPLY",
-        });
-      }
+      // Send multi-channel notification
+      await notifyGeneric({
+        schoolId,
+        email: user.email,
+        phone: user.phone || undefined,
+        subject: `Term ${data.termNumber} Has Started - ${updatedSchool.name}`,
+        emailHtml: generatePeriodChangeEmail({
+          name: user.name,
+          schoolName: updatedSchool.name || "School",
+          action: "started",
+          termNumber: data.termNumber,
+          termYear: data.year,
+          newPeriod: "term",
+        }),
+        whatsappContent: `🎓 *Term ${data.termNumber} Has Started!*\n\nHi ${user.name},\n\nWelcome back! Term ${data.termNumber} of ${data.year} at *${updatedSchool.name}* has officially begun.\n\nLet's have a great term!\n\n_Sent via Connect-Ed_`,
+        smsContent: `Welcome back! Term ${data.termNumber} of ${data.year} at ${updatedSchool.name} has started. Let's have a great term!`,
+        emailType: "NOREPLY",
+      });
     });
 
     await Promise.all(notificationPromises);

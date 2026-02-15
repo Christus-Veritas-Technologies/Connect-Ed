@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
-import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
-import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification } from "./notifications";
+import { notifyWelcome } from "../lib/notify";
 import { successResponse, errors } from "../lib/response";
 import { syncChatMembers } from "../lib/chat-sync";
 import { z } from "zod";
@@ -183,27 +184,24 @@ teachers.post("/", async (c) => {
 
     await Promise.all(notifications);
 
-    // Send welcome email (respects school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findFirst({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send welcome email + WhatsApp + SMS (respects school preferences)
+    const school = await db.school.findFirst({ where: { id: schoolId }, select: { name: true } });
 
-    if (prefs.email) {
-      await sendEmail({
-        to: data.email.toLowerCase(),
-        subject: "Welcome to Connect-Ed - Your Login Credentials",
-        html: generateWelcomeEmailWithCredentials({
-          name: fullName,
-          email: data.email.toLowerCase(),
-          password: generatedPassword,
-          role: "TEACHER",
-          schoolName: school?.name ?? undefined,
-        }),
-        schoolId,
-        type: "KIN",
-      });
-    }
+    await notifyWelcome({
+      schoolId,
+      schoolName: school?.name || "Your School",
+      name: fullName,
+      email: data.email.toLowerCase(),
+      password: generatedPassword,
+      role: "TEACHER",
+      emailHtml: generateWelcomeEmailWithCredentials({
+        name: fullName,
+        email: data.email.toLowerCase(),
+        password: generatedPassword,
+        role: "TEACHER",
+        schoolName: school?.name ?? undefined,
+      }),
+    });
 
     // Sync chat members for assigned classes
     if (data.classIds && data.classIds.length > 0) {

@@ -14,6 +14,7 @@ import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { PLAN_FEATURES } from "../lib/auth";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
+import { notifyGeneric } from "../lib/notify";
 
 const payments = new Hono();
 
@@ -364,23 +365,26 @@ payments.post("/callback", async (c) => {
         actorName: intermediatePayment.user.name,
       });
 
-      // Send success email (check preferences)
+      // Send success email + WhatsApp + SMS (check preferences)
       const prefs = await getSchoolNotificationPrefs(intermediatePayment.schoolId);
-      if (prefs.email) {
-        await sendEmail({
-          to: intermediatePayment.user.email,
-          subject: "Payment Successful - Connect-Ed",
-          html: generatePaymentSuccessEmail({
-            name: intermediatePayment.user.name,
-            amount: Number(intermediatePayment.amount),
-            plan: intermediatePayment.plan,
-            transactionId: intermediatePaymentId,
-            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
-          }),
-          schoolId: intermediatePayment.schoolId,
-          type: "SALES",
-        });
-      }
+      const paymentAmount = fmtServer(Number(intermediatePayment.amount), (intermediatePayment.school?.currency || "USD") as CurrencyCode);
+
+      await notifyGeneric({
+        schoolId: intermediatePayment.schoolId,
+        email: intermediatePayment.user.email,
+        phone: intermediatePayment.user.phone || undefined,
+        subject: "Payment Successful - Connect-Ed",
+        emailHtml: generatePaymentSuccessEmail({
+          name: intermediatePayment.user.name,
+          amount: Number(intermediatePayment.amount),
+          plan: intermediatePayment.plan,
+          transactionId: intermediatePaymentId,
+          currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
+        }),
+        whatsappContent: `✅ *Payment Successful!*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${paymentAmount}* for the *${intermediatePayment.plan}* plan has been processed successfully.\n\nTransaction ID: ${intermediatePaymentId}\n\nYour school's plan is now active!\n\n_Connect-Ed_`,
+        smsContent: `Payment of ${paymentAmount} for ${intermediatePayment.plan} plan confirmed. Transaction: ${intermediatePaymentId}. Connect-Ed`,
+        emailType: "SALES",
+      });
     } else {
       // Create failure notification for admin
       await createNotification({
@@ -398,22 +402,24 @@ payments.post("/callback", async (c) => {
         actorName: intermediatePayment.user.name,
       });
 
-      // Send failure email (check preferences)
-      const failPrefs = await getSchoolNotificationPrefs(intermediatePayment.schoolId);
-      if (failPrefs.email) {
-        await sendEmail({
-          to: intermediatePayment.user.email,
-          subject: "Payment Failed - Connect-Ed",
-          html: generatePaymentFailedEmail({
-            name: intermediatePayment.user.name,
-            amount: Number(intermediatePayment.amount),
-            plan: intermediatePayment.plan,
-            currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
-          }),
-          schoolId: intermediatePayment.schoolId,
-          type: "SALES",
-        });
-      }
+      // Send failure email + WhatsApp + SMS (check preferences)
+      const failPaymentAmount = fmtServer(Number(intermediatePayment.amount), (intermediatePayment.school?.currency || "USD") as CurrencyCode);
+
+      await notifyGeneric({
+        schoolId: intermediatePayment.schoolId,
+        email: intermediatePayment.user.email,
+        phone: intermediatePayment.user.phone || undefined,
+        subject: "Payment Failed - Connect-Ed",
+        emailHtml: generatePaymentFailedEmail({
+          name: intermediatePayment.user.name,
+          amount: Number(intermediatePayment.amount),
+          plan: intermediatePayment.plan,
+          currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
+        }),
+        whatsappContent: `❌ *Payment Failed*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${failPaymentAmount}* for the *${intermediatePayment.plan}* plan could not be processed.\n\nPlease try again or contact your bank.\n\n_Connect-Ed_`,
+        smsContent: `Payment of ${failPaymentAmount} for ${intermediatePayment.plan} plan failed. Please try again. Connect-Ed`,
+        emailType: "SALES",
+      });
     }
 
     return successResponse(c, { status: "processed" });

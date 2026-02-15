@@ -15,6 +15,7 @@ import {
   BookOpen01Icon,
   SentIcon,
   FileAttachmentIcon,
+  Shield01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
@@ -62,6 +63,7 @@ const navSections = [
       { href: "/dashboard/parents", label: "Parents", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST"] },
       { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/receptionists", label: "Receptionists", icon: UserGroupIcon, roles: ["ADMIN"] },
+      { href: "/dashboard/admins", label: "Admins", icon: Shield01Icon, roles: ["ADMIN"] },
       { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/class", label: "My Class", icon: School01Icon, roles: ["TEACHER", "STUDENT"] },
       // Parent-specific "My Child" and "My Child's Class" items are rendered dynamically based on children count

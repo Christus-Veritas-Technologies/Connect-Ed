@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { db, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
-import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
-import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification } from "./notifications";
+import { notifyWelcome } from "../lib/notify";
 import { successResponse, errors } from "../lib/response";
 import { z } from "zod";
 
@@ -112,28 +113,25 @@ receptionists.post("/", async (c) => {
 
     await Promise.all(notifications);
 
-    // Send welcome email (check school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findFirst({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send welcome email + WhatsApp + SMS (check school preferences)
+    const school = await db.school.findFirst({ where: { id: schoolId }, select: { name: true } });
 
-    if (prefs.email) {
-      await sendEmail({
-        to: data.email.toLowerCase(),
-        subject: "Welcome to Connect-Ed - Your Login Credentials",
-        html: generateWelcomeEmailWithCredentials({
-          name: fullName,
-          email: data.email.toLowerCase(),
-          password: generatedPassword,
-          role: "TEACHER",
-          schoolName: school?.name ?? undefined,
-          additionalInfo: "You have been added as a Receptionist. You can manage student records, fees, and reports.",
-        }),
-        schoolId,
-        type: "KIN",
-      });
-    }
+    await notifyWelcome({
+      schoolId,
+      schoolName: school?.name || "Your School",
+      name: fullName,
+      email: data.email.toLowerCase(),
+      password: generatedPassword,
+      role: "TEACHER",
+      emailHtml: generateWelcomeEmailWithCredentials({
+        name: fullName,
+        email: data.email.toLowerCase(),
+        password: generatedPassword,
+        role: "TEACHER",
+        schoolName: school?.name ?? undefined,
+        additionalInfo: "You have been added as a Receptionist. You can manage student records, fees, and reports.",
+      }),
+    });
 
     return successResponse(c, { receptionist }, 201);
   } catch (error) {

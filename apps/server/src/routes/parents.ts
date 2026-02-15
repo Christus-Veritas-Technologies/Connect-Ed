@@ -6,6 +6,7 @@ import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { notifyWelcome, notifyGeneric } from "../lib/notify";
 import { z } from "zod";
 
 const parents = new Hono();
@@ -276,30 +277,28 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     // Execute all notifications
     await Promise.all(notifications);
 
-    // Send welcome email with credentials (respects school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send welcome email + WhatsApp + SMS with credentials (respects school preferences)
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 
     const emailAdditionalInfo = `You have been linked to your ${students.length > 1 ? "children" : "child"}: ${linkedChildrenNames}.`;
 
-    if (prefs.email) {
-      await sendEmail({
-        to: parent.email,
-        subject: "Welcome to Connect-Ed - Your Login Credentials",
-        html: generateWelcomeEmailWithCredentials({
-          name: fullName,
-          email: parent.email,
-          password: generatedPassword,
-          role: "PARENT",
-          schoolName: school?.name || undefined,
-          additionalInfo: emailAdditionalInfo,
-        }),
-        schoolId,
-        type: "KIN",
-      });
-    }
+    await notifyWelcome({
+      schoolId,
+      schoolName: school?.name || "Your School",
+      name: fullName,
+      email: parent.email,
+      phone: data.phone,
+      password: generatedPassword,
+      role: "PARENT",
+      emailHtml: generateWelcomeEmailWithCredentials({
+        name: fullName,
+        email: parent.email,
+        password: generatedPassword,
+        role: "PARENT",
+        schoolName: school?.name || undefined,
+        additionalInfo: emailAdditionalInfo,
+      }),
+    });
 
     console.log(`[POST /parents] ✅ Parent created successfully: ${fullName} (${parent.id})`);
     console.log(`[POST /parents] Linked students: ${students.length}`);
@@ -559,26 +558,22 @@ parents.post("/requests/:id/accept", async (c) => {
 
     await Promise.all(notifications);
 
-    // Send email to requesting parent (respects school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send email + WhatsApp + SMS to requesting parent (respects school preferences)
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 
-    if (prefs.email) {
-      await sendEmail({
-        to: request.requestingParent.email,
-        subject: "Parent Request Accepted",
-        html: `
-          <h2>Great News!</h2>
-          <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> has been accepted by ${request.existingParent.name}.</p>
-          <p>You can now access their information in your parent dashboard.</p>
-          <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
-        `,
-        schoolId,
-        type: "NOREPLY",
-      });
-    }
+    await notifyGeneric({
+      schoolId,
+      email: request.requestingParent.email,
+      subject: "Parent Request Accepted",
+      emailHtml: `
+        <h2>Great News!</h2>
+        <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> has been accepted by ${request.existingParent.name}.</p>
+        <p>You can now access their information in your parent dashboard.</p>
+        <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
+      `,
+      whatsappContent: `✅ *Parent Request Accepted*\n\nYour request to be added as a parent for *${request.student.firstName} ${request.student.lastName}* has been accepted by ${request.existingParent.name}.\n\nYou can now access their information in your parent dashboard.\n\n_${school?.name || "Connect-Ed"}_`,
+      smsContent: `Your parent request for ${request.student.firstName} ${request.student.lastName} has been accepted. Log in to Connect-Ed to view their information.`,
+    });
 
     return successResponse(c, { 
       message: "Parent request accepted successfully",
@@ -683,26 +678,22 @@ parents.post("/requests/:id/decline", async (c) => {
 
     await Promise.all(notifications);
 
-    // Send email to requesting parent (respects school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findUnique({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send email + WhatsApp + SMS to requesting parent (respects school preferences)
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 
-    if (prefs.email) {
-      await sendEmail({
-        to: request.requestingParent.email,
-        subject: "Parent Request Update",
-        html: `
-          <h2>Request Update</h2>
-          <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> was declined by ${request.existingParent.name}.</p>
-          <p>If you believe this is an error, please contact the school administration.</p>
-          <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
-        `,
-        schoolId,
-        type: "NOREPLY",
-      });
-    }
+    await notifyGeneric({
+      schoolId,
+      email: request.requestingParent.email,
+      subject: "Parent Request Update",
+      emailHtml: `
+        <h2>Request Update</h2>
+        <p>Your request to be added as a parent for <strong>${request.student.firstName} ${request.student.lastName}</strong> was declined by ${request.existingParent.name}.</p>
+        <p>If you believe this is an error, please contact the school administration.</p>
+        <p>Best regards,<br>${school?.name || "Connect-Ed"}</p>
+      `,
+      whatsappContent: `❌ *Parent Request Declined*\n\nYour request to be added as a parent for *${request.student.firstName} ${request.student.lastName}* was declined by ${request.existingParent.name}.\n\nIf you believe this is an error, please contact the school administration.\n\n_${school?.name || "Connect-Ed"}_`,
+      smsContent: `Your parent request for ${request.student.firstName} ${request.student.lastName} was declined. Contact the school office if you have questions.`,
+    });
 
     return successResponse(c, { 
       message: "Parent request declined successfully",
