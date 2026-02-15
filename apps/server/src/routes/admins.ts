@@ -40,7 +40,10 @@ admins.get("/", async (c) => {
       orderBy: { createdAt: "asc" },
     });
 
-    return successResponse(c, { admins: adminList });
+    // The first admin (earliest createdAt) is the primary admin
+    const firstAdminId = adminList.length > 0 ? adminList[0].id : null;
+
+    return successResponse(c, { admins: adminList, firstAdminId });
   } catch (error) {
     console.error("List admins error:", error);
     return errors.internalError(c);
@@ -159,6 +162,17 @@ admins.delete("/:id", async (c) => {
     // Prevent self-deletion
     if (adminId === currentUserId) {
       return errors.badRequest(c, "You cannot remove yourself as an admin.");
+    }
+
+    // Only the first admin (earliest created) can delete other admins
+    const firstAdmin = await db.user.findFirst({
+      where: { schoolId, role: Role.ADMIN },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+
+    if (!firstAdmin || firstAdmin.id !== currentUserId) {
+      return errors.forbidden(c, "Only the primary administrator can remove other admins.");
     }
 
     // Verify admin exists and belongs to this school

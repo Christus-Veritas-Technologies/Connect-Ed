@@ -15,6 +15,7 @@ export interface Admin {
 
 interface AdminListResponse {
   admins: Admin[];
+  firstAdminId: string | null;
 }
 
 interface CreateAdminInput {
