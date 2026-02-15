@@ -36,12 +36,14 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
+  SidebarInset,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 // Navigation items organized by sections
@@ -406,15 +408,26 @@ export default function DashboardLayoutClient({
       <SetupFeeGuard>
         <BillingGuard>
           <SidebarProvider defaultOpen={true}>
-            <div className="flex min-h-screen w-full bg-muted/30">
-              {user && school && (
-                <AppSidebar
-                  pathname={pathname}
-                  user={user}
-                  school={school}
-                  logout={handleLogout}
-                />
-              )}
+            {user && school && (
+              <AppSidebar
+                pathname={pathname}
+                user={user}
+                school={school}
+                logout={handleLogout}
+              />
+            )}
+
+            <SidebarInset>
+              {/* Mobile header with trigger */}
+              <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 md:hidden">
+                <SidebarTrigger className="-ml-1" />
+                <div className="flex items-center gap-2">
+                  <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
+                    <span className="text-sm font-bold text-white">CE</span>
+                  </div>
+                  <span className="font-semibold text-sm">Connect-Ed</span>
+                </div>
+              </header>
 
               {/* Main Content */}
               <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
@@ -430,7 +443,7 @@ export default function DashboardLayoutClient({
                   </motion.div>
                 </AnimatePresence>
               </main>
-            </div>
+            </SidebarInset>
           </SidebarProvider>
         </BillingGuard>
       </SetupFeeGuard>
