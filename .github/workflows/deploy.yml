@@ -23,7 +23,9 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             bun install
+            cd packages/db
             bunx prisma migrate deploy
             bunx prisma generate
+            cd ../..
             bun run build
             pm2 reload all
