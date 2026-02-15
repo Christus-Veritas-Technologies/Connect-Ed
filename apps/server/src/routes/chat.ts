@@ -113,8 +113,24 @@ chat.get("/rooms", async (c) => {
       if (student?.classId) {
         classIds = [student.classId];
       }
+    } else if (user.memberType === "PARENT") {
+      // For parents, get classes from their children's class assignments
+      const parent = await db.parent.findUnique({
+        where: { id: user.memberId },
+        select: {
+          children: {
+            where: { isActive: true },
+            select: { classId: true },
+          },
+        },
+      });
+      if (parent?.children) {
+        classIds = parent.children
+          .filter((c) => c.classId)
+          .map((c) => c.classId as string);
+      }
     } else {
-      // For staff/parents, use chatMembers table
+      // For staff (ADMIN, TEACHER, RECEPTIONIST), use chatMembers table
       const memberships = await db.chatMember.findMany({
         where: { memberType: user.memberType, memberId: user.memberId },
         select: { classId: true },
