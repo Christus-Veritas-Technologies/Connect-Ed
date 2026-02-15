@@ -257,8 +257,8 @@ function AnnouncementCard({
               <Badge
                 variant="secondary"
                 className={`text-[11px] px-2 py-0.5 font-normal ${isExpired
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
                   }`}
               >
                 {timeRemaining}

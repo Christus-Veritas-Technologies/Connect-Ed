@@ -101,8 +101,8 @@ function AdminCard({
                     onSelect(admin.id);
                 }}
                 className={`absolute top-3 left-3 z-10 size-5 rounded border-2 flex items-center justify-center transition-all ${isSelected
-                        ? "bg-brand border-brand text-white"
-                        : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+                    ? "bg-brand border-brand text-white"
+                    : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
                     }`}
             >
                 {isSelected && <Check className="size-3" />}
@@ -482,8 +482,8 @@ export default function AdminsPage() {
                                         <button
                                             onClick={() => toggleSelect(a.id)}
                                             className={`size-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${selectedIds.has(a.id)
-                                                    ? "bg-brand border-brand text-white"
-                                                    : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+                                                ? "bg-brand border-brand text-white"
+                                                : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
                                                 }`}
                                         >
                                             {selectedIds.has(a.id) && <Check className="size-3" />}
@@ -572,9 +572,9 @@ export default function AdminsPage() {
                                     <button
                                         onClick={toggleSelectAll}
                                         className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.size === filteredAdmins.length &&
-                                                filteredAdmins.length > 0
-                                                ? "bg-brand border-brand text-white"
-                                                : "border-muted-foreground/30 hover:border-brand"
+                                            filteredAdmins.length > 0
+                                            ? "bg-brand border-brand text-white"
+                                            : "border-muted-foreground/30 hover:border-brand"
                                             }`}
                                     >
                                         {selectedIds.size === filteredAdmins.length &&
@@ -606,8 +606,8 @@ export default function AdminsPage() {
                                             <button
                                                 onClick={() => toggleSelect(a.id)}
                                                 className={`size-5 rounded border-2 flex items-center justify-center transition-all ${selectedIds.has(a.id)
-                                                        ? "bg-brand border-brand text-white"
-                                                        : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
+                                                    ? "bg-brand border-brand text-white"
+                                                    : "border-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:border-brand"
                                                     }`}
                                             >
                                                 {selectedIds.has(a.id) && (
