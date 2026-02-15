@@ -11,6 +11,7 @@ import {
   getRefreshTokenCookie,
   clearRefreshTokenCookie,
   verifyRefreshToken,
+  verifyParentRefreshToken,
   PLAN_FEATURES,
 } from "../lib/auth";
 import {
@@ -358,12 +359,100 @@ auth.post("/refresh", async (c) => {
       return errors.unauthorized(c);
     }
 
-    // Verify refresh token
-    const payload = await verifyRefreshToken(refreshToken);
+    // Try staff/student refresh token first
+    let payload = await verifyRefreshToken(refreshToken);
+    let isParent = false;
+
+    // If staff token didn't work, try parent token
+    if (!payload) {
+      const parentPayload = await verifyParentRefreshToken(refreshToken);
+      if (parentPayload) {
+        payload = parentPayload as any;
+        isParent = true;
+      }
+    }
+
     if (!payload) {
       return errors.unauthorized(c);
     }
 
+    // If it's a parent token, handle parent refresh
+    if (isParent) {
+      const parent = await db.parent.findUnique({
+        where: { id: payload.sub },
+        include: {
+          school: true,
+          children: { include: { class: true } },
+        },
+      }) as any;
+
+      if (parent && parent.tokenVersion === payload.version) {
+        if (!parent.isActive) {
+          return errors.forbidden(c);
+        }
+
+        console.log("[AUTH REFRESH] Parent found:", {
+          parentId: parent.id,
+          parentName: parent.name,
+          childrenCount: parent.children?.length || 0,
+          children: parent.children?.map((s: any) => ({
+            id: s.id,
+            name: `${s.firstName} ${s.lastName}`,
+          })) || [],
+        });
+
+        const newAccessToken = await generateParentAccessToken({
+          parentId: parent.id,
+          schoolId: parent.schoolId,
+          plan: parent.school.plan,
+        });
+
+        const newRefreshToken = await generateParentRefreshToken({
+          parentId: parent.id,
+          tokenVersion: parent.tokenVersion,
+        });
+
+        setRefreshTokenCookie(c, newRefreshToken);
+
+        return successResponse(c, {
+          user: {
+            id: parent.id,
+            email: parent.email,
+            name: parent.name,
+            role: "PARENT",
+            onboardingComplete: parent.onboardingComplete,
+            children: parent.children.map((s: any) => ({
+              id: s.id,
+              name: `${s.firstName} ${s.lastName}`,
+              class: s.class?.name,
+            })),
+          },
+          school: {
+            id: parent.school.id,
+            name: parent.school.name,
+            plan: parent.school.plan,
+            isActive: parent.school.isActive,
+            signupFeePaid: parent.school.signupFeePaid,
+            onboardingComplete: parent.school.onboardingComplete,
+            country: parent.school.country,
+            currency: parent.school.currency,
+            termlyFee: parent.school.termlyFee,
+            currentTermNumber: parent.school.currentTermNumber,
+            currentTermYear: parent.school.currentTermYear,
+            termStartDate: parent.school.termStartDate,
+            currentPeriodType: parent.school.currentPeriodType,
+            holidayStartDate: parent.school.holidayStartDate,
+            nextPaymentDate: parent.school.nextPaymentDate,
+          },
+          userType: "PARENT",
+          accessToken: newAccessToken,
+        });
+      }
+
+      return errors.unauthorized(c);
+    }
+
+    // Handle staff/student refresh
     // Try to find staff user first
     const staffUser = await db.user.findUnique({
       where: { id: payload.sub },
@@ -417,78 +506,6 @@ auth.post("/refresh", async (c) => {
           nextPaymentDate: staffUser.school.nextPaymentDate,
         },
         userType: "STAFF",
-        accessToken: newAccessToken,
-      });
-    }
-
-    // Try to find parent
-    const parent = await db.parent.findUnique({
-      where: { id: payload.sub },
-      include: {
-        school: true,
-        children: { include: { class: true } },
-      },
-    }) as any;
-
-    if (parent && parent.tokenVersion === payload.version) {
-      if (!parent.isActive) {
-        return errors.forbidden(c);
-      }
-
-      console.log("[AUTH REFRESH] Parent found:", {
-        parentId: parent.id,
-        parentName: parent.name,
-        childrenCount: parent.children?.length || 0,
-        children: parent.children?.map((s: any) => ({
-          id: s.id,
-          name: `${s.firstName} ${s.lastName}`,
-        })) || [],
-      });
-
-      const newAccessToken = await generateParentAccessToken({
-        parentId: parent.id,
-        schoolId: parent.schoolId,
-        plan: parent.school.plan,
-      });
-
-      const newRefreshToken = await generateParentRefreshToken({
-        parentId: parent.id,
-        tokenVersion: parent.tokenVersion,
-      });
-
-      setRefreshTokenCookie(c, newRefreshToken);
-
-      return successResponse(c, {
-        user: {
-          id: parent.id,
-          email: parent.email,
-          name: parent.name,
-          role: "PARENT",
-          onboardingComplete: parent.onboardingComplete,
-          children: parent.children.map((s: any) => ({
-            id: s.id,
-            name: `${s.firstName} ${s.lastName}`,
-            class: s.class?.name,
-          })),
-        },
-        school: {
-          id: parent.school.id,
-          name: parent.school.name,
-          plan: parent.school.plan,
-          isActive: parent.school.isActive,
-          signupFeePaid: parent.school.signupFeePaid,
-          onboardingComplete: parent.school.onboardingComplete,
-          country: parent.school.country,
-          currency: parent.school.currency,
-          termlyFee: parent.school.termlyFee,
-          currentTermNumber: parent.school.currentTermNumber,
-          currentTermYear: parent.school.currentTermYear,
-          termStartDate: parent.school.termStartDate,
-          currentPeriodType: parent.school.currentPeriodType,
-          holidayStartDate: parent.school.holidayStartDate,
-          nextPaymentDate: parent.school.nextPaymentDate,
-        },
-        userType: "PARENT",
         accessToken: newAccessToken,
       });
     }
