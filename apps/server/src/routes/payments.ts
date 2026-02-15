@@ -443,10 +443,35 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       return errors.notFound(c, "Payment not found");
     }
 
-    // If payment isn't marked as paid yet, update it now along with school
-    if (!intermediatePayment.paid) {
-      // Determine payment type from the stored reference
-      const refString = intermediatePayment.reference || "";
+    // If payment is already marked as paid, return success
+    if (intermediatePayment.paid) {
+      return successResponse(c, { verified: true, paid: true });
+    }
+
+    // Extract poll URL from reference
+    const refString = intermediatePayment.reference || "";
+    const pollMatch = refString.match(/poll:([^|]+)/);
+    const pollUrl = pollMatch ? pollMatch[1] : null;
+
+    if (!pollUrl) {
+      return errors.badRequest(c, "Payment poll URL not found. Payment may have been initiated incorrectly.");
+    }
+
+    // Poll PayNow to check actual payment status
+    try {
+      const pollResponse = await fetch(pollUrl);
+      const pollData = await pollResponse.text();
+      
+      // PayNow returns status in format: "status=Paid" or "status=Cancelled" etc
+      const statusMatch = pollData.match(/status=(\w+)/i);
+      const paymentStatus = statusMatch ? statusMatch[1].toLowerCase() : "";
+
+      // Only proceed if payment was actually successful
+      if (paymentStatus !== "paid") {
+        return errors.badRequest(c, `Payment was not successful. Status: ${paymentStatus || "unknown"}`);
+      }
+
+      // Payment is confirmed - update database
       const typeMatch = refString.match(/type:(\w+)/);
       const effectiveType = typeMatch ? typeMatch[1] : "FULL";
 
@@ -494,13 +519,16 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
         where: { id: intermediatePaymentId },
         include: { user: true, school: true },
       }) as any;
-    }
 
-    return successResponse(c, {
-      payment: intermediatePayment,
-      isPaid: intermediatePayment!.paid,
-      paymentType: intermediatePayment!.reference?.match(/type:(\w+)/)?.[1] || "FULL",
-    });
+      return successResponse(c, {
+        payment: intermediatePayment,
+        isPaid: intermediatePayment!.paid,
+        paymentType: intermediatePayment!.reference?.match(/type:(\w+)/)?.[1] || "FULL",
+      });
+    } catch (pollError) {
+      console.error("PayNow poll error:", pollError);
+      return errors.internalError(c, "Failed to verify payment status with PayNow");
+    }
   } catch (error) {
     console.error("Verify payment error:", error);
     return errors.internalError(c);
