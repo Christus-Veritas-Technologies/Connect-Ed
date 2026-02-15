@@ -1,5 +1,8 @@
 import { db } from "@repo/db";
 import { sendEmail } from "./email";
+import { sendWhatsApp } from "./whatsapp";
+import { sendSms } from "./sms";
+import { getSchoolNotificationPrefs } from "../routes/notifications";
 
 // ============================================
 // Types
@@ -600,7 +603,7 @@ function generateReportWhatsAppText(
 }
 
 // ============================================
-// Send WhatsApp message (placeholder)
+// Send WhatsApp report via agent app
 // ============================================
 
 async function sendWhatsAppReport(
@@ -608,56 +611,22 @@ async function sendWhatsAppReport(
   text: string,
   schoolId: string
 ): Promise<boolean> {
-  try {
-    // Check quota
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { whatsappQuota: true, whatsappUsed: true },
-    });
+  return sendWhatsApp({ phone, content: text, schoolId, isBulk: true });
+}
 
-    if (!school || school.whatsappUsed >= school.whatsappQuota) {
-      console.log(
-        `⚠️ WhatsApp quota exceeded for school ${schoolId}. Skipping.`
-      );
-      await db.messageLog.create({
-        data: {
-          type: "WHATSAPP",
-          recipient: phone,
-          content: text,
-          status: "FAILED",
-          errorMessage: "WhatsApp quota exceeded",
-          schoolId,
-        },
-      });
-      return false;
-    }
+// ============================================
+// Send SMS report (summary only due to SMS length limits)
+// ============================================
 
-    // TODO: Integrate with whatsapp-web.js or WhatsApp Business API
-    // For now, log the message and create a PENDING entry for the agent to pick up
-    console.log(`📱 [WhatsApp Report] To: ${phone}`);
-    console.log(`📱 [WhatsApp Report] Message length: ${text.length} chars`);
-
-    await db.messageLog.create({
-      data: {
-        type: "WHATSAPP",
-        recipient: phone,
-        content: text,
-        status: "PENDING",
-        schoolId,
-      },
-    });
-
-    // Increment quota (will be used even for pending — agent will process)
-    await db.school.update({
-      where: { id: schoolId },
-      data: { whatsappUsed: { increment: 1 } },
-    });
-
-    return true;
-  } catch (error) {
-    console.error("WhatsApp report dispatch error:", error);
-    return false;
-  }
+async function sendSmsReport(
+  phone: string,
+  studentName: string,
+  averageMark: number,
+  schoolName: string,
+  schoolId: string
+): Promise<boolean> {
+  const smsContent = `Academic Report: ${studentName} scored an average of ${averageMark}% this term at ${schoolName}. Log in to Connect-Ed for the full report.`;
+  return sendSms({ phone, content: smsContent, schoolId });
 }
 
 // ============================================
@@ -722,9 +691,12 @@ export async function sendReportToParent(
     };
   }
 
-  // 3. Send email
+  // 3. Check school notification preferences
+  const prefs = await getSchoolNotificationPrefs(schoolId);
+
+  // 4. Send email (if enabled and parent has email)
   let emailSent = false;
-  if (parent.email) {
+  if (prefs.email && parent.email) {
     const html = generateReportEmailHtml(report, parent.name);
     emailSent = await sendEmail({
       to: parent.email,
@@ -735,11 +707,22 @@ export async function sendReportToParent(
     });
   }
 
-  // 4. Send WhatsApp
+  // 5. Send WhatsApp (if enabled and parent has phone)
   let whatsappSent = false;
-  if (parent.phone) {
+  if (prefs.whatsapp && parent.phone) {
     const text = generateReportWhatsAppText(report);
     whatsappSent = await sendWhatsAppReport(parent.phone, text, schoolId);
+  }
+
+  // 6. Send SMS (if enabled and parent has phone)
+  if (prefs.sms && parent.phone) {
+    await sendSmsReport(
+      parent.phone,
+      studentName,
+      report.overall.averageMark,
+      report.school.name,
+      schoolId
+    );
   }
 
   return {

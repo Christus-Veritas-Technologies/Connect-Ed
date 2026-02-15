@@ -373,7 +373,7 @@ export default function ReceptionistsPage() {
         </div>
       ) : filteredReceptionists.length === 0 ? (
         <EmptyState
-          icon={Users}
+          icon={<Users className="size-12" />}
           title={search ? "No receptionists found" : "No receptionists yet"}
           description={
             search

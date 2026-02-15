@@ -22,6 +22,6 @@ jobs:
             cd /var/www/app
             git fetch origin
             git reset --hard origin/main
-            bun install --frozen-lockfile
+            bun install
             bun run build
             pm2 reload all

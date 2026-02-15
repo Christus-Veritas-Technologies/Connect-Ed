@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
-import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
-import { createNotification, getSchoolNotificationPrefs } from "./notifications";
+import { generateWelcomeEmailWithCredentials } from "../lib/email";
+import { createNotification } from "./notifications";
+import { notifyWelcome } from "../lib/notify";
 import { successResponse, errors } from "../lib/response";
 import { syncChatMembers } from "../lib/chat-sync";
 import { z } from "zod";
@@ -31,8 +32,8 @@ const teachers = new Hono();
 
 // Apply auth middleware to all routes
 teachers.use("*", requireAuth);
-// Require admin role
-teachers.use("*", requireRole(Role.ADMIN));
+// Require admin or receptionist role
+teachers.use("*", requireRole(Role.ADMIN, Role.RECEPTIONIST));
 // Require Growth+ plan for teacher management
 teachers.use("*", requirePlan(Plan.GROWTH, Plan.ENTERPRISE));
 
@@ -74,10 +75,13 @@ teachers.get("/", async (c) => {
   }
 });
 
-// POST /teachers - Create teacher
+// POST /teachers - Create teacher (admin only)
 teachers.post("/", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const body = await c.req.json();
     const parsed = createTeacherSchema.safeParse(body);
 
@@ -183,27 +187,24 @@ teachers.post("/", async (c) => {
 
     await Promise.all(notifications);
 
-    // Send welcome email (respects school preferences)
-    const [school, prefs] = await Promise.all([
-      db.school.findFirst({ where: { id: schoolId }, select: { name: true } }),
-      getSchoolNotificationPrefs(schoolId),
-    ]);
+    // Send welcome email + WhatsApp + SMS (respects school preferences)
+    const school = await db.school.findFirst({ where: { id: schoolId }, select: { name: true } });
 
-    if (prefs.email) {
-      await sendEmail({
-        to: data.email.toLowerCase(),
-        subject: "Welcome to Connect-Ed - Your Login Credentials",
-        html: generateWelcomeEmailWithCredentials({
-          name: fullName,
-          email: data.email.toLowerCase(),
-          password: generatedPassword,
-          role: "TEACHER",
-          schoolName: school?.name ?? undefined,
-        }),
-        schoolId,
-        type: "KIN",
-      });
-    }
+    await notifyWelcome({
+      schoolId,
+      schoolName: school?.name || "Your School",
+      name: fullName,
+      email: data.email.toLowerCase(),
+      password: generatedPassword,
+      role: "TEACHER",
+      emailHtml: generateWelcomeEmailWithCredentials({
+        name: fullName,
+        email: data.email.toLowerCase(),
+        password: generatedPassword,
+        role: "TEACHER",
+        schoolName: school?.name ?? undefined,
+      }),
+    });
 
     // Sync chat members for assigned classes
     if (data.classIds && data.classIds.length > 0) {
@@ -270,6 +271,9 @@ teachers.get("/:id", async (c) => {
 teachers.patch("/:id", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const id = c.req.param("id");
     const body = await c.req.json();
     const parsed = updateTeacherSchema.safeParse(body);
@@ -395,10 +399,13 @@ teachers.patch("/:id", async (c) => {
   }
 });
 
-// DELETE /teachers/:id - Delete teacher
+// DELETE /teachers/:id - Delete teacher (admin only)
 teachers.delete("/:id", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const id = c.req.param("id");
 
     const existing = await db.user.findFirst({

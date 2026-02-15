@@ -257,8 +257,8 @@ function AnnouncementCard({
               <Badge
                 variant="secondary"
                 className={`text-[11px] px-2 py-0.5 font-normal ${isExpired
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
                   }`}
               >
                 {timeRemaining}
@@ -377,6 +377,7 @@ function AnnouncementCard({
 export default function AnnouncementsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const canManageAnnouncements = user?.role === "ADMIN" || user?.role === "RECEPTIONIST";
 
   const { data, isLoading } = useAnnouncements();
   const createMutation = useCreateAnnouncement();
@@ -491,7 +492,7 @@ export default function AnnouncementsPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Search announcements..."
         action={
-          isAdmin ? (
+          canManageAnnouncements ? (
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="size-4" />
               New Announcement
@@ -565,12 +566,12 @@ export default function AnnouncementsPage() {
               : "No announcements yet"
           }
           description={
-            isAdmin
+            canManageAnnouncements
               ? "Create your first announcement to get started."
               : "Check back later for updates."
           }
           action={
-            isAdmin ? (
+            canManageAnnouncements ? (
               <Button onClick={() => setShowCreateDialog(true)}>
                 <Plus className="size-4" />
                 New Announcement
@@ -584,7 +585,7 @@ export default function AnnouncementsPage() {
             <AnnouncementCard
               key={announcement.id}
               announcement={announcement}
-              isAdmin={isAdmin}
+              isAdmin={canManageAnnouncements}
               onDelete={handleDelete}
               onComment={handleComment}
               commentPending={commentMutation.isPending}

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
@@ -22,6 +23,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { fmt } from "@/lib/currency";
 
 /* ─────────────── Animations ─────────────── */
 
@@ -491,11 +494,11 @@ function RoleUSPs() {
 /* ─────────────── Pricing Preview ─────────────── */
 
 function PricingPreview() {
+  const [currency, setCurrency] = React.useState<"USD" | "ZAR">("USD");
+
   const plans = [
     {
       name: "Lite",
-      price: 50,
-      period: "/term",
       description: "Perfect for small schools with less than 500 students.",
       features: [
         "Up to 500 students",
@@ -506,11 +509,11 @@ function PricingPreview() {
         "150 GB cloud storage",
         "Email, WhatsApp & SMS messaging",
       ],
+      signupFee: currency === "USD" ? 400 : 4000,
+      perTermCost: currency === "USD" ? 240 : 2400,
     },
     {
       name: "Growth",
-      price: 90,
-      period: "/term",
       description: "Ideal for mid-size schools with 500 to 1,200 students.",
       popular: true,
       includedFrom: "Lite",
@@ -522,11 +525,11 @@ function PricingPreview() {
         "400 GB cloud storage",
         "Premium support",
       ],
+      signupFee: currency === "USD" ? 750 : 15000,
+      perTermCost: currency === "USD" ? 225 : 4500,
     },
     {
       name: "Enterprise",
-      price: 150,
-      period: "/term",
       description: "Built for large institutions with 2,000 to 3,000 students.",
       includedFrom: "Growth",
       features: [
@@ -536,6 +539,8 @@ function PricingPreview() {
         "1,000 GB cloud storage",
         "24/7 dedicated support",
       ],
+      signupFee: currency === "USD" ? 1200 : 24000,
+      perTermCost: currency === "USD" ? 360 : 7200,
     },
   ];
 
@@ -562,6 +567,21 @@ function PricingPreview() {
             include a one-time setup fee and full onboarding support.
           </motion.p>
         </AnimatedSection>
+
+        {/* Currency tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="flex justify-center mb-10"
+        >
+          <Tabs value={currency} onValueChange={(v) => setCurrency(v as "USD" | "ZAR")}>
+            <TabsList>
+              <TabsTrigger value="USD">USD ($)</TabsTrigger>
+              <TabsTrigger value="ZAR">Rands (R)</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </motion.div>
 
         <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
           {plans.map((plan, i) => (
@@ -590,16 +610,21 @@ function PricingPreview() {
                   {plan.description}
                 </p>
 
-                <div className="mt-6 mb-6 flex items-baseline gap-1">
-                  <span className="text-sm font-medium text-muted-foreground align-super">
-                    $
-                  </span>
-                  <span className="text-5xl font-bold tracking-tight text-foreground italic">
-                    {plan.price}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-0.5">
-                    {plan.period}
-                  </span>
+                <div className="mt-6 mb-6 flex flex-col gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Setup fee (one-time)</p>
+                    <div className="text-lg font-semibold text-foreground">
+                      {fmt(plan.signupFee, currency)}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">Then per term</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                        {fmt(plan.perTermCost, currency)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <Button
@@ -607,7 +632,7 @@ function PricingPreview() {
                   className="w-full"
                   asChild
                 >
-                  <Link href="/auth/signup">Get Started</Link>
+                  <a href="/auth/signup">Get Started</a>
                 </Button>
               </div>
 
@@ -615,7 +640,7 @@ function PricingPreview() {
                 <p className="text-sm font-semibold text-foreground mb-4">
                   {plan.includedFrom
                     ? `Everything in ${plan.includedFrom}, plus:`
-                    : "What\u2019s included:"}
+                    : "What's included:"}
                 </p>
                 <ul className="space-y-2.5">
                   {plan.features.map((f) => (
@@ -639,7 +664,7 @@ function PricingPreview() {
         <AnimatedSection className="mt-10 text-center">
           <motion.div variants={fadeUp}>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/pricing">View Full Plan Details</Link>
+              <a href="/pricing">View Full Plan Details</a>
             </Button>
           </motion.div>
         </AnimatedSection>

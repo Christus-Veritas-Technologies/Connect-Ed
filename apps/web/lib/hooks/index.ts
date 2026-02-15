@@ -16,5 +16,6 @@ export * from "./use-exams";
 export * from "./use-student-reports";
 export * from "./use-notifications";
 export * from "./use-receptionists";
+export * from "./use-admins";
 export * from "./use-chat";
 export * from "./use-settings";

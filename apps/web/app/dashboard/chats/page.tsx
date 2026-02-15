@@ -18,15 +18,16 @@ export default function ChatsPage() {
 
     const rooms = data?.rooms || [];
 
-    // For non-admin roles with a single room, redirect straight to the chat
+    // For teachers/students with a single room, redirect straight to the chat
+    // Parents and admins always see the list view
     useEffect(() => {
-        if (!isLoading && rooms.length === 1 && user?.role !== "ADMIN") {
+        if (!isLoading && rooms.length === 1 && user?.role === "TEACHER") {
             router.replace(`/dashboard/chats/${rooms[0]!.classId}`);
         }
     }, [isLoading, rooms, user?.role, router]);
 
     // If we're about to redirect, show nothing
-    if (!isLoading && rooms.length === 1 && user?.role !== "ADMIN") {
+    if (!isLoading && rooms.length === 1 && user?.role === "TEACHER") {
         return null;
     }
 
@@ -41,7 +42,9 @@ export default function ChatsPage() {
                 <p className="text-muted-foreground mt-1">
                     {user?.role === "ADMIN"
                         ? "View and manage all class chat rooms"
-                        : "Your class conversations"}
+                        : user?.role === "PARENT"
+                            ? "Chat with your children's teachers and classmates"
+                            : "Your class conversations"}
                 </p>
             </div>
 

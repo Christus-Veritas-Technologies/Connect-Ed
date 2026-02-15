@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "@repo/db";
-import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth, requireStudentAuth, requireAnyAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 
 const announcements = new Hono();
@@ -56,14 +56,14 @@ function isAnnouncementActive(createdAt: Date, length: string): boolean {
 // ADMIN Routes (require staff auth)
 // ============================================
 
-// POST /announcements - Create announcement (Admin only)
+// POST /announcements - Create announcement (Admin or Receptionist)
 announcements.post("/", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const userId = c.get("userId");
     const role = c.get("role");
 
-    if (role !== "ADMIN") {
+    if (role !== "ADMIN" && role !== "RECEPTIONIST") {
       return errors.forbidden(c);
     }
 
@@ -92,7 +92,7 @@ announcements.post("/", requireAuth, async (c) => {
 });
 
 // GET /announcements - List active announcements (staff)
-announcements.get("/", requireAuth, async (c) => {
+announcements.get("/", requireAnyAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
 
@@ -132,14 +132,14 @@ announcements.get("/all", requireAuth, async (c) => {
   }
 });
 
-// DELETE /announcements/:id - Delete announcement (Admin only)
+// DELETE /announcements/:id - Delete announcement (Admin or Receptionist)
 announcements.delete("/:id", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const role = c.get("role");
     const id = c.req.param("id");
 
-    if (role !== "ADMIN") {
+    if (role !== "ADMIN" && role !== "RECEPTIONIST") {
       return errors.forbidden(c);
     }
 
