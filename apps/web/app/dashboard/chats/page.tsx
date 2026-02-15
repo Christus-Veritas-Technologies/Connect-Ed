@@ -43,8 +43,8 @@ export default function ChatsPage() {
                     {user?.role === "ADMIN"
                         ? "View and manage all class chat rooms"
                         : user?.role === "PARENT"
-                        ? "Chat with your children's teachers and classmates"
-                        : "Your class conversations"}
+                            ? "Chat with your children's teachers and classmates"
+                            : "Your class conversations"}
                 </p>
             </div>
 

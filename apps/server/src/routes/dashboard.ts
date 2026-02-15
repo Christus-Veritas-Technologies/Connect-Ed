@@ -1018,13 +1018,9 @@ dashboard.get("/parent", requireParentAuth, async (c) => {
 });
 
 // GET /dashboard/my-child-class - Get child's class info for parent
-dashboard.get("/my-child-class", requireAuth, async (c) => {
+dashboard.get("/my-child-class", requireParentAuth, async (c) => {
   try {
-    const role = c.get("role");
-    if (role !== ("PARENT" as any)) {
-      return errors.forbidden(c);
-    }
-    const parentId = c.get("userId");
+    const parentId = c.get("parentId");
     const schoolId = c.get("schoolId");
 
     const children = await db.student.findMany({
@@ -1079,13 +1075,9 @@ dashboard.get("/my-child-class", requireAuth, async (c) => {
 });
 
 // GET /dashboard/fee-payments - Get all fee info for parent's children (view-only)
-dashboard.get("/fee-payments", requireAuth, async (c) => {
+dashboard.get("/fee-payments", requireParentAuth, async (c) => {
   try {
-    const role = c.get("role");
-    if (role !== ("PARENT" as any)) {
-      return errors.forbidden(c);
-    }
-    const parentId = c.get("userId");
+    const parentId = c.get("parentId");
     const schoolId = c.get("schoolId");
 
     const children = await db.student.findMany({

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "@repo/db";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth } from "../middleware/auth";
 import { successResponse, errors, errorResponse } from "../lib/response";
 import { computeStudentReport, sendReportToParent, sendReportsToParentsBulk } from "../lib/report-dispatch";
 
@@ -106,13 +106,9 @@ studentReports.get("/:studentId", requireAuth, async (c) => {
 // ============================================
 
 // GET /student-reports/parent/my-children - Parent views their children's reports
-studentReports.get("/parent/my-children", requireAuth, async (c) => {
+studentReports.get("/parent/my-children", requireParentAuth, async (c) => {
   try {
-    const role = c.get("role");
-    if (role !== ("PARENT" as any)) {
-      return errors.forbidden(c);
-    }
-    const parentId = c.get("userId");
+    const parentId = c.get("parentId");
     const schoolId = c.get("schoolId");
 
     const children = await db.student.findMany({

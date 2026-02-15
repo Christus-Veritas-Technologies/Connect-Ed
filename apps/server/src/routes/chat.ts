@@ -205,10 +205,22 @@ chat.get("/rooms/:classId/messages", async (c) => {
     const cursor = c.req.query("cursor"); // message ID for pagination
     const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
 
-    // Verify membership
-    const isMember = await db.chatMember.findFirst({
-      where: { classId, memberType: user.memberType, memberId: user.memberId },
-    });
+    // Verify membership - special handling for parents
+    let isMember = false;
+    if (user.memberType === "PARENT") {
+      // Check if any of the parent's children are in this class
+      const childrenInClass = await db.student.findMany({
+        where: { id: { in: user.childrenIds || [] }, classId },
+        select: { id: true },
+      });
+      isMember = childrenInClass.length > 0;
+    } else {
+      // For staff and students, check chatMembers table
+      const member = await db.chatMember.findFirst({
+        where: { classId, memberType: user.memberType, memberId: user.memberId },
+      });
+      isMember = !!member;
+    }
     if (!isMember) return errors.forbidden(c);
 
     const messages = await db.chatMessage.findMany({
@@ -265,10 +277,22 @@ chat.get("/rooms/:classId/members", async (c) => {
     const user = getChatUser(c);
     const classId = c.req.param("classId");
 
-    // Verify membership
-    const isMember = await db.chatMember.findFirst({
-      where: { classId, memberType: user.memberType, memberId: user.memberId },
-    });
+    // Verify membership - special handling for parents
+    let isMember = false;
+    if (user.memberType === "PARENT") {
+      // Check if any of the parent's children are in this class
+      const childrenInClass = await db.student.findMany({
+        where: { id: { in: user.childrenIds || [] }, classId },
+        select: { id: true },
+      });
+      isMember = childrenInClass.length > 0;
+    } else {
+      // For staff and students, check chatMembers table
+      const member = await db.chatMember.findFirst({
+        where: { classId, memberType: user.memberType, memberId: user.memberId },
+      });
+      isMember = !!member;
+    }
     if (!isMember) return errors.forbidden(c);
 
     const members = await db.chatMember.findMany({

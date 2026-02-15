@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "@repo/db";
-import { requireAuth, requireParentAuth, requireStudentAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth, requireStudentAuth, requireAnyAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 
 const announcements = new Hono();
@@ -92,7 +92,7 @@ announcements.post("/", requireAuth, async (c) => {
 });
 
 // GET /announcements - List active announcements (staff)
-announcements.get("/", requireAuth, async (c) => {
+announcements.get("/", requireAnyAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
 
