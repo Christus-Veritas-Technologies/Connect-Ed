@@ -610,19 +610,17 @@ function PricingPreview() {
                   {plan.description}
                 </p>
 
-                <div className="mt-6 mb-6 flex flex-col gap-2">
+                <div className="mt-6 mb-6 flex flex-col gap-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Setup fee (one-time)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold tracking-tight text-foreground italic">
-                        {fmt(plan.signupFee, currency)}
-                      </span>
+                    <p className="text-xs text-muted-foreground mb-0.5">Setup fee (one-time)</p>
+                    <div className="text-lg font-semibold text-foreground">
+                      {fmt(plan.signupFee, currency)}
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Then per term</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">Then per term</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold tracking-tight text-foreground italic">
+                      <span className="text-4xl font-bold tracking-tight text-foreground italic">
                         {fmt(plan.perTermCost, currency)}
                       </span>
                     </div>
