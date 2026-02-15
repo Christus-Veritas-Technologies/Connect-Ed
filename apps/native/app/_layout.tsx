@@ -1,7 +1,51 @@
 import '../global.css';
 
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { PortalHost } from '@rn-primitives/portal';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { QueryProvider } from '@/lib/query-provider';
+import { Loading } from '@/components/ui/loading';
 
-export default function Layout() {
-  return <Stack />;
+function AuthGate() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'login';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  if (isLoading) {
+    return <Loading fullScreen />;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryProvider>
+      <AuthProvider>
+        <StatusBar style="auto" />
+        <AuthGate />
+        <PortalHost />
+      </AuthProvider>
+    </QueryProvider>
+  );
 }
