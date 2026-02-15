@@ -56,14 +56,14 @@ function isAnnouncementActive(createdAt: Date, length: string): boolean {
 // ADMIN Routes (require staff auth)
 // ============================================
 
-// POST /announcements - Create announcement (Admin only)
+// POST /announcements - Create announcement (Admin or Receptionist)
 announcements.post("/", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const userId = c.get("userId");
     const role = c.get("role");
 
-    if (role !== "ADMIN") {
+    if (role !== "ADMIN" && role !== "RECEPTIONIST") {
       return errors.forbidden(c);
     }
 
@@ -132,14 +132,14 @@ announcements.get("/all", requireAuth, async (c) => {
   }
 });
 
-// DELETE /announcements/:id - Delete announcement (Admin only)
+// DELETE /announcements/:id - Delete announcement (Admin or Receptionist)
 announcements.delete("/:id", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
     const role = c.get("role");
     const id = c.req.param("id");
 
-    if (role !== "ADMIN") {
+    if (role !== "ADMIN" && role !== "RECEPTIONIST") {
       return errors.forbidden(c);
     }
 
