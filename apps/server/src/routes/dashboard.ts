@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db, FeeStatus } from "@repo/db";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireParentAuth, requireAnyAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 
 const dashboard = new Hono();
@@ -849,13 +849,9 @@ dashboard.get("/my-class/student", requireAuth, async (c) => {
 // ============================================
 
 // GET /dashboard/parent - Get parent dashboard data
-dashboard.get("/parent", requireAuth, async (c) => {
+dashboard.get("/parent", requireParentAuth, async (c) => {
   try {
-    const role = c.get("role");
-    if (role !== ("PARENT" as any)) {
-      return errors.forbidden(c);
-    }
-    const parentId = c.get("userId");
+    const parentId = c.get("parentId");
     const schoolId = c.get("schoolId");
 
     // Get parent with children, fees, and exam results
@@ -1422,7 +1418,7 @@ dashboard.get("/notifications", requireAuth, async (c) => {
 });
 
 // GET /dashboard/notifications/unread-counts - Get unread notification counts grouped by actionUrl
-dashboard.get("/notifications/unread-counts", requireAuth, async (c) => {
+dashboard.get("/notifications/unread-counts", requireAnyAuth, async (c) => {
   try {
     const userId = c.get("userId");
 

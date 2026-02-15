@@ -93,6 +93,55 @@ export const requireStudentAuth = createMiddleware(async (c, next) => {
   await next();
 });
 
+// Universal authentication middleware - accepts staff, parent, or student tokens
+export const requireAnyAuth = createMiddleware(async (c, next) => {
+  const authHeader = c.req.header("authorization");
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return errors.unauthorized(c);
+  }
+
+  const token = authHeader.slice(7);
+
+  // Try staff token first
+  let payload = await verifyAccessToken(token);
+  if (payload) {
+    c.set("user", payload);
+    c.set("userId", payload.sub);
+    c.set("schoolId", payload.schoolId);
+    c.set("role", payload.role);
+    c.set("plan", payload.plan);
+    await next();
+    return;
+  }
+
+  // Try parent token
+  const parentPayload = await verifyParentAccessToken(token);
+  if (parentPayload) {
+    c.set("parent", parentPayload);
+    c.set("parentId", parentPayload.sub);
+    c.set("userId", parentPayload.sub); // Set userId for notifications
+    c.set("schoolId", parentPayload.schoolId);
+    c.set("plan", parentPayload.plan);
+    await next();
+    return;
+  }
+
+  // Try student token
+  const studentPayload = await verifyStudentAccessToken(token);
+  if (studentPayload) {
+    c.set("student", studentPayload);
+    c.set("studentId", studentPayload.sub);
+    c.set("userId", studentPayload.sub); // Set userId for notifications
+    c.set("schoolId", studentPayload.schoolId);
+    c.set("plan", studentPayload.plan);
+    await next();
+    return;
+  }
+
+  return errors.unauthorized(c);
+});
+
 // Role-based access middleware
 export const requireRole = (...allowedRoles: Array<(typeof Role)[keyof typeof Role]>) =>
   createMiddleware(async (c, next) => {
