@@ -105,7 +105,7 @@ export function SetupFeeGuard({ children }: { children: ReactNode }) {
                         </Link>
 
                         <p className="text-xs text-center text-muted-foreground">
-                            Need help? Contact support at support@connect-ed.co.zw
+                            Need help? Contact support at support@connect-ed.com
                         </p>
                     </CardContent>
                 </Card>

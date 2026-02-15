@@ -224,7 +224,6 @@ function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              target="_blank"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.label}
@@ -273,7 +272,7 @@ function Hero() {
         <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
           <Badge variant="secondary" size="lg" className="mb-6 border border-border/60 gap-2">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Trusted by Schools Across Zimbabwe
+            Trusted by Schools Worldwide
           </Badge>
         </motion.div>
 
@@ -669,11 +668,11 @@ function CTASection() {
             <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[20px_20px]" />
 
             <h2 className="relative text-3xl sm:text-4xl font-bold tracking-tight">
-              Ready to Modernise Your School?
+              Ready to Modernize Your School?
             </h2>
             <p className="relative mx-auto mt-4 max-w-lg text-white/80">
-              Join institutions across Zimbabwe that have streamlined their
-              operations with Connect-Ed. Set up takes less than 10 minutes.
+              Join thousands of schools around the world that have streamlined
+              their operations with Connect-Ed. Setup takes less than 10 minutes.
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
               {isLoading ? (
@@ -746,7 +745,6 @@ function Footer() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  target="_blank"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
                 >
                   {link.label}
@@ -783,7 +781,7 @@ function Footer() {
             &copy; {new Date().getFullYear()} Connect-Ed. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            Built in Zimbabwe 🇿🇼
+            Built for schools everywhere 🌍
           </p>
         </div>
       </div>

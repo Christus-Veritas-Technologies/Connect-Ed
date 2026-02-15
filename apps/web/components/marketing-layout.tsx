@@ -48,7 +48,6 @@ export function Navbar() {
                         <Link
                             key={link.href}
                             href={link.href}
-                            target="_blank"
                             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
                             {link.label}
@@ -116,7 +115,6 @@ export function Footer() {
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    target="_blank"
                                     className="text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
                                 >
                                     {link.label}
@@ -153,7 +151,7 @@ export function Footer() {
                         &copy; {new Date().getFullYear()} Connect-Ed. All rights reserved.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Built in Zimbabwe 🇿🇼
+                        Built for schools everywhere 🌍
                     </p>
                 </div>
             </div>

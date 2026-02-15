@@ -127,10 +127,10 @@ export function BillingGuard({ children }: BillingGuardProps) {
                                     <p>
                                         If this persists, please contact your school administration or reach out to{" "}
                                         <a
-                                            href="mailto:support@connect-ed.co.zw"
+                                            href="mailto:support@connect-ed.com"
                                             className="text-brand hover:underline"
                                         >
-                                            support@connect-ed.co.zw
+                                            support@connect-ed.com
                                         </a>
                                     </p>
                                 </div>
