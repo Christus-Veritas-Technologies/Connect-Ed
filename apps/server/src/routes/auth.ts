@@ -5,6 +5,8 @@ import { hashPassword, verifyPassword } from "../lib/password";
 import {
   generateAccessToken,
   generateRefreshToken,
+  generateParentAccessToken,
+  generateParentRefreshToken,
   setRefreshTokenCookie,
   getRefreshTokenCookie,
   clearRefreshTokenCookie,
@@ -210,15 +212,14 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
       }
 
       // Generate tokens with PARENT role
-      const accessToken = await generateAccessToken({
-        userId: parent.id,
+      const accessToken = await generateParentAccessToken({
+        parentId: parent.id,
         schoolId: parent.schoolId,
-        role: "PARENT" as any,
         plan: parent.school.plan,
       });
 
-      const refreshToken = await generateRefreshToken({
-        userId: parent.id,
+      const refreshToken = await generateParentRefreshToken({
+        parentId: parent.id,
         tokenVersion: parent.tokenVersion,
       });
 
@@ -444,15 +445,14 @@ auth.post("/refresh", async (c) => {
         })) || [],
       });
 
-      const newAccessToken = await generateAccessToken({
-        userId: parent.id,
+      const newAccessToken = await generateParentAccessToken({
+        parentId: parent.id,
         schoolId: parent.schoolId,
-        role: "PARENT" as any,
         plan: parent.school.plan,
       });
 
-      const newRefreshToken = await generateRefreshToken({
-        userId: parent.id,
+      const newRefreshToken = await generateParentRefreshToken({
+        parentId: parent.id,
         tokenVersion: parent.tokenVersion,
       });
 
