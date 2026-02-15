@@ -32,8 +32,8 @@ const teachers = new Hono();
 
 // Apply auth middleware to all routes
 teachers.use("*", requireAuth);
-// Require admin role
-teachers.use("*", requireRole(Role.ADMIN));
+// Require admin or receptionist role
+teachers.use("*", requireRole(Role.ADMIN, Role.RECEPTIONIST));
 // Require Growth+ plan for teacher management
 teachers.use("*", requirePlan(Plan.GROWTH, Plan.ENTERPRISE));
 
@@ -75,10 +75,13 @@ teachers.get("/", async (c) => {
   }
 });
 
-// POST /teachers - Create teacher
+// POST /teachers - Create teacher (admin only)
 teachers.post("/", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const body = await c.req.json();
     const parsed = createTeacherSchema.safeParse(body);
 
@@ -268,6 +271,9 @@ teachers.get("/:id", async (c) => {
 teachers.patch("/:id", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const id = c.req.param("id");
     const body = await c.req.json();
     const parsed = updateTeacherSchema.safeParse(body);
@@ -393,10 +399,13 @@ teachers.patch("/:id", async (c) => {
   }
 });
 
-// DELETE /teachers/:id - Delete teacher
+// DELETE /teachers/:id - Delete teacher (admin only)
 teachers.delete("/:id", async (c) => {
   try {
     const schoolId = c.get("schoolId");
+    const role = c.get("role");
+    if (role !== Role.ADMIN) return errors.forbidden(c);
+
     const id = c.req.param("id");
 
     const existing = await db.user.findFirst({

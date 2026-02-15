@@ -61,7 +61,7 @@ const navSections = [
     items: [
       { href: "/dashboard/students", label: "Students", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST", "TEACHER"] },
       { href: "/dashboard/parents", label: "Parents", icon: UserGroupIcon, roles: ["ADMIN", "RECEPTIONIST"] },
-      { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
+      { href: "/dashboard/teachers", label: "Teachers", icon: TeacherIcon, roles: ["ADMIN", "RECEPTIONIST"], plans: ["GROWTH", "ENTERPRISE"] },
       { href: "/dashboard/receptionists", label: "Receptionists", icon: UserGroupIcon, roles: ["ADMIN"] },
       { href: "/dashboard/admins", label: "Admins", icon: Shield01Icon, roles: ["ADMIN"] },
       { href: "/dashboard/classes", label: "Classes", icon: School01Icon, roles: ["ADMIN"], plans: ["GROWTH", "ENTERPRISE"] },
