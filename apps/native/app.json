@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "native",
-    "slug": "native",
+    "name": "Connect-Ed",
+    "slug": "connect-ed",
     "version": "1.0.0",
-    "scheme": "native",
+    "scheme": "connect-ed",
     "platforms": [
       "ios",
       "android"
