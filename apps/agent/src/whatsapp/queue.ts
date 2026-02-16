@@ -1,9 +1,9 @@
 // ============================================
-// Rate-Limited Message Queue
+// Rate-Limited Message Queue (Per-School)
 // Prevents WhatsApp bans by spacing messages
 // ============================================
 
-import { getWhatsAppClient, isWhatsAppReady } from "./client.js";
+import { getSchoolWhatsAppClient, isSchoolWhatsAppReady } from "./client.js";
 import { db } from "@repo/db";
 
 // Queue configuration
@@ -28,9 +28,10 @@ export interface SendResult {
   error?: string;
 }
 
-const queue: QueueItem[] = [];
-let isProcessing = false;
-let lastSendTime = 0;
+// Per-school queues for isolation
+const queues = new Map<string, QueueItem[]>();
+const processingFlags = new Map<string, boolean>();
+const lastSendTimes = new Map<string, number>();
 
 /**
  * Format phone number to WhatsApp Chat ID
@@ -48,7 +49,7 @@ function toChatId(phone: string): string {
 }
 
 /**
- * Enqueue a message to be sent via WhatsApp.
+ * Enqueue a message to be sent via the school's WhatsApp client.
  * Returns a promise that resolves when the message is actually sent.
  */
 export function enqueueMessage(
@@ -59,7 +60,12 @@ export function enqueueMessage(
 ): Promise<SendResult> {
   return new Promise((resolve, reject) => {
     const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    queue.push({
+
+    if (!queues.has(schoolId)) {
+      queues.set(schoolId, []);
+    }
+
+    queues.get(schoolId)!.push({
       id,
       phone,
       content,
@@ -70,26 +76,33 @@ export function enqueueMessage(
       reject,
     });
 
-    // Start processing if not already running
-    if (!isProcessing) {
-      processQueue();
+    // Start processing this school's queue if not already running
+    if (!processingFlags.get(schoolId)) {
+      processSchoolQueue(schoolId);
     }
   });
 }
 
 /**
- * Process the queue sequentially with rate limiting
+ * Process a school's queue sequentially with rate limiting
  */
-async function processQueue(): Promise<void> {
-  if (isProcessing) return;
-  isProcessing = true;
+async function processSchoolQueue(schoolId: string): Promise<void> {
+  if (processingFlags.get(schoolId)) return;
+  processingFlags.set(schoolId, true);
+
+  const queue = queues.get(schoolId);
+  if (!queue) {
+    processingFlags.set(schoolId, false);
+    return;
+  }
 
   while (queue.length > 0) {
     const item = queue[0]!;
 
     // Calculate required delay
     const delay = item.isBulk ? BULK_DELAY_MS : MIN_DELAY_MS;
-    const elapsed = Date.now() - lastSendTime;
+    const lastSend = lastSendTimes.get(schoolId) || 0;
+    const elapsed = Date.now() - lastSend;
     const waitTime = Math.max(0, delay - elapsed);
 
     if (waitTime > 0) {
@@ -98,7 +111,7 @@ async function processQueue(): Promise<void> {
 
     // Attempt to send
     const result = await sendMessage(item);
-    lastSendTime = Date.now();
+    lastSendTimes.set(schoolId, Date.now());
 
     if (result.success) {
       queue.shift();
@@ -106,7 +119,7 @@ async function processQueue(): Promise<void> {
     } else if (item.retries < MAX_RETRIES) {
       item.retries++;
       console.warn(
-        `[Queue] Retry ${item.retries}/${MAX_RETRIES} for ${item.phone}: ${result.error}`
+        `[Queue:${schoolId}] Retry ${item.retries}/${MAX_RETRIES} for ${item.phone}: ${result.error}`
       );
       // Exponential backoff
       await sleep(MIN_DELAY_MS * Math.pow(2, item.retries));
@@ -116,17 +129,17 @@ async function processQueue(): Promise<void> {
     }
   }
 
-  isProcessing = false;
+  processingFlags.set(schoolId, false);
 }
 
 /**
- * Actually send the message via wwebjs and track quota
+ * Actually send the message via the school's wwebjs client and track quota
  */
 async function sendMessage(item: QueueItem): Promise<SendResult> {
   try {
-    const client = getWhatsAppClient();
-    if (!client || !isWhatsAppReady()) {
-      return { success: false, error: "WhatsApp client not ready" };
+    const client = getSchoolWhatsAppClient(item.schoolId);
+    if (!client || !isSchoolWhatsAppReady(item.schoolId)) {
+      return { success: false, error: `WhatsApp client not ready for school ${item.schoolId}` };
     }
 
     const chatId = toChatId(item.phone);
@@ -152,7 +165,7 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
 
     return { success: true, messageId: msg.id?.id };
   } catch (error: any) {
-    console.error(`[Queue] Send failed for ${item.phone}:`, error.message);
+    console.error(`[Queue:${item.schoolId}] Send failed for ${item.phone}:`, error.message);
 
     // Log the failure
     try {
@@ -175,13 +188,26 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
 }
 
 /**
- * Get current queue status
+ * Get current queue status (across all schools)
  */
 export function getQueueStatus() {
+  let totalPending = 0;
+  let anyProcessing = false;
+
+  for (const [schoolId, queue] of queues) {
+    totalPending += queue.length;
+    if (processingFlags.get(schoolId)) anyProcessing = true;
+  }
+
   return {
-    pending: queue.length,
-    isProcessing,
-    isClientReady: isWhatsAppReady(),
+    pending: totalPending,
+    isProcessing: anyProcessing,
+    schoolQueues: Array.from(queues.entries()).map(([schoolId, queue]) => ({
+      schoolId,
+      pending: queue.length,
+      isProcessing: processingFlags.get(schoolId) || false,
+      isClientReady: isSchoolWhatsAppReady(schoolId),
+    })),
   };
 }
 
