@@ -77,10 +77,18 @@ payments.get("/plan-status", requireAuth, async (c) => {
       where: { schoolId },
     });
 
+    // Get the last paid intermediate payment to determine which plan the user selected
+    const lastPaidPayment = await db.intermediatePayment.findFirst({
+      where: { schoolId, paid: true },
+      orderBy: { createdAt: "desc" },
+      select: { plan: true },
+    });
+
     return successResponse(c, {
       monthlyPaymentPaid: planPayment?.monthlyPaymentPaid ?? false,
       onceOffPaymentPaid: planPayment?.onceOffPaymentPaid ?? false,
       paid: planPayment?.paid ?? false,
+      selectedPlan: lastPaidPayment?.plan ?? null,
     });
   } catch (error) {
     console.error("Plan status error:", error);
