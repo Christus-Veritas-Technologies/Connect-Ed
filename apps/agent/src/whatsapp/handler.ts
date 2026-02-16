@@ -51,19 +51,19 @@ export async function handleIncomingMessage(
     // Route based on auth stage
     switch (session.authStage) {
       case "none":
-        await handleNewConversation(phone, body);
+        await handleNewConversation(phone, body, schoolId);
         break;
 
       case "awaiting_email":
-        await handleEmailInput(phone, body);
+        await handleEmailInput(phone, body, schoolId);
         break;
 
       case "awaiting_password":
-        await handlePasswordInput(phone, body);
+        await handlePasswordInput(phone, body, schoolId);
         break;
 
       case "verified":
-        await handleVerifiedMessage(phone, body);
+        await handleVerifiedMessage(phone, body, schoolId);
         break;
 
       default:
@@ -80,24 +80,24 @@ export async function handleIncomingMessage(
 // Auth flow handlers (template-based, no OpenAI costs)
 // ============================================
 
-async function handleNewConversation(phone: string, body: string): Promise<void> {
+async function handleNewConversation(phone: string, body: string, schoolId?: string): Promise<void> {
   // Check if the message looks like an email (they might have gotten straight to it)
   if (isLikelyEmail(body)) {
-    await handleEmailInput(phone, body);
+    await handleEmailInput(phone, body, schoolId);
     return;
   }
 
   // Otherwise, ask them to verify
-  await reply(phone, authRequestTemplate());
+  await reply(phone, authRequestTemplate(), schoolId);
   updateSession(phone, { authStage: "awaiting_email" });
 }
 
-async function handleEmailInput(phone: string, body: string): Promise<void> {
+async function handleEmailInput(phone: string, body: string, schoolId?: string): Promise<void> {
   const email = body.trim().toLowerCase();
 
   // Basic email validation
   if (!email.includes("@") || !email.includes(".")) {
-    await reply(phone, `That doesn't look like a valid email address. Please try again.\n\n${authRequestTemplate()}`);
+    await reply(phone, `That doesn't look like a valid email address. Please try again.\n\n${authRequestTemplate()}`, schoolId);
     return;
   }
 
@@ -107,22 +107,23 @@ async function handleEmailInput(phone: string, body: string): Promise<void> {
   if (!exists) {
     await reply(
       phone,
-      `No account found with *${email}*.\n\nPlease check the email and try again, or contact the school office for help.`
+      `No account found with *${email}*.\n\nPlease check the email and try again, or contact the school office for help.`,
+      schoolId
     );
     return;
   }
 
   updateSession(phone, { authStage: "awaiting_password", email });
-  await reply(phone, authPasswordTemplate(email));
+  await reply(phone, authPasswordTemplate(email), schoolId);
 }
 
-async function handlePasswordInput(phone: string, body: string): Promise<void> {
+async function handlePasswordInput(phone: string, body: string, schoolId?: string): Promise<void> {
   const session = getSession(phone);
   const password = body.trim();
 
   if (!session.email) {
     updateSession(phone, { authStage: "awaiting_email" });
-    await reply(phone, authRequestTemplate());
+    await reply(phone, authRequestTemplate(), schoolId);
     return;
   }
 
@@ -150,7 +151,8 @@ async function handlePasswordInput(phone: string, body: string): Promise<void> {
     if (attempts >= MAX_AUTH_ATTEMPTS) {
       await reply(
         phone,
-        `*Too many failed attempts.* Your session has been reset for security.\n\nPlease start over by sharing your email address.`
+        `*Too many failed attempts.* Your session has been reset for security.\n\nPlease start over by sharing your email address.`,
+        schoolId
       );
       updateSession(phone, {
         authStage: "awaiting_email",
@@ -161,7 +163,8 @@ async function handlePasswordInput(phone: string, body: string): Promise<void> {
       await reply(
         phone,
         authFailedTemplate() +
-          `\n\nAttempts remaining: *${MAX_AUTH_ATTEMPTS - attempts}*`
+          `\n\nAttempts remaining: *${MAX_AUTH_ATTEMPTS - attempts}*`,
+        schoolId
       );
     }
   }
@@ -171,12 +174,12 @@ async function handlePasswordInput(phone: string, body: string): Promise<void> {
 // Verified message handler (uses AI agent)
 // ============================================
 
-async function handleVerifiedMessage(phone: string, body: string): Promise<void> {
+async function handleVerifiedMessage(phone: string, body: string, schoolId?: string): Promise<void> {
   const session = getSession(phone);
 
   if (!session.userData) {
     updateSession(phone, { authStage: "awaiting_email", isVerified: false });
-    await reply(phone, notVerifiedTemplate());
+    await reply(phone, notVerifiedTemplate(), schoolId);
     return;
   }
 
@@ -203,11 +206,9 @@ async function reply(
   schoolId?: string
 ): Promise<void> {
   if (!schoolId) {
-    // If no school ID, try to find one via the phone number
-    // For now, just send without quota tracking
-    const { enqueueMessage: enqueue } = await import("../whatsapp/queue.js");
-    // Use a placeholder school ID — the queue will handle it
-    await enqueue(phone, content, "system", false);
+    // If no school ID is available, we can't send the message properly
+    // This should rarely happen because schoolId is passed from the message handler
+    console.warn(`[Handler] Cannot reply to ${phone}: no schoolId provided. Message: ${content.slice(0, 50)}...`);
     return;
   }
   await enqueueMessage(phone, content, schoolId, false);
