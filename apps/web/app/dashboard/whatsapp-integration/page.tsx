@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
     Loader2,
@@ -19,8 +20,10 @@ import {
     useWhatsAppQR,
     useConnectWhatsApp,
     useDisconnectWhatsApp,
+    whatsappKeys,
+    type WhatsAppStatus,
 } from "@/lib/hooks";
-import { ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,12 +105,21 @@ function QRCodePanel({ qrCode, status }: { qrCode: string | null; status: string
 // ── Main Page ──────────────────────────────────
 
 export default function WhatsAppIntegrationPage() {
-    const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useWhatsAppStatus();
+    const [isManuallyConnecting, setIsManuallyConnecting] = useState(false);
+
+    // Poll status whenever manually connecting, or when we detect a status check is needed
+    const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery<WhatsAppStatus>({
+        queryKey: whatsappKeys.status(),
+        queryFn: () => api.get("/whatsapp-integration/status"),
+        refetchInterval: isManuallyConnecting ? 2000 : false, // Poll every 2s while connecting
+    });
+
     const connectMutation = useConnectWhatsApp();
     const disconnectMutation = useDisconnectWhatsApp();
 
     // Poll QR when in connecting/qr state
     const isConnecting =
+        isManuallyConnecting ||
         statusData?.liveStatus === "qr" ||
         statusData?.liveStatus === "initializing" ||
         statusData?.liveStatus === "authenticated";
@@ -116,20 +128,20 @@ export default function WhatsAppIntegrationPage() {
 
     const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
-    // Auto-refresh status when QR polling detects "ready"
+    // When QR is scanned and agent reports "ready", or when status becomes connected, stop polling
     useEffect(() => {
-        if (qrData?.status === "ready") {
-            refetchStatus();
+        if (statusData?.connected && statusData?.liveStatus === "ready") {
+            setIsManuallyConnecting(false);
         }
-    }, [qrData?.status, refetchStatus]);
+    }, [statusData?.connected, statusData?.liveStatus]);
 
     const handleConnect = async () => {
         try {
+            setIsManuallyConnecting(true);
             await connectMutation.mutateAsync();
             toast.success("WhatsApp client initializing…");
-            // Start polling by refetching status
-            setTimeout(() => refetchStatus(), 2000);
         } catch (err) {
+            setIsManuallyConnecting(false);
             const message = err instanceof ApiError ? err.message : "Failed to connect";
             toast.error(message);
         }
