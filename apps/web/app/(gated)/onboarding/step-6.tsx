@@ -289,7 +289,7 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
               <div>
                 <p className="font-semibold text-blue-900 text-sm">WhatsApp Integration (Optional)</p>
                 <p className="text-xs text-blue-700 mt-1">
-                  After completing onboarding, you can connect your school&apos;s WhatsApp number from the 
+                  After completing onboarding, you can connect your school&apos;s WhatsApp number from the
                   dashboard under <strong>System → WhatsApp</strong> to send notifications to parents and staff.
                 </p>
               </div>
