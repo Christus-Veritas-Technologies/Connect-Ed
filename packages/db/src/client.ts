@@ -1,4 +1,14 @@
-import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "url";
+import { config } from "dotenv";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dbEnvPath = path.resolve(__dirname, "../.env");
+
+// Load .env from packages/db root BEFORE importing anything that uses DATABASE_URL
+config({ path: dbEnvPath });
+
 import { PrismaClient } from "./generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 

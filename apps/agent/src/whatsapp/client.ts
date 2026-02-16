@@ -6,6 +6,8 @@
 import pkg from "whatsapp-web.js";
 const { Client, LocalAuth } = pkg;
 import { db } from "@repo/db";
+import { existsSync, rmSync } from "fs";
+import { join } from "path";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -83,6 +85,18 @@ export async function initSchoolClient(schoolId: string): Promise<SchoolClient> 
   // If there's a destroyed/disconnected client, clean up first
   if (existing) {
     await destroySchoolClient(schoolId);
+  }
+
+  // Clean up any stale lockfile from previous session
+  const sessionPath = join(process.cwd(), ".wwebjs_auth", `session-${schoolId}`);
+  const lockfilePath = join(sessionPath, "lockfile");
+  if (existsSync(lockfilePath)) {
+    try {
+      rmSync(lockfilePath);
+      console.log(`[WhatsApp:${schoolId}] Cleaned up stale lockfile`);
+    } catch (err) {
+      console.warn(`[WhatsApp:${schoolId}] Could not remove lockfile:`, err);
+    }
   }
 
   console.log(`[WhatsApp:${schoolId}] Initializing client...`);
@@ -210,9 +224,37 @@ export async function initSchoolClient(schoolId: string): Promise<SchoolClient> 
   });
 
   // Start initialization (don't await — let QR flow happen asynchronously)
-  client.initialize().catch((err) => {
+  client.initialize().catch((err: any) => {
     schoolClient.status = "disconnected";
-    console.error(`[WhatsApp:${schoolId}] Initialization failed:`, err);
+    
+    // Check if it's the "browser already running" error and try cleanup
+    const errMsg = err?.message || String(err);
+    if (errMsg.includes("The browser is already running")) {
+      console.error(`[WhatsApp:${schoolId}] Browser still running from previous session. Cleaning up...`);
+      
+      // Try to clean up the session directory more aggressively
+      try {
+        const sessionPath = join(process.cwd(), ".wwebjs_auth", `session-${schoolId}`);
+        if (existsSync(sessionPath)) {
+          rmSync(sessionPath, { recursive: true, force: true });
+          console.log(`[WhatsApp:${schoolId}] Cleaned up session directory`);
+        }
+      } catch (cleanupErr) {
+        console.warn(`[WhatsApp:${schoolId}] Could not clean up session directory:`, cleanupErr);
+      }
+      
+      // Retry initialization after a short delay
+      setTimeout(async () => {
+        console.log(`[WhatsApp:${schoolId}] Retrying initialization...`);
+        try {
+          await client.initialize();
+        } catch (retryErr) {
+          console.error(`[WhatsApp:${schoolId}] Retry failed:`, retryErr);
+        }
+      }, 2000);
+    } else {
+      console.error(`[WhatsApp:${schoolId}] Initialization failed:`, err);
+    }
   });
 
   return schoolClient;
