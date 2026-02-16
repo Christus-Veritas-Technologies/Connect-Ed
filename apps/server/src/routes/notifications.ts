@@ -271,12 +271,14 @@ export async function getSchoolNotificationPrefs(schoolId: string) {
       notifyWhatsapp: true,
       notifySms: true,
       notifyInApp: true,
+      whatsappConnected: true,
     },
   });
 
   return {
     email: school?.notifyEmail ?? true,
-    whatsapp: school?.notifyWhatsapp ?? true,
+    // WhatsApp requires BOTH the preference toggle AND an active connection
+    whatsapp: (school?.notifyWhatsapp ?? true) && (school?.whatsappConnected ?? false),
     sms: school?.notifySms ?? true,
     inApp: school?.notifyInApp ?? true,
   };
