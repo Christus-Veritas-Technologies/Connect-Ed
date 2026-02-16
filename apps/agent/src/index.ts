@@ -1,6 +1,6 @@
 // ============================================
 // Connect-Ed WhatsApp Agent — Entry Point
-// HTTP server (Hono) + WhatsApp client (wwebjs)
+// HTTP server (Hono) + Per-School WhatsApp clients (wwebjs)
 // ============================================
 
 import { Hono } from "hono";
@@ -8,10 +8,15 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { db } from "@repo/db";
 import {
-  initWhatsAppClient,
-  isWhatsAppReady,
-  getQRCode,
-  getWhatsAppClient,
+  initSchoolClient,
+  destroySchoolClient,
+  getSchoolClientStatus,
+  getSchoolWhatsAppClient,
+  isSchoolWhatsAppReady,
+  getSchoolQRCode,
+  getAllClientStatuses,
+  restoreConnectedClients,
+  destroyAllClients,
 } from "./whatsapp/client.js";
 import { enqueueMessage, getQueueStatus } from "./whatsapp/queue.js";
 import { handleIncomingMessage } from "./whatsapp/handler.js";
@@ -43,7 +48,7 @@ app.use(
 app.get("/", (c) => {
   return c.json({
     service: "connect-ed-agent",
-    whatsapp: isWhatsAppReady() ? "connected" : "disconnected",
+    clients: getAllClientStatuses(),
     queue: getQueueStatus(),
   });
 });
@@ -51,14 +56,90 @@ app.get("/", (c) => {
 app.get("/health", (c) => c.json({ ok: true }));
 
 app.get("/status", (c) => {
-  const qr = getQRCode();
   return c.json({
-    whatsapp: {
-      ready: isWhatsAppReady(),
-      qrCode: qr ? "available (scan in terminal)" : null,
-    },
+    clients: getAllClientStatuses(),
     queue: getQueueStatus(),
   });
+});
+
+// ============================================
+// Per-School Connection Management
+// ============================================
+
+/**
+ * POST /connect/:schoolId
+ * Initialize a WhatsApp client for a school.
+ * Returns the current status (will include QR code when available).
+ */
+app.post("/connect/:schoolId", async (c) => {
+  try {
+    const schoolId = c.req.param("schoolId");
+
+    // Verify school exists
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: { id: true, name: true },
+    });
+    if (!school) {
+      return c.json({ error: "School not found" }, 404);
+    }
+
+    const sc = await initSchoolClient(schoolId);
+
+    // Wire up incoming message handler for this client
+    sc.client.removeAllListeners("message");
+    sc.client.on("message", async (msg: any) => {
+      if (msg.from.includes("@g.us") || msg.from === "status@broadcast" || msg.fromMe) return;
+      const phone = msg.from.replace("@c.us", "");
+      const body = msg.body?.trim();
+      if (!body) return;
+      console.log(`[WhatsApp:${schoolId}] Incoming from ${phone}: ${body.slice(0, 100)}`);
+      await handleIncomingMessage(phone, body, schoolId);
+    });
+
+    return c.json({
+      success: true,
+      schoolId,
+      schoolName: school.name,
+      ...getSchoolClientStatus(schoolId),
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+/**
+ * GET /status/:schoolId
+ * Get the WhatsApp connection status for a school.
+ */
+app.get("/status/:schoolId", (c) => {
+  const schoolId = c.req.param("schoolId");
+  return c.json(getSchoolClientStatus(schoolId));
+});
+
+/**
+ * GET /qr/:schoolId
+ * Get the QR code data for a school's pending connection.
+ */
+app.get("/qr/:schoolId", (c) => {
+  const schoolId = c.req.param("schoolId");
+  const qr = getSchoolQRCode(schoolId);
+  const status = getSchoolClientStatus(schoolId);
+  return c.json({ qrCode: qr, ...status });
+});
+
+/**
+ * POST /disconnect/:schoolId
+ * Disconnect and destroy a school's WhatsApp client.
+ */
+app.post("/disconnect/:schoolId", async (c) => {
+  try {
+    const schoolId = c.req.param("schoolId");
+    await destroySchoolClient(schoolId);
+    return c.json({ success: true, message: "WhatsApp disconnected" });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
 });
 
 // ============================================
@@ -67,7 +148,7 @@ app.get("/status", (c) => {
 
 /**
  * POST /send
- * Send a plain WhatsApp message
+ * Send a plain WhatsApp message via the school's connected client
  * Body: { phone, content, schoolId, isBulk? }
  */
 app.post("/send", async (c) => {
@@ -76,6 +157,11 @@ app.post("/send", async (c) => {
 
     if (!phone || !content || !schoolId) {
       return c.json({ error: "phone, content, and schoolId are required" }, 400);
+    }
+
+    // Check if school has a connected WhatsApp client
+    if (!isSchoolWhatsAppReady(schoolId)) {
+      return c.json({ error: "WhatsApp not connected for this school" }, 503);
     }
 
     // Check quota
@@ -118,6 +204,10 @@ app.post("/send/report", async (c) => {
       return c.json({ error: "phone, schoolId, and report are required" }, 400);
     }
 
+    if (!isSchoolWhatsAppReady(schoolId)) {
+      return c.json({ error: "WhatsApp not connected for this school" }, 503);
+    }
+
     const content = academicReportTemplate(report);
     const result = await enqueueMessage(phone, content, schoolId, true);
     return c.json({ ...result });
@@ -141,6 +231,10 @@ app.post("/send/fee-reminder", async (c) => {
 
     if (!phone || !schoolId || !reminder) {
       return c.json({ error: "phone, schoolId, and reminder are required" }, 400);
+    }
+
+    if (!isSchoolWhatsAppReady(schoolId)) {
+      return c.json({ error: "WhatsApp not connected for this school" }, 503);
     }
 
     const content = feeReminderTemplate(reminder);
@@ -168,6 +262,10 @@ app.post("/send/welcome", async (c) => {
       return c.json({ error: "phone, schoolId, and welcome are required" }, 400);
     }
 
+    if (!isSchoolWhatsAppReady(schoolId)) {
+      return c.json({ error: "WhatsApp not connected for this school" }, 503);
+    }
+
     const content = welcomeTemplate(welcome);
     const result = await enqueueMessage(phone, content, schoolId, false);
     return c.json({ ...result });
@@ -191,9 +289,13 @@ app.post("/send/bulk", async (c) => {
       return c.json({ error: "messages array is required" }, 400);
     }
 
+    // Filter out messages for schools without connected clients
+    const validMessages = messages.filter((msg) => isSchoolWhatsAppReady(msg.schoolId));
+    const skipped = messages.length - validMessages.length;
+
     // Enqueue all as bulk (60s gaps)
     const results = await Promise.allSettled(
-      messages.map((msg) =>
+      validMessages.map((msg) =>
         enqueueMessage(msg.phone, msg.content, msg.schoolId, true)
       )
     );
@@ -203,7 +305,7 @@ app.post("/send/bulk", async (c) => {
     ).length;
     const failed = results.length - sent;
 
-    return c.json({ sent, failed, total: messages.length });
+    return c.json({ sent, failed, skipped, total: messages.length });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -228,8 +330,15 @@ app.post("/process-pending", async (c) => {
 
     let sent = 0;
     let failed = 0;
+    let skipped = 0;
 
     for (const msg of pending) {
+      // Skip if school doesn't have WhatsApp connected
+      if (!isSchoolWhatsAppReady(msg.schoolId)) {
+        skipped++;
+        continue;
+      }
+
       const result = await enqueueMessage(
         msg.recipient,
         msg.content ?? "",
@@ -251,43 +360,37 @@ app.post("/process-pending", async (c) => {
       else failed++;
     }
 
-    return c.json({ processed: pending.length, sent, failed });
+    return c.json({ processed: pending.length, sent, failed, skipped });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
 });
 
 // ============================================
-// Initialize WhatsApp + wire incoming messages
+// Initialize: restore connected school clients on startup
 // ============================================
 
 async function start() {
-  // Initialize WhatsApp client
   try {
-    await initWhatsAppClient();
+    await restoreConnectedClients();
 
-    // Wire incoming messages to the handler
-    const client = getWhatsAppClient();
-    if (client) {
-      client.on("message", async (msg: any) => {
-        // Ignore group messages, status broadcasts, and our own messages
-        if (msg.from.includes("@g.us") || msg.from === "status@broadcast" || msg.fromMe) {
-          return;
-        }
-
-        // Extract phone number from chat ID (remove @c.us)
-        const phone = msg.from.replace("@c.us", "");
-        const body = msg.body?.trim();
-
-        if (!body) return;
-
-        console.log(`[WhatsApp] Incoming from ${phone}: ${body.slice(0, 100)}`);
-        await handleIncomingMessage(phone, body);
-      });
+    // Wire incoming message handlers for all restored clients
+    for (const { schoolId } of getAllClientStatuses()) {
+      const sc = getSchoolWhatsAppClient(schoolId);
+      if (sc) {
+        sc.on("message", async (msg: any) => {
+          if (msg.from.includes("@g.us") || msg.from === "status@broadcast" || msg.fromMe) return;
+          const phone = msg.from.replace("@c.us", "");
+          const body = msg.body?.trim();
+          if (!body) return;
+          console.log(`[WhatsApp:${schoolId}] Incoming from ${phone}: ${body.slice(0, 100)}`);
+          await handleIncomingMessage(phone, body, schoolId);
+        });
+      }
     }
   } catch (error: any) {
-    console.error("[WhatsApp] Failed to initialize:", error.message);
-    console.log("[WhatsApp] Agent will run in API-only mode (no incoming messages)");
+    console.error("[WhatsApp] Failed to restore clients:", error.message);
+    console.log("[WhatsApp] Agent will run in API-only mode");
   }
 
   // Start periodic processing of pending messages (every 5 minutes)
@@ -312,7 +415,7 @@ async function start() {
   }, 5 * 60 * 1000);
 }
 
-// Start WhatsApp in background (don't block HTTP server)
+// Start restoration in background (don't block HTTP server)
 start().catch(console.error);
 
 // ============================================
