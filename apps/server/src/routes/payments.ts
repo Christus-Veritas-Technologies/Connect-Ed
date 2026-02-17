@@ -77,10 +77,18 @@ payments.get("/plan-status", requireAuth, async (c) => {
       where: { schoolId },
     });
 
+    // Get the last paid intermediate payment to determine which plan the user selected
+    const lastPaidPayment = await db.intermediatePayment.findFirst({
+      where: { schoolId, paid: true },
+      orderBy: { createdAt: "desc" },
+      select: { plan: true },
+    });
+
     return successResponse(c, {
       monthlyPaymentPaid: planPayment?.monthlyPaymentPaid ?? false,
       onceOffPaymentPaid: planPayment?.onceOffPaymentPaid ?? false,
       paid: planPayment?.paid ?? false,
+      selectedPlan: lastPaidPayment?.plan ?? null,
     });
   } catch (error) {
     console.error("Plan status error:", error);
@@ -116,6 +124,54 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
     });
 
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
+
+    // BYPASS: Check if this is the test email
+    if (data.email === "kinzinzombe07@gmail.com") {
+      console.log("[BYPASS] Test email detected, skipping PayNow gateway for:", data.email);
+      
+      // Mark payment as paid and complete the flow
+      await db.$transaction(async (tx) => {
+        await tx.intermediatePayment.update({
+          where: { id: intermediatePayment.id },
+          data: { paid: true },
+        });
+
+        const planPaymentData: any = {};
+        if (effectiveType === "FULL") {
+          planPaymentData.monthlyPaymentPaid = true;
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        } else if (effectiveType === "MONTHLY_ONLY") {
+          planPaymentData.monthlyPaymentPaid = true;
+        } else if (effectiveType === "SETUP_ONLY") {
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        }
+
+        await upsertPlanPayment(tx, schoolId, planPaymentData);
+
+        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
+        await tx.school.update({
+          where: { id: schoolId },
+          data: {
+            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            plan: data.planType,
+            nextPaymentDate: getNextPaymentDate(),
+            emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
+            whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
+            smsQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].smsQuota,
+          },
+        });
+      });
+
+      // Return success redirect URL
+      return successResponse(c, {
+        checkoutUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        intermediatePaymentId: intermediatePayment.id,
+        pollUrl: "bypass",
+      });
+    }
 
     try {
       const result = await createPaynowCheckout({
@@ -223,6 +279,53 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     });
 
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
+
+    // BYPASS: Check if this is the test email
+    if (data.email === "kinzinzombe07@gmail.com") {
+      console.log("[BYPASS] Test email detected, skipping DodoPayments gateway for:", data.email);
+      
+      // Mark payment as paid and complete the flow
+      await db.$transaction(async (tx) => {
+        await tx.intermediatePayment.update({
+          where: { id: intermediatePayment.id },
+          data: { paid: true },
+        });
+
+        const planPaymentData: any = {};
+        if (effectiveType === "FULL") {
+          planPaymentData.monthlyPaymentPaid = true;
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        } else if (effectiveType === "MONTHLY_ONLY") {
+          planPaymentData.monthlyPaymentPaid = true;
+        } else if (effectiveType === "SETUP_ONLY") {
+          planPaymentData.onceOffPaymentPaid = true;
+          planPaymentData.paid = true;
+        }
+
+        await upsertPlanPayment(tx, schoolId, planPaymentData);
+
+        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
+        await tx.school.update({
+          where: { id: schoolId },
+          data: {
+            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            plan: data.planType,
+            nextPaymentDate: getNextPaymentDate(),
+            emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
+            whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
+            smsQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].smsQuota,
+          },
+        });
+      });
+
+      // Return success redirect URL
+      return successResponse(c, {
+        checkoutUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        paymentId: "bypass",
+      });
+    }
 
     // Validate API key exists
     const apiKey = process.env.DODO_PAYMENTS_API_KEY;

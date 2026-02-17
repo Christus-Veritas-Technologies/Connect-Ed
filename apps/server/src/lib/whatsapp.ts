@@ -15,21 +15,27 @@ interface SendWhatsAppOptions {
 
 /**
  * Send a WhatsApp message by hitting the agent app's /send endpoint.
- * Checks the school's WhatsApp quota before sending.
+ * Checks: 1) school has WhatsApp connected, 2) quota not exceeded.
  * Logs the message in the messageLog table.
  */
 export async function sendWhatsApp(options: SendWhatsAppOptions): Promise<boolean> {
   const { phone, content, schoolId, isBulk = false } = options;
 
   try {
-    // Check quota
+    // Check connection + quota
     const school = await db.school.findUnique({
       where: { id: schoolId },
-      select: { whatsappQuota: true, whatsappUsed: true, name: true },
+      select: { whatsappQuota: true, whatsappUsed: true, whatsappConnected: true, name: true },
     });
 
     if (!school) {
       console.error("❌ [WhatsApp] School not found:", schoolId);
+      return false;
+    }
+
+    // Skip if school hasn't connected WhatsApp
+    if (!school.whatsappConnected) {
+      console.log(`⏭️ [WhatsApp] Skipping — school "${school.name}" has no WhatsApp connected`);
       return false;
     }
 
@@ -135,11 +141,11 @@ export async function sendWhatsAppWelcome(options: {
   try {
     const school = await db.school.findUnique({
       where: { id: schoolId },
-      select: { whatsappQuota: true, whatsappUsed: true },
+      select: { whatsappQuota: true, whatsappUsed: true, whatsappConnected: true },
     });
 
-    if (!school || school.whatsappUsed >= school.whatsappQuota) {
-      console.log(`⚠️ [WhatsApp] Quota exceeded, skipping welcome for ${phone}`);
+    if (!school || !school.whatsappConnected || school.whatsappUsed >= school.whatsappQuota) {
+      console.log(`⏭️ [WhatsApp] Skipping welcome for ${phone} — not connected or quota exceeded`);
       return false;
     }
 

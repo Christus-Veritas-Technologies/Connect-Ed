@@ -91,7 +91,7 @@ const navSections = [
   {
     label: "System",
     items: [
-      // Settings removed from student/teacher/parent sidebars
+      { href: "/dashboard/whatsapp-integration", label: "WhatsApp", icon: SentIcon, roles: ["ADMIN", "RECEPTIONIST"] },
     ],
   },
 ];

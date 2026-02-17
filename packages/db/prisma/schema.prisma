@@ -160,6 +160,11 @@ model School {
   notifySms      Boolean @default(true)
   notifyInApp    Boolean @default(true)
 
+  // WhatsApp integration (per-school)
+  whatsappConnected Boolean @default(false)
+  whatsappPhone     String?  // Connected phone number
+  whatsappSessionId String?  // Unique session identifier for this school's wwebjs client
+
   // Messaging quotas (reset monthly)
   emailQuota     Int      @default(200)
   whatsappQuota  Int      @default(200)

@@ -30,6 +30,7 @@ interface PlanStatus {
   monthlyPaymentPaid: boolean;
   onceOffPaymentPaid: boolean;
   paid: boolean;
+  selectedPlan: Plan | null;
 }
 
 export default function PaymentPage() {
@@ -54,9 +55,13 @@ export default function PaymentPage() {
       try {
         const data = await api.get<PlanStatus>("/payments/plan-status");
         setPlanStatus(data);
+        // If user already paid for a specific plan, set that as selected
+        if (data.selectedPlan) {
+          setSelectedPlan(data.selectedPlan);
+        }
       } catch {
         // No plan payment record yet — everything is unpaid
-        setPlanStatus({ monthlyPaymentPaid: false, onceOffPaymentPaid: false, paid: false });
+        setPlanStatus({ monthlyPaymentPaid: false, onceOffPaymentPaid: false, paid: false, selectedPlan: null });
       } finally {
         setIsLoadingStatus(false);
       }
@@ -192,6 +197,7 @@ export default function PaymentPage() {
           const planAmounts = getPlanAmounts(plan, paymentCurrency);
           const isSelected = selectedPlan === plan;
           const isPopular = plan === "GROWTH";
+          const isLocked = monthlyAlreadyPaid && planStatus?.selectedPlan !== plan;
 
           return (
             <motion.div
@@ -201,9 +207,9 @@ export default function PaymentPage() {
               transition={{ delay: index * 0.1 }}
             >
               <Card
-                hover
-                onClick={() => setSelectedPlan(plan)}
-                className={`relative cursor-pointer transition-all ${isSelected
+                hover={!isLocked}
+                onClick={() => !isLocked && setSelectedPlan(plan)}
+                className={`relative ${!isLocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} transition-all ${isSelected
                   ? "bg-brand border-brand ring-4 ring-brand/20"
                   : "bg-muted/40"
                   }`}

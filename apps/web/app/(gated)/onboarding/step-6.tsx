@@ -275,6 +275,27 @@ export function OnboardingStep6({ onBack }: OnboardingStep6Props) {
             </div>
           </motion.div>
         )}
+
+        {/* WhatsApp Integration Tip */}
+        {!error && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="p-4 bg-blue-50 rounded-lg border border-blue-200"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-xl shrink-0 mt-0.5">📱</span>
+              <div>
+                <p className="font-semibold text-blue-900 text-sm">WhatsApp Integration (Optional)</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  After completing onboarding, you can connect your school&apos;s WhatsApp number from the
+                  dashboard under <strong>System → WhatsApp</strong> to send notifications to parents and staff.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       <motion.div

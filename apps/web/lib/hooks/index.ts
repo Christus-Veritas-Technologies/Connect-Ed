@@ -19,3 +19,4 @@ export * from "./use-receptionists";
 export * from "./use-admins";
 export * from "./use-chat";
 export * from "./use-settings";
+export * from "./use-whatsapp";
