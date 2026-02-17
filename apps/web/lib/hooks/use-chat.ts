@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
-import { api, getAccessToken } from "../api";
+import { api, apiClient, getAccessToken } from "../api";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -26,10 +26,14 @@ export interface ChatMessage {
   senderRole: string;
   senderName: string;
   senderAvatar: string | null;
-  type: "TEXT" | "EXAM_RESULT" | "GRADE" | "SUBJECT_INFO";
+  type: "TEXT" | "EXAM_RESULT" | "GRADE" | "SUBJECT_INFO" | "FILE";
   content: string;
   metadata: Record<string, unknown> | null;
   targetStudentId: string | null;
+  fileId: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  fileMimeType: string | null;
   createdAt: string;
 }
 
@@ -121,6 +125,50 @@ export function useSyncChatMembers(classId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.members(classId) });
     },
+  });
+}
+
+export function useChatFileUpload(classId: string) {
+  const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const mutation = useMutation({
+    mutationFn: async (file: File) => {
+      setUploadProgress(0);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await apiClient.post(`/chat/rooms/${classId}/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percent = progressEvent.total
+            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            : 0;
+          setUploadProgress(percent);
+        },
+      });
+
+      if (response.data.success) return response.data.data;
+      throw new Error("Upload failed");
+    },
+    onSuccess: () => {
+      setUploadProgress(0);
+      queryClient.invalidateQueries({ queryKey: chatKeys.messages(classId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.rooms() });
+    },
+    onError: () => {
+      setUploadProgress(0);
+    },
+  });
+
+  return { ...mutation, uploadProgress };
+}
+
+export function useChatFileDownload() {
+  return useMutation({
+    mutationFn: (storedName: string) =>
+      api.get<{ downloadUrl: string; fileName: string }>(`/chat/file/${encodeURIComponent(storedName)}`),
   });
 }
 
