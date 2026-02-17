@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiClient } from "../api";
 
@@ -106,14 +107,17 @@ export function useSearchUsers(query: string) {
 
 export function useUploadFile() {
   const queryClient = useQueryClient();
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async (data: {
       file: File;
       title: string;
       description?: string;
       recipients?: ShareRecipient[];
     }) => {
+      setUploadProgress(0);
+
       const formData = new FormData();
       formData.append("file", data.file);
       formData.append("title", data.title);
@@ -124,15 +128,27 @@ export function useUploadFile() {
 
       const response = await apiClient.post("/shared-files/staff/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percent = progressEvent.total
+            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            : 0;
+          setUploadProgress(percent);
+        },
       });
 
       if (response.data.success) return response.data.data;
       throw new Error("Upload failed");
     },
     onSuccess: () => {
+      setUploadProgress(0);
       queryClient.invalidateQueries({ queryKey: sharedFileKeys.lists() });
     },
+    onError: () => {
+      setUploadProgress(0);
+    },
   });
+
+  return { ...mutation, uploadProgress };
 }
 
 export function useShareFile() {
