@@ -70,6 +70,7 @@ enum ChatMessageType {
   EXAM_RESULT
   GRADE
   SUBJECT_INFO
+  FILE
 }
 
 enum MessageStatus {
@@ -924,6 +925,12 @@ model ChatMessage {
   type     ChatMessageType @default(TEXT)
   content  String          @db.Text
   metadata Json?           // For primitives: { examId, studentId, subjectId, marks, grade, ... }
+
+  // File attachment (for FILE message type)
+  fileId       String?   // SharedFile reference (not a FK — just stored for lookup)
+  fileName     String?
+  fileSize     Int?
+  fileMimeType String?
 
   // Privacy scoping — if set, only targetStudentId + their parents + admins + sender can see
   targetStudentId String?
