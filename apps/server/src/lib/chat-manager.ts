@@ -173,6 +173,10 @@ export async function handleIncomingMessage(
       content: chatMessage.content,
       metadata: chatMessage.metadata,
       targetStudentId: chatMessage.targetStudentId,
+      fileId: chatMessage.fileId,
+      fileName: chatMessage.fileName,
+      fileSize: chatMessage.fileSize,
+      fileMimeType: chatMessage.fileMimeType,
       createdAt: chatMessage.createdAt.toISOString(),
     });
   } catch (err) {
@@ -187,8 +191,8 @@ export async function handleIncomingMessage(
  * - STUDENT/PARENT can only send TEXT
  */
 function isAllowedMessageType(role: string, messageType: string): boolean {
-  const textOnly = ["TEXT"];
-  const all = ["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO"];
+  const textOnly = ["TEXT", "FILE"];
+  const all = ["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO", "FILE"];
 
   switch (role) {
     case "ADMIN":
