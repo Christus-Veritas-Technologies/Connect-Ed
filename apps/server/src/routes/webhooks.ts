@@ -52,18 +52,25 @@ webhooks.post("/dodo", async (c) => {
         const intermediatePaymentId = customData.intermediate_payment_id;
         const paymentId = event.data.payment_id;
 
-        // Look up IntermediatePayment by reference (payment_id) or metadata
+        // Look up IntermediatePayment by metadata ID first, then by payment_id in reference
         let intermediatePayment = intermediatePaymentId
           ? await db.intermediatePayment.findUnique({
               where: { id: intermediatePaymentId },
               include: { user: true, school: true },
             })
-          : paymentId
-            ? await db.intermediatePayment.findFirst({
-                where: { reference: paymentId },
-                include: { user: true, school: true },
-              })
-            : null;
+          : null;
+
+        // If not found by metadata ID, search by payment_id in reference (e.g., "type:FULL|dodo:pay_xxx")
+        if (!intermediatePayment && paymentId) {
+          intermediatePayment = await db.intermediatePayment.findFirst({
+            where: { 
+              reference: { 
+                contains: `dodo:${paymentId}` 
+              } 
+            },
+            include: { user: true, school: true },
+          });
+        }
 
         if (!intermediatePayment) {
           console.error("No IntermediatePayment found for Dodo webhook", { intermediatePaymentId, paymentId });
@@ -75,7 +82,12 @@ webhooks.post("/dodo", async (c) => {
           break;
         }
 
-        // Same activation flow as PayNow callback
+        // Extract payment type from reference (e.g., "type:FULL|dodo:pay_xxx")
+        const refString = intermediatePayment.reference || "";
+        const typeMatch = refString.match(/type:(\w+)/);
+        const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+
+        // Get plan features for updating school
         const planFeatures = PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES];
 
         await db.$transaction(async (tx) => {
@@ -84,10 +96,34 @@ webhooks.post("/dodo", async (c) => {
             data: { paid: true },
           });
 
+          // Upsert PlanPayment based on what was paid
+          const planPaymentData: any = {};
+          if (effectiveType === "FULL") {
+            planPaymentData.monthlyPaymentPaid = true;
+            planPaymentData.onceOffPaymentPaid = true;
+            planPaymentData.paid = true;
+          } else if (effectiveType === "MONTHLY_ONLY") {
+            planPaymentData.monthlyPaymentPaid = true;
+          } else if (effectiveType === "SETUP_ONLY") {
+            planPaymentData.onceOffPaymentPaid = true;
+            planPaymentData.paid = true;
+          }
+
+          // Upsert PlanPayment
+          const existing = await tx.planPayment.findFirst({ where: { schoolId: intermediatePayment.schoolId } });
+          if (existing) {
+            await tx.planPayment.update({ where: { id: existing.id }, data: planPaymentData });
+          } else {
+            await tx.planPayment.create({ data: { schoolId: intermediatePayment.schoolId, ...planPaymentData } });
+          }
+
+          // Only set signupFeePaid when the setup fee is included
+          const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
           await tx.school.update({
             where: { id: intermediatePayment.schoolId },
             data: {
-              signupFeePaid: true,
+              ...(shouldMarkSignupPaid && { signupFeePaid: true }),
               plan: intermediatePayment.plan,
               nextPaymentDate: (() => { const d = new Date(); d.setDate(d.getDate() + 31); return d; })(),
               emailQuota: planFeatures.emailQuota,
