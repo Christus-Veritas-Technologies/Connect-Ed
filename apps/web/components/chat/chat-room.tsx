@@ -19,6 +19,7 @@ import {
     useChatMembers,
     useChatWebSocket,
     useSendMessage,
+    useChatFileUpload,
     type ChatMessage,
 } from "@/lib/hooks/use-chat";
 import { useAuth } from "@/lib/auth-context";
@@ -50,6 +51,7 @@ export function ChatRoom({ classId, className }: ChatRoomProps) {
 
     const { data: membersData } = useChatMembers(classId);
     const sendMessageMutation = useSendMessage(classId);
+    const { mutateAsync: uploadFile, isPending: isUploading, uploadProgress } = useChatFileUpload(classId);
 
     // All messages across pages (reversed so newest are at bottom)
     const allMessages = useMemo(() => {
@@ -129,6 +131,19 @@ export function ChatRoom({ classId, className }: ChatRoomProps) {
             }
         },
         [wsSend, sendMessageMutation]
+    );
+
+    // File upload handler
+    const handleFileUpload = useCallback(
+        async (file: File) => {
+            try {
+                await uploadFile(file);
+                bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+            } catch {
+                // error handled by mutation
+            }
+        },
+        [uploadFile]
     );
 
     return (
@@ -269,6 +284,9 @@ export function ChatRoom({ classId, className }: ChatRoomProps) {
             {/* Input */}
             <ChatInput
                 onSend={handleSend}
+                onFileUpload={handleFileUpload}
+                isUploading={isUploading}
+                uploadProgress={uploadProgress}
                 userRole={currentRole}
                 disabled={!isConnected && !sendMessageMutation}
             />
