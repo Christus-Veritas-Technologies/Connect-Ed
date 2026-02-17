@@ -56,6 +56,7 @@ export const ChatMessageType = {
   EXAM_RESULT: "EXAM_RESULT" as const,
   GRADE: "GRADE" as const,
   SUBJECT_INFO: "SUBJECT_INFO" as const,
+  FILE: "FILE" as const,
 } as const;
 
 export const FeeStatus = {
