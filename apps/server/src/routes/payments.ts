@@ -608,9 +608,12 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
           return errors.internalError(c);
         }
 
+        const environment = process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode';
+        console.log(`[VERIFY] Using DoDo environment: ${environment}`);
+
         const dodo = new DodoPayments({ 
           bearerToken: apiKey.trim().replace(/^["']|["']$/g, ''),
-          environment: process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode',
+          environment,
         });
 
         // Retrieve the checkout session to check payment status
