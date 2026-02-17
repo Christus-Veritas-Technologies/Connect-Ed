@@ -12,6 +12,7 @@ import {
   verifyParentAccessToken,
 } from "../lib/auth";
 import { z } from "zod";
+import { uploadFile, getDownloadUrl } from "@repo/upload";
 
 const chat = new Hono();
 
@@ -182,7 +183,11 @@ chat.get("/rooms", async (c) => {
         memberCount: cls._count.chatMembers,
         lastMessage: lastMessage
           ? {
-              content: lastMessage.type === "TEXT" ? lastMessage.content : `Shared ${lastMessage.type.toLowerCase().replace("_", " ")}`,
+              content: lastMessage.type === "TEXT"
+                ? lastMessage.content
+                : (lastMessage.type as string) === "FILE"
+                  ? `📎 ${lastMessage.content}`
+                  : `Shared ${lastMessage.type.toLowerCase().replace("_", " ")}`,
               senderName: lastMessage.senderName,
               createdAt: lastMessage.createdAt.toISOString(),
             }
@@ -239,6 +244,10 @@ chat.get("/rooms/:classId/messages", async (c) => {
         content: true,
         metadata: true,
         targetStudentId: true,
+        fileId: true,
+        fileName: true,
+        fileSize: true,
+        fileMimeType: true,
         createdAt: true,
       },
     });
@@ -319,9 +328,14 @@ chat.get("/rooms/:classId/members", async (c) => {
 // ─── POST /chat/rooms/:classId/messages — Send message (REST) ─
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(5000),
-  messageType: z.enum(["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO"]).default("TEXT"),
+  messageType: z.enum(["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO", "FILE"]).default("TEXT"),
   metadata: z.record(z.unknown()).optional(),
   targetStudentId: z.string().optional(),
+  // File attachment fields (for FILE type)
+  fileId: z.string().optional(),
+  fileName: z.string().optional(),
+  fileSize: z.number().optional(),
+  fileMimeType: z.string().optional(),
 });
 
 chat.post("/rooms/:classId/messages", async (c) => {
@@ -341,12 +355,12 @@ chat.post("/rooms/:classId/messages", async (c) => {
       return errors.validationError(c, parsed.error.errors[0]?.message || "Invalid input");
     }
 
-    const { content, messageType, metadata, targetStudentId } = parsed.data;
+    const { content, messageType, metadata, targetStudentId, fileId, fileName, fileSize, fileMimeType } = parsed.data;
 
     // Role-based permission check
-    const textOnly = ["TEXT"];
+    const textOnly = ["TEXT", "FILE"];
     const allowed = ["ADMIN", "TEACHER"].includes(user.role)
-      ? ["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO"]
+      ? ["TEXT", "EXAM_RESULT", "GRADE", "SUBJECT_INFO", "FILE"]
       : textOnly;
     if (!allowed.includes(messageType)) {
       return errors.forbidden(c);
@@ -364,6 +378,7 @@ chat.post("/rooms/:classId/messages", async (c) => {
         content,
         metadata: metadata ? (metadata as Record<string, string | number | boolean | null>) : undefined,
         targetStudentId: targetStudentId || metadata?.studentId as string || null,
+        ...(messageType === "FILE" ? { fileId, fileName, fileSize, fileMimeType } : {}),
       },
       select: {
         id: true,
@@ -376,6 +391,10 @@ chat.post("/rooms/:classId/messages", async (c) => {
         content: true,
         metadata: true,
         targetStudentId: true,
+        fileId: true,
+        fileName: true,
+        fileSize: true,
+        fileMimeType: true,
         createdAt: true,
       },
     });
@@ -390,6 +409,149 @@ chat.post("/rooms/:classId/messages", async (c) => {
     return successResponse(c, { message: { ...chatMessage, createdAt: chatMessage.createdAt.toISOString() } }, 201);
   } catch (error) {
     console.error("Send message error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// ─── POST /chat/rooms/:classId/upload — Upload file and send as message ─
+const CHAT_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+
+const CHAT_ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+]);
+
+chat.post("/rooms/:classId/upload", async (c) => {
+  try {
+    const user = getChatUser(c);
+    const classId = c.req.param("classId");
+
+    // Verify membership
+    let isMember = false;
+    if (user.memberType === "PARENT") {
+      const childrenInClass = await db.student.findMany({
+        where: { id: { in: user.childrenIds || [] }, classId },
+        select: { id: true },
+      });
+      isMember = childrenInClass.length > 0;
+    } else {
+      const member = await db.chatMember.findFirst({
+        where: { classId, memberType: user.memberType, memberId: user.memberId },
+      });
+      isMember = !!member;
+    }
+    if (!isMember) return errors.forbidden(c);
+
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return errors.validationError(c, { file: "No file provided" });
+    }
+
+    if (file.size > CHAT_MAX_FILE_SIZE) {
+      return errors.validationError(c, { file: "File too large. Maximum size is 500 MB." });
+    }
+
+    if (!CHAT_ALLOWED_MIME_TYPES.has(file.type)) {
+      return errors.validationError(c, { file: "File type not allowed." });
+    }
+
+    // Upload to R2
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadResult = await uploadFile(buffer, file.name, file.type, `chat/${classId}`);
+
+    // Create chat message
+    const chatMessage = await db.chatMessage.create({
+      data: {
+        classId,
+        senderType: user.memberType,
+        senderId: user.memberId,
+        senderRole: user.role,
+        senderName: user.name || "Unknown",
+        senderAvatar: null,
+        type: "FILE",
+        content: file.name,
+        fileId: uploadResult.storedName,
+        fileName: file.name,
+        fileSize: file.size,
+        fileMimeType: file.type,
+      },
+      select: {
+        id: true,
+        senderType: true,
+        senderId: true,
+        senderRole: true,
+        senderName: true,
+        senderAvatar: true,
+        type: true,
+        content: true,
+        metadata: true,
+        targetStudentId: true,
+        fileId: true,
+        fileName: true,
+        fileSize: true,
+        fileMimeType: true,
+        createdAt: true,
+      },
+    });
+
+    // Broadcast via WebSocket
+    const { broadcastMessage } = await import("../lib/chat-manager");
+    broadcastMessage(classId, {
+      ...chatMessage,
+      createdAt: chatMessage.createdAt.toISOString(),
+    });
+
+    return successResponse(c, { message: { ...chatMessage, createdAt: chatMessage.createdAt.toISOString() } }, 201);
+  } catch (error) {
+    console.error("Chat file upload error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// ─── GET /chat/file/:storedName — Download a chat file ─
+chat.get("/file/:storedName{.+}", async (c) => {
+  try {
+    const user = getChatUser(c);
+    const storedName = c.req.param("storedName");
+
+    // Look up the message to verify access
+    const message = await db.chatMessage.findFirst({
+      where: { fileId: storedName },
+      select: { classId: true, fileName: true },
+    });
+
+    if (!message) return errors.notFound(c, "File not found");
+
+    // Verify membership in the class
+    let isMember = false;
+    if (user.memberType === "PARENT") {
+      const childrenInClass = await db.student.findMany({
+        where: { id: { in: user.childrenIds || [] }, classId: message.classId },
+        select: { id: true },
+      });
+      isMember = childrenInClass.length > 0;
+    } else {
+      const member = await db.chatMember.findFirst({
+        where: { classId: message.classId, memberType: user.memberType, memberId: user.memberId },
+      });
+      isMember = !!member;
+    }
+    if (!isMember) return errors.forbidden(c);
+
+    const downloadUrl = await getDownloadUrl(storedName, message.fileName || undefined);
+    return successResponse(c, { downloadUrl, fileName: message.fileName });
+  } catch (error) {
+    console.error("Chat file download error:", error);
     return errors.internalError(c);
   }
 });
