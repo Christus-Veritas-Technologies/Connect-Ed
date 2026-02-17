@@ -578,8 +578,12 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
 
     // Extract payment method from reference
     const refString = intermediatePayment.reference || "";
+    console.log(`[VERIFY] Checking payment ${intermediatePaymentId}, reference: "${refString}"`);
+    
     const isDodoPayment = refString.includes("dodo:");
     const isPaynowPayment = refString.includes("poll:");
+
+    console.log(`[VERIFY] isDodoPayment: ${isDodoPayment}, isPaynowPayment: ${isPaynowPayment}`);
 
     // For DoDo payments, wait a moment for the webhook to process
     // If the user is being redirected to success, DoDo has already confirmed the payment
@@ -616,7 +620,8 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
     const pollUrl = pollMatch ? pollMatch[1] : null;
 
     if (!pollUrl && !isDodoPayment) {
-      return errors.badRequest(c, "Payment poll URL not found. Payment may have been initiated incorrectly.");
+      console.error(`[VERIFY] No poll URL and not DoDo payment. Reference: "${refString}"`);
+      return errors.badRequest(c, `Payment verification failed. Reference format: "${refString.substring(0, 50)}...". This may indicate the payment was not properly initialized.`);
     }
 
     // Poll PayNow to check actual payment status
