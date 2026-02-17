@@ -45,15 +45,29 @@ export default function PaymentSuccessPage() {
                 return;
             }
 
-            try {
-                await api.get(`/payments/verify/${intermediatePaymentId}`);
-                setStatus("success");
+            let lastError: Error | null = null;
+            const maxRetries = 3;
 
-                // Refresh auth to pick up updated school data
-                await checkAuth();
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to verify payment");
-                setStatus("error");
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    await api.get(`/payments/verify/${intermediatePaymentId}`);
+                    setStatus("success");
+
+                    // Refresh auth to pick up updated school data
+                    await checkAuth();
+                    return;
+                } catch (err) {
+                    lastError = err instanceof Error ? err : new Error("Failed to verify payment");
+
+                    // If this was the last attempt, show the error
+                    if (attempt === maxRetries - 1) {
+                        setError(lastError.message);
+                        setStatus("error");
+                    } else {
+                        // Wait 2 seconds before retrying
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
             }
         };
 
