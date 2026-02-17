@@ -1,0 +1,42 @@
+# Root-level monorepo .easignore for native app builds
+# This ensures only necessary files are uploaded to EAS Build
+
+# All node_modules across monorepo
+**/node_modules/
+node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+**/.*-build/
+**/.next/
+
+# Cache directories
+**/.expo/
+**/.metro-health-check*
+**/.turbo/
+
+# Git and OS
+.git/
+.gitignore
+.DS_Store
+
+# Environment files
+**/.env.local
+**/.env.*.local
+
+# Native builds
+**/ios/
+**/android/
+
+# Monorepo-specific
+**/.pnp
+**/.pnp.js
+
+# Temporary files
+**/*.log
+**/npm-debug.*
+
+# Keep only the native app
+# This is the apps/native/ folder - everything else can be excluded if only building this app
+!apps/native/

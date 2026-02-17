@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import { API_URL } from './constants';
+import { API_URL, API_TIMEOUT, DEBUG } from './constants';
 import { getAccessToken, setAccessToken, clearAccessToken } from './secure-store';
 
 // ── Response types (matching server) ──
@@ -38,7 +38,7 @@ export class ApiError extends Error {
 
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: API_TIMEOUT,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -48,6 +48,9 @@ apiClient.interceptors.request.use(async (config) => {
   const token = await getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (DEBUG) {
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
   }
   return config;
 });
@@ -72,8 +75,16 @@ export function setForceLogoutCallback(cb: () => void) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (DEBUG) {
+      console.log(`[API] ${response.status} ${response.config.url}`);
+    }
+    return response;
+  },
   async (error: AxiosError<ApiErrorResponse>) => {
+    if (DEBUG) {
+      console.error(`[API] Error: ${error.response?.status} ${error.config?.url}`, error.response?.data);
+    }
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     const requestUrl = originalRequest.url || '';
 

@@ -6,6 +6,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { PortalHost } from '@rn-primitives/portal';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { QueryProvider } from '@/lib/query-provider';
+import { PaymentGuard } from '@/lib/payment-guard';
 import { Loading } from '@/components/ui/loading';
 
 function AuthGate() {
@@ -30,11 +31,14 @@ function AuthGate() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" />
-    </Stack>
+    <PaymentGuard>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="payment-callback" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </PaymentGuard>
   );
 }
 

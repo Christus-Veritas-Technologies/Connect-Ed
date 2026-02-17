@@ -39,6 +39,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.christusveritastechnologies.connected"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0cb268aa-600e-45f9-8932-76a8c9ec6f00"
       }
     }
   }

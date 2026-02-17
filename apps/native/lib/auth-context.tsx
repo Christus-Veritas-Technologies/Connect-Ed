@@ -12,6 +12,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     checkAuth: () => Promise<boolean>;
+    refetch: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await clearAuth();
     }, [clearAuth]);
 
+    const refetch = useCallback(async () => {
+        await checkAuth();
+    }, [checkAuth]);
+
     // Register force-logout callback for API layer (401 after refresh fails)
     useEffect(() => {
         setForceLogoutCallback(() => {
@@ -102,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 login,
                 logout,
                 checkAuth,
+                refetch,
             }}
         >
             {children}

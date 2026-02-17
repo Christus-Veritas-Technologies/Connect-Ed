@@ -166,14 +166,32 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       });
 
       // Return success redirect URL
+      let returnUrl;
+      if (data.returnUrl) {
+        const separator = data.returnUrl.includes('?') ? '&' : '?';
+        returnUrl = `${data.returnUrl}${separator}intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      } else {
+        returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      }
       return successResponse(c, {
-        checkoutUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        checkoutUrl: returnUrl,
         intermediatePaymentId: intermediatePayment.id,
         pollUrl: "bypass",
       });
     }
 
     try {
+      const baseUrl = process.env.APP_URL || "http://localhost:3000";
+      
+      // Build return URL - if custom returnUrl provided (e.g. deep link), append query params
+      let returnUrl;
+      if (data.returnUrl) {
+        const separator = data.returnUrl.includes('?') ? '&' : '?';
+        returnUrl = `${data.returnUrl}${separator}intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      } else {
+        returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      }
+
       const result = await createPaynowCheckout({
         integrationId: process.env.PAYNOW_INTEGRATION_ID || "",
         integrationKey: process.env.PAYNOW_INTEGRATION_KEY || "",
@@ -182,7 +200,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
         email: data.email || "",
         reference: `Invoice-${intermediatePayment.id}`,
         resultUrl: `${baseUrl}/api/payments/callback`,
-        returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        returnUrl,
       });
 
       // Save the poll URL for webhook verification (append to existing reference)
@@ -321,8 +339,15 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
       });
 
       // Return success redirect URL
+      let returnUrl;
+      if (data.returnUrl) {
+        const separator = data.returnUrl.includes('?') ? '&' : '?';
+        returnUrl = `${data.returnUrl}${separator}intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      } else {
+        returnUrl = `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`;
+      }
       return successResponse(c, {
-        checkoutUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
+        checkoutUrl: returnUrl,
         paymentId: "bypass",
       });
     }

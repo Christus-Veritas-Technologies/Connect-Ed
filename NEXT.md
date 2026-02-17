@@ -1,30 +1,7 @@
-Currently, we have plans for zimbabwe using paynow, a local payment processor
+Add a beautiful., on-theme (with correct Connect-Ed copy) welcome message for those signing into the mobile app for the first time
 
-Now, we want to add support for South African Rand (ZAR), wjhich will affect all amounts in the app, that includes fees and the like, instead of "$300" for USD, we'll have "ZAR6000"
+And then when the user first enters the app, always aredircet them to a page called app/loading
 
-So do this:"
-(1) On the payments page, add 2 tabs:
-i - USD
-ii - ZAR
+That page shows loading state with app copy, app logo, theme colors but under the hood, it decices where to rediret the user pbased on auth state, whether it's their fiorsttime (redircet them to the onbaording, and other cases as well
 
-Allow the visitor to select their prefrred currency
-
-(2) When ZAR is eleected, don't use paynow, intsead...use dodopayments "products" like this:
-https://docs.dodopayments.com/features/products
-
-We're using productd and not subsctiptions because:
-i - We have a combined cost here, that of the one-time setup fee and that of the first subscription, we'd have to setup product payment or the one-time fee and then subscipritons fo rht emonthly fee, which is added compelxity
-ii - Paynow does not have a recurring subscription modelm so we'd have a situation whereby we have a webhook or some automatic process to auto-send bills fr ppaynow but not for dodopayments, which creates a branch in logic
-
-
-Using dodopayment p[roducts and [aynow ;logic allows us to create a unified step which allows us to send auto-re idners that work for both providerrs
-
-(3) In the onboaridng, add a requried step that requests the user to select their countyr,c urrently we have the options of "Zimbabwe" and "South Africa", the selected country then defines the currncy, USD for Zim and ZAR for SA
-
-Rther, use "R" instead of ZAR since that seems to be the official code for the south afaircna rand
-
-(4) Add a setting that again allows the user to select their currency but there is yet another option: "ZiG"
-
-So it's either USD: "$350", ZAR: "R4,800" or Zig: "ZiG 400,304,4039"
-
-Use the same logic as the existing one
+Have different onboardings for each user, with a minimu of 4 and a max of 5 steps, okay ?
