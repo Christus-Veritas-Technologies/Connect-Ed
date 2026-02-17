@@ -25,14 +25,21 @@ export async function createDodoPaymentLink(
 ): Promise<DodoPaymentLinkResult> {
   const cleanApiKey = params.apiKey.trim().replace(/^["']|["']$/g, '');
   
-  console.log("DodoPayments Test Mode Debug:", {
+  // Determine environment based on NODE_ENV
+  const environment = process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode';
+  
+  console.log("DodoPayments Environment:", {
     apiKeyLength: cleanApiKey.length,
     apiKeyStart: cleanApiKey.substring(0, 30),
-    isTestKey: cleanApiKey.includes('test') || cleanApiKey.includes('Test'),
+    nodeEnv: process.env.NODE_ENV,
+    environment,
   });
 
-  // Initialize with API key as bearer token
-  const dodo = new DodoPayments({ bearerToken: cleanApiKey });
+  // Initialize with API key as bearer token and correct environment
+  const dodo = new DodoPayments({ 
+    bearerToken: cleanApiKey,
+    environment,
+  });
 
   try {
     console.log("Creating checkout session with:", {

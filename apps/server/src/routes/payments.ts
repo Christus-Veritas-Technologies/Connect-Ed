@@ -576,23 +576,160 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       return successResponse(c, { verified: true, paid: true });
     }
 
-    // Extract poll URL from reference
+    // Extract payment method from reference
     const refString = intermediatePayment.reference || "";
+    console.log(`[VERIFY] Checking payment ${intermediatePaymentId}, reference: "${refString}"`);
+    
+    const isDodoPayment = refString.includes("dodo:");
+    const isPaynowPayment = refString.includes("poll:");
+
+    console.log(`[VERIFY] isDodoPayment: ${isDodoPayment}, isPaynowPayment: ${isPaynowPayment}`);
+
+    // For DoDo payments, check payment status via DoDo API
+    if (isDodoPayment) {
+      console.log(`[VERIFY] DoDo payment detected for ${intermediatePaymentId}, checking DoDo API...`);
+      
+      // Extract DoDo session/payment ID from reference
+      const dodoMatch = refString.match(/dodo:([^|]+)/);
+      const dodoPaymentId = dodoMatch ? dodoMatch[1] : null;
+      
+      if (!dodoPaymentId) {
+        console.error(`[VERIFY] Could not extract DoDo payment ID from reference: ${refString}`);
+        return errors.badRequest(c, "Invalid payment reference format for DoDo payment.");
+      }
+
+      try {
+        // Import DoDo SDK to check payment status
+        const DodoPayments = require("dodopayments").default;
+        const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+        
+        if (!apiKey) {
+          console.error("[VERIFY] DODO_PAYMENTS_API_KEY not configured");
+          return errors.internalError(c);
+        }
+
+        const environment = process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode';
+        console.log(`[VERIFY] Using DoDo environment: ${environment}`);
+
+        const dodo = new DodoPayments({ 
+          bearerToken: apiKey.trim().replace(/^["']|["']$/g, ''),
+          environment,
+        });
+
+        // Retrieve the checkout session to check payment status
+        console.log(`[VERIFY] Querying DoDo for session ${dodoPaymentId}...`);
+        const session = await dodo.checkoutSessions.retrieve(dodoPaymentId);
+        
+        console.log(`[VERIFY] DoDo session status:`, {
+          sessionId: session.session_id,
+          isPaid: session.is_paid,
+          paymentStatus: session.payment_status,
+        });
+
+        // Check if payment was successful
+        if (!session.is_paid && session.payment_status !== "succeeded") {
+          console.warn(`[VERIFY] DoDo payment not marked as paid. Status: ${session.payment_status}`);
+          return errors.badRequest(c, `Payment status: ${session.payment_status}. Please try again if payment was taken from your account.`);
+        }
+
+        // Payment is confirmed via DoDo API - mark it as paid
+        console.log(`[VERIFY] DoDo payment confirmed via API, marking as paid...`);
+        
+        const typeMatch = refString.match(/type:(\w+)/);
+        const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+
+        if (!intermediatePayment) {
+          return errors.notFound(c, "Payment not found");
+        }
+
+        await db.$transaction(async (tx) => {
+          // Mark payment as paid
+          await tx.intermediatePayment.update({
+            where: { id: intermediatePaymentId },
+            data: { paid: true },
+          });
+
+          // Update PlanPayment based on what was paid
+          const planPaymentData: any = {};
+          if (effectiveType === "FULL") {
+            planPaymentData.monthlyPaymentPaid = true;
+            planPaymentData.onceOffPaymentPaid = true;
+            planPaymentData.paid = true;
+          } else if (effectiveType === "MONTHLY_ONLY") {
+            planPaymentData.monthlyPaymentPaid = true;
+          } else if (effectiveType === "SETUP_ONLY") {
+            planPaymentData.onceOffPaymentPaid = true;
+            planPaymentData.paid = true;
+          }
+
+          const existing = await tx.planPayment.findFirst({ where: { schoolId: intermediatePayment!.schoolId } });
+          if (existing) {
+            await tx.planPayment.update({ where: { id: existing.id }, data: planPaymentData });
+          } else {
+            await tx.planPayment.create({ data: { schoolId: intermediatePayment!.schoolId, ...planPaymentData } });
+          }
+
+          const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
+
+          await tx.school.update({
+            where: { id: intermediatePayment!.schoolId },
+            data: {
+              ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+              plan: intermediatePayment!.plan,
+              nextPaymentDate: getNextPaymentDate(),
+              emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
+              whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
+              smsQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].smsQuota,
+            },
+          });
+        });
+
+        // Fetch updated payment
+        intermediatePayment = await db.intermediatePayment.findUnique({
+          where: { id: intermediatePaymentId },
+          include: { user: true, school: true },
+        }) as any;
+
+        return successResponse(c, {
+          verified: true,
+          paid: true,
+          method: "dodo_api",
+          payment: intermediatePayment,
+        });
+      } catch (dodoError) {
+        console.error("[VERIFY] DoDo API error:", dodoError);
+        const errorMsg = dodoError instanceof Error ? dodoError.message : String(dodoError);
+        
+        // If it's a 404 or not found error, the session might not exist yet
+        if (errorMsg.includes("404") || errorMsg.includes("not found")) {
+          return errors.badRequest(c, "Payment session not found in DoDo system. Please try again.");
+        }
+        
+        return errors.badRequest(c, `Failed to verify payment with DoDo: ${errorMsg}`);
+      }
+    }
+
+    // Extract poll URL from reference (PayNow)
     const pollMatch = refString.match(/poll:([^|]+)/);
     const pollUrl = pollMatch ? pollMatch[1] : null;
 
+    if (!pollUrl && !isDodoPayment) {
+      console.error(`[VERIFY] No poll URL and not DoDo payment. Reference: "${refString}"`);
+      return errors.badRequest(c, `Payment verification failed. Reference format: "${refString.substring(0, 50)}...". This may indicate the payment was not properly initialized.`);
+    }
+
+    // Poll PayNow to check actual payment status
     if (!pollUrl) {
       return errors.badRequest(c, "Payment poll URL not found. Payment may have been initiated incorrectly.");
     }
 
-    // Poll PayNow to check actual payment status
     try {
       const pollResponse = await fetch(pollUrl);
       const pollData = await pollResponse.text();
       
       // PayNow returns status in format: "status=Paid" or "status=Cancelled" etc
       const statusMatch = pollData.match(/status=(\w+)/i);
-      const paymentStatus = statusMatch ? statusMatch[1].toLowerCase() : "";
+      const paymentStatus = statusMatch ? statusMatch[1]?.toLowerCase() : "";
 
       // Only proceed if payment was actually successful
       if (paymentStatus !== "paid") {
@@ -655,7 +792,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       });
     } catch (pollError) {
       console.error("PayNow poll error:", pollError);
-      return errors.internalError(c, "Failed to verify payment status with PayNow");
+      return errors.internalError(c);
     }
   } catch (error) {
     console.error("Verify payment error:", error);
