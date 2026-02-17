@@ -576,23 +576,61 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       return successResponse(c, { verified: true, paid: true });
     }
 
-    // Extract poll URL from reference
+    // Extract payment method from reference
     const refString = intermediatePayment.reference || "";
+    const isDodoPayment = refString.includes("dodo:");
+    const isPaynowPayment = refString.includes("poll:");
+
+    // For DoDo payments, wait a moment for the webhook to process
+    // If the user is being redirected to success, DoDo has already confirmed the payment
+    if (isDodoPayment) {
+      console.log(`[VERIFY] DoDo payment detected for ${intermediatePaymentId}, checking webhook status...`);
+      
+      // Wait up to 5 seconds for webhook to mark payment as paid
+      let retries = 0;
+      const maxRetries = 5;
+      
+      while (retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        
+        const updated = await db.intermediatePayment.findUnique({
+          where: { id: intermediatePaymentId },
+          include: { user: true, school: true },
+        });
+        
+        if (updated?.paid) {
+          return successResponse(c, { verified: true, paid: true, method: "dodo_webhook" });
+        }
+        
+        retries++;
+      }
+      
+      // If webhook hasn't marked it paid after 5 seconds, log warning but still consider it pending
+      // The webhook might arrive later
+      console.warn(`[VERIFY] DoDo payment ${intermediatePaymentId} not yet marked paid after 5 seconds, but this may be normal webhook delay`);
+      return errors.badRequest(c, "Payment is still being verified. Please wait a moment and refresh the page.");
+    }
+
+    // Extract poll URL from reference (PayNow)
     const pollMatch = refString.match(/poll:([^|]+)/);
     const pollUrl = pollMatch ? pollMatch[1] : null;
 
-    if (!pollUrl) {
+    if (!pollUrl && !isDodoPayment) {
       return errors.badRequest(c, "Payment poll URL not found. Payment may have been initiated incorrectly.");
     }
 
     // Poll PayNow to check actual payment status
+    if (!pollUrl) {
+      return errors.badRequest(c, "Payment poll URL not found. Payment may have been initiated incorrectly.");
+    }
+
     try {
       const pollResponse = await fetch(pollUrl);
       const pollData = await pollResponse.text();
       
       // PayNow returns status in format: "status=Paid" or "status=Cancelled" etc
       const statusMatch = pollData.match(/status=(\w+)/i);
-      const paymentStatus = statusMatch ? statusMatch[1].toLowerCase() : "";
+      const paymentStatus = statusMatch ? statusMatch[1]?.toLowerCase() : "";
 
       // Only proceed if payment was actually successful
       if (paymentStatus !== "paid") {
@@ -655,7 +693,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       });
     } catch (pollError) {
       console.error("PayNow poll error:", pollError);
-      return errors.internalError(c, "Failed to verify payment status with PayNow");
+      return errors.internalError(c);
     }
   } catch (error) {
     console.error("Verify payment error:", error);
