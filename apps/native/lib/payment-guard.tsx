@@ -9,15 +9,15 @@ import { Loading } from '@/components/ui/loading';
  * Returns 0 if no payment date is set or the date is in the future.
  */
 function getDaysOverdue(nextPaymentDate: string | null): number {
-  if (!nextPaymentDate) return 0;
-  const due = new Date(nextPaymentDate);
-  const now = new Date();
-  if (now <= due) return 0;
-  return Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+    if (!nextPaymentDate) return 0;
+    const due = new Date(nextPaymentDate);
+    const now = new Date();
+    if (now <= due) return 0;
+    return Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 interface PaymentGuardProps {
-  children: ReactNode;
+    children: ReactNode;
 }
 
 /**
@@ -28,29 +28,29 @@ interface PaymentGuardProps {
  * - Only blocks if user is not already on the payment screen
  */
 export function PaymentGuard({ children }: PaymentGuardProps) {
-  const { user, school, isLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
+    const { user, school, isLoading } = useAuth();
+    const router = useRouter();
+    const pathname = usePathname();
 
-  useEffect(() => {
-    if (isLoading || !user || !school) return;
+    useEffect(() => {
+        if (isLoading || !user || !school) return;
 
-    // Don't redirect if already on payment screen or callback
-    if (pathname?.includes('/payment')) return;
+        // Don't redirect if already on payment screen or callback
+        if (pathname?.includes('/payment')) return;
 
-    const daysOverdue = getDaysOverdue(school.nextPaymentDate);
-    const isLocked = daysOverdue > 3;
+        const daysOverdue = getDaysOverdue(school.nextPaymentDate);
+        const isLocked = daysOverdue > 3;
 
-    // If locked and not an admin, don't redirect (they can't pay anyway)
-    // Just let them see the tabs but payment screen will show them a message
-    if (isLocked && user.role === 'ADMIN') {
-      router.replace('/(tabs)/payment');
+        // If locked and not an admin, don't redirect (they can't pay anyway)
+        // Just let them see the tabs but payment screen will show them a message
+        if (isLocked && user.role === 'ADMIN') {
+            router.replace('/(tabs)/payment');
+        }
+    }, [user, school, isLoading, pathname, router]);
+
+    if (isLoading) {
+        return <Loading fullScreen />;
     }
-  }, [user, school, isLoading, pathname, router]);
 
-  if (isLoading) {
-    return <Loading fullScreen />;
-  }
-
-  return <View style={{ flex: 1 }}>{children}</View>;
+    return <View style={{ flex: 1 }}>{children}</View>;
 }
