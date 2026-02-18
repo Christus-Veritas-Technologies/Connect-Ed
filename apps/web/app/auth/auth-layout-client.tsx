@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { GuestGuard } from "@/components/auth-guard";
 
@@ -45,7 +46,16 @@ export default function AuthLayoutClient({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="text-5xl font-bold mb-6">Connect-Ed</h1>
+              <div className="flex items-center gap-4 mb-6">
+                <Image
+                  src="/logo.png"
+                  alt="Connect-Ed Logo"
+                  width={60}
+                  height={60}
+                  className="object-contain drop-shadow-2xl"
+                />
+                <h1 className="text-5xl font-bold">Connect-Ed</h1>
+              </div>
               <p className="text-xl text-light/80 mb-8 max-w-md">
                 The modern school management system that helps you focus on what matters most - education.
               </p>
