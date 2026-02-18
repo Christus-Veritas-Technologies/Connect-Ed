@@ -52,7 +52,7 @@ export default function AuthLayoutClient({
                   alt="Connect-Ed Logo"
                   width={60}
                   height={60}
-                  className="object-contain drop-shadow-2xl"
+                  className="object-contain drop-shadow-2xl rounded-full"
                 />
                 <h1 className="text-5xl font-bold">Connect-Ed</h1>
               </div>
