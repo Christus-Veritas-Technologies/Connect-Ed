@@ -210,7 +210,7 @@ function Navbar() {
               alt="Connect-Ed Logo"
               width={40}
               height={40}
-              className="object-contain"
+              className="object-contain rounded-full"
               priority
             />
           </div>
@@ -294,7 +294,7 @@ function Hero() {
               alt="Connect-Ed"
               width={96}
               height={96}
-              className="object-contain drop-shadow-xl"
+              className="object-contain drop-shadow-xl rounded-full"
               priority
             />
           </div>
@@ -771,7 +771,7 @@ function Footer() {
                   alt="Connect-Ed Logo"
                   width={40}
                   height={40}
-                  className="object-contain"
+                  className="object-contain rounded-full"
                 />
               </div>
               <div className="flex flex-col leading-none">
