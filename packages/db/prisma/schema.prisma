@@ -23,6 +23,11 @@ enum Plan {
   ENTERPRISE
 }
 
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
 enum Role {
   ADMIN
   RECEPTIONIST
@@ -176,7 +181,10 @@ model School {
   quotaResetDate DateTime @default(now())
 
   // Billing
-  nextPaymentDate DateTime? // null = no billing yet; when past due + 3 grace days → lockout
+  billingCycle     BillingCycle @default(MONTHLY)
+  foundingSchool   Boolean      @default(false) // Founding partner = 25% annual discount
+  billingCycleEnd  DateTime?    // When annual plan expires (resets to monthly pricing)
+  nextPaymentDate  DateTime?    // null = no billing yet; when past due + 3 grace days → lockout
 
   // Student Report Settings
   reportShowSchoolBranding Boolean @default(true)

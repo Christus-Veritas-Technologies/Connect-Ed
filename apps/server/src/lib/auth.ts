@@ -288,6 +288,7 @@ export const PLAN_FEATURES = {
     hasParentPortal: false,
     emailQuota: 200,
     whatsappQuota: 200,
+    studentLimit: 300,
   },
   GROWTH: {
     hasTeachers: true,
@@ -295,6 +296,7 @@ export const PLAN_FEATURES = {
     hasParentPortal: false,
     emailQuota: 500,
     whatsappQuota: 500,
+    studentLimit: 800,
   },
   ENTERPRISE: {
     hasTeachers: true,
@@ -302,6 +304,7 @@ export const PLAN_FEATURES = {
     hasParentPortal: true,
     emailQuota: 1500,
     whatsappQuota: 1500,
+    studentLimit: 0, // unlimited / custom
   },
 } as const;
 

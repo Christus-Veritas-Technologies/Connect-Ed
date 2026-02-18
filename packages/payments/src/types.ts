@@ -8,6 +8,9 @@ export type PlanType = "LITE" | "GROWTH" | "ENTERPRISE";
 export interface PlanAmounts {
   perTermCost: number;
   monthlyEstimate: number;
+  annualPrice: number;        // Standard annual (12 × monthly)
+  foundingAnnualPrice: number; // 25% off annual (founding schools)
+  studentLimit: number;       // Max students (0 = custom/unlimited)
 }
 
 /** Result from a PayNow checkout */

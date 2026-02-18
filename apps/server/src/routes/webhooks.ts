@@ -85,9 +85,12 @@ webhooks.post("/dodo", async (c) => {
         const refString = intermediatePayment.reference || "";
         const typeMatch = refString.match(/type:(\w+)/);
         const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+        const cycleMatch = refString.match(/cycle:(\w+)/);
+        const billingCycle = (cycleMatch ? cycleMatch[1] : "monthly") as "monthly" | "annual";
 
         // Get plan features for updating school
         const planFeatures = PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES];
+        const isAnnual = billingCycle === "annual";
 
         await db.$transaction(async (tx) => {
           await tx.intermediatePayment.update({
@@ -109,14 +112,26 @@ webhooks.post("/dodo", async (c) => {
             await tx.planPayment.create({ data: { schoolId: intermediatePayment.schoolId, ...planPaymentData } });
           }
 
+          const nextPaymentDate = new Date();
+          if (isAnnual) {
+            nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + 1);
+          } else {
+            nextPaymentDate.setDate(nextPaymentDate.getDate() + 31);
+          }
+
           await tx.school.update({
             where: { id: intermediatePayment.schoolId },
             data: {
               signupFeePaid: true,
-              plan: intermediatePayment.plan,
-              nextPaymentDate: (() => { const d = new Date(); d.setDate(d.getDate() + 31); return d; })(),
+              plan: intermediatePayment.plan as keyof typeof Plan,
+              nextPaymentDate,
               emailQuota: planFeatures.emailQuota,
               whatsappQuota: planFeatures.whatsappQuota,
+              billingCycle: isAnnual ? "ANNUAL" as const : "MONTHLY" as const,
+              ...(isAnnual ? {
+                foundingSchool: true,
+                billingCycleEnd: nextPaymentDate,
+              } : {}),
             },
           });
         });

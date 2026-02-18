@@ -136,6 +136,7 @@ export const createCheckoutSchema = z.object({
   paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
   email: z.string().email().optional(),
   returnUrl: z.string().url().optional(), // For deep linking in native apps
+  billingCycle: z.enum(["monthly", "annual"]).optional().default("monthly"),
 });
 
 export const createDodoCheckoutSchema = z.object({
@@ -144,6 +145,7 @@ export const createDodoCheckoutSchema = z.object({
   email: z.string().email().optional(),
   currency: z.enum(["ZAR"]),
   returnUrl: z.string().url().optional(), // For deep linking in native apps
+  billingCycle: z.enum(["monthly", "annual"]).optional().default("monthly"),
 });
 
 // School settings schema

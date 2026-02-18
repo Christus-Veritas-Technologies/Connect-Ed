@@ -6,6 +6,7 @@ import {
   createPaynowCheckout,
   createDodoPaymentLink,
   type PlanType,
+  type PlanAmounts,
 } from "@repo/payments";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { createCheckoutSchema, createDodoCheckoutSchema } from "../lib/validation";
@@ -18,22 +19,52 @@ import { notifyGeneric } from "../lib/notify";
 
 const payments = new Hono();
 
-/** Set next payment due date to 31 days from now */
-function getNextPaymentDate(): Date {
+/** Set next payment due date based on billing cycle */
+function getNextPaymentDate(billingCycle: "monthly" | "annual" = "monthly"): Date {
   const d = new Date();
-  d.setDate(d.getDate() + 31);
+  if (billingCycle === "annual") {
+    d.setFullYear(d.getFullYear() + 1);
+  } else {
+    d.setDate(d.getDate() + 31);
+  }
   return d;
 }
 
 /**
- * Determine payment amount — now always monthly-only.
+ * Determine payment amount based on billing cycle.
  */
 function resolvePaymentAmount(
-  planPricing: { monthlyEstimate: number },
+  planPricing: PlanAmounts,
   paymentType: string,
-  planPayment: { monthlyPaymentPaid: boolean } | null
-): { amount: number; effectiveType: "MONTHLY_ONLY" } {
+  planPayment: { monthlyPaymentPaid: boolean } | null,
+  billingCycle: "monthly" | "annual" = "monthly"
+): { amount: number; effectiveType: "MONTHLY_ONLY" | "ANNUAL" } {
+  if (billingCycle === "annual") {
+    return { amount: planPricing.foundingAnnualPrice, effectiveType: "ANNUAL" };
+  }
   return { amount: planPricing.monthlyEstimate, effectiveType: "MONTHLY_ONLY" };
+}
+
+/** Build school data updates for a successful payment */
+function buildSchoolPaymentData(
+  planType: string,
+  billingCycle: "monthly" | "annual",
+) {
+  const planFeatures = PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES];
+  const isAnnual = billingCycle === "annual";
+
+  return {
+    signupFeePaid: true,
+    plan: planType as keyof typeof Plan,
+    nextPaymentDate: getNextPaymentDate(billingCycle),
+    emailQuota: planFeatures.emailQuota,
+    whatsappQuota: planFeatures.whatsappQuota,
+    billingCycle: isAnnual ? "ANNUAL" as const : "MONTHLY" as const,
+    ...(isAnnual ? {
+      foundingSchool: true,
+      billingCycleEnd: getNextPaymentDate("annual"),
+    } : {}),
+  };
 }
 
 /**
@@ -93,7 +124,8 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
     });
 
     const planPricing = getPlanAmounts(data.planType as PlanType);
-    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment);
+    const billingCycle = data.billingCycle || "monthly";
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle);
 
     // Create intermediate payment record first
     const intermediatePayment = await db.intermediatePayment.create({
@@ -103,7 +135,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
         amount: new Prisma.Decimal(amount),
         plan: data.planType,
         paid: false,
-        reference: `type:${effectiveType}`, // Store the payment type for callback
+        reference: `type:${effectiveType}|cycle:${billingCycle}`, // Store payment type and billing cycle
       },
     });
 
@@ -128,13 +160,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
 
         await tx.school.update({
           where: { id: schoolId },
-          data: {
-            signupFeePaid: true,
-            plan: data.planType,
-            nextPaymentDate: getNextPaymentDate(),
-            emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
-            whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
-          },
+          data: buildSchoolPaymentData(data.planType, billingCycle),
         });
       });
 
@@ -179,7 +205,7 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
       // Save the poll URL for webhook verification (append to existing reference)
       await db.intermediatePayment.update({
         where: { id: intermediatePayment.id },
-        data: { reference: `type:${effectiveType}|poll:${result.pollUrl}` },
+        data: { reference: `type:${effectiveType}|cycle:${billingCycle}|poll:${result.pollUrl}` },
       });
 
       return successResponse(c, {
@@ -228,7 +254,8 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     });
 
     const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
-    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment);
+    const billingCycle = data.billingCycle || "monthly";
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle);
 
     // Select the monthly product
     const planType = data.planType as PlanType;
@@ -248,7 +275,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
         amount: new Prisma.Decimal(amount),
         plan: data.planType,
         paid: false,
-        reference: `type:${effectiveType}`,
+        reference: `type:${effectiveType}|cycle:${billingCycle}`,
       },
     });
 
@@ -273,13 +300,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
 
         await tx.school.update({
           where: { id: schoolId },
-          data: {
-            signupFeePaid: true,
-            plan: data.planType,
-            nextPaymentDate: getNextPaymentDate(),
-            emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
-            whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
-          },
+          data: buildSchoolPaymentData(data.planType, billingCycle),
         });
       });
 
@@ -325,6 +346,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
           plan_type: data.planType,
           payment_type: effectiveType,
           intermediate_payment_id: intermediatePayment.id,
+          billing_cycle: billingCycle,
         },
         returnUrl: `${baseUrl}/payment/success?intermediatePaymentId=${intermediatePayment.id}&type=${effectiveType}`,
         billingCountry: "ZA",
@@ -337,7 +359,7 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     // Save the payment ID as the reference (used by webhook to find this record)
     await db.intermediatePayment.update({
       where: { id: intermediatePayment.id },
-      data: { reference: `type:${effectiveType}|dodo:${result.paymentId}` },
+      data: { reference: `type:${effectiveType}|cycle:${billingCycle}|dodo:${result.paymentId}` },
     });
 
     return successResponse(c, {
@@ -378,10 +400,12 @@ payments.post("/callback", async (c) => {
 
     // Update intermediate payment and school in a transaction
     if (paid) {
-      // Determine payment type from the stored reference
+      // Determine payment type and billing cycle from the stored reference
       const refString = intermediatePayment.reference || "";
       const typeMatch = refString.match(/type:(\w+)/);
       const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+      const cycleMatch = refString.match(/cycle:(\w+)/);
+      const billingCycle = (cycleMatch ? cycleMatch[1] : "monthly") as "monthly" | "annual";
 
       await db.$transaction(async (tx) => {
         // Update intermediate payment
@@ -400,13 +424,7 @@ payments.post("/callback", async (c) => {
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment.schoolId },
-          data: {
-            signupFeePaid: true,
-            plan: intermediatePayment.plan,
-            nextPaymentDate: getNextPaymentDate(),
-            emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
-            whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-          },
+          data: buildSchoolPaymentData(intermediatePayment.plan, billingCycle),
         });
       });
 
@@ -568,6 +586,8 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
         
         const typeMatch = refString.match(/type:(\w+)/);
         const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+        const cycleMatch = refString.match(/cycle:(\w+)/);
+        const billingCycle = (cycleMatch ? cycleMatch[1] : "monthly") as "monthly" | "annual";
 
         if (!intermediatePayment) {
           return errors.notFound(c, "Payment not found");
@@ -594,13 +614,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
 
           await tx.school.update({
             where: { id: intermediatePayment!.schoolId },
-            data: {
-              signupFeePaid: true,
-              plan: intermediatePayment!.plan,
-              nextPaymentDate: getNextPaymentDate(),
-              emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
-              whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-            },
+            data: buildSchoolPaymentData(intermediatePayment!.plan, billingCycle),
           });
         });
 
@@ -659,6 +673,8 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
       // Payment is confirmed - update database
       const typeMatch = refString.match(/type:(\w+)/);
       const effectiveType = typeMatch ? typeMatch[1] : "FULL";
+      const cycleMatch2 = refString.match(/cycle:(\w+)/);
+      const billingCycle2 = (cycleMatch2 ? cycleMatch2[1] : "monthly") as "monthly" | "annual";
 
       await db.$transaction(async (tx) => {
         // Mark payment as paid
@@ -677,13 +693,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment!.schoolId },
-          data: {
-            signupFeePaid: true,
-            plan: intermediatePayment!.plan,
-            nextPaymentDate: getNextPaymentDate(),
-            emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
-            whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-          },
+          data: buildSchoolPaymentData(intermediatePayment!.plan, billingCycle2),
         });
       });
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { db } from "@repo/db";
+import { db, BillingCycle } from "@repo/db";
 import {
   sendEmail,
   generateGraceReminderEmail,
@@ -20,6 +20,10 @@ const billing = new Hono();
  *   • Day 4 (just locked) → send final lockdown email
  *   • Day 4+ → school is locked (guard on frontend handles UI)
  *
+ * Also handles annual billing cycle end:
+ *   • When billingCycleEnd has passed, reset foundingSchool flag so
+ *     the next renewal is at the standard annual rate.
+ *
  * Security: In production, protect with a shared secret header.
  */
 billing.post("/check-overdue", async (c) => {
@@ -32,6 +36,25 @@ billing.post("/check-overdue", async (c) => {
   const now = new Date();
 
   try {
+    // ── Annual founding-school reset ──
+    // Schools whose founding annual period has ended: reset the flag
+    // so their next renewal will be charged at the standard annual rate.
+    const expiredFoundingSchools = await db.school.findMany({
+      where: {
+        foundingSchool: true,
+        billingCycleEnd: { lt: now },
+      },
+    });
+
+    for (const school of expiredFoundingSchools) {
+      await db.school.update({
+        where: { id: school.id },
+        data: { foundingSchool: false },
+      });
+      console.log(`[BILLING] Founding school period ended for ${school.name} (${school.id})`);
+    }
+
+    // ── Overdue check ──
     // Find all schools that have a nextPaymentDate in the past and have completed signup
     const overdueSchools = await db.school.findMany({
       where: {
@@ -171,6 +194,7 @@ billing.post("/check-overdue", async (c) => {
       graceReminders,
       lockdowns,
       alreadyLocked,
+      foundingSchoolsReset: expiredFoundingSchools.length,
       timestamp: now.toISOString(),
     });
   } catch (error) {

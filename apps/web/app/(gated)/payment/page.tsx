@@ -25,6 +25,7 @@ type Plan = "LITE" | "GROWTH" | "ENTERPRISE";
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 type PaymentCurrency = "USD" | "ZAR";
+type BillingCycle = "monthly" | "annual";
 
 interface PlanStatus {
   monthlyPaymentPaid: boolean;
@@ -36,6 +37,7 @@ export default function PaymentPage() {
   const { user, school } = useAuth();
   const logoutMutation = useLogout();
   const [selectedPlan, setSelectedPlan] = useState<Plan>("LITE");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
@@ -68,7 +70,11 @@ export default function PaymentPage() {
   const planMeta = PRICING[selectedPlan];
   const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
   const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
-  const totalRemaining = monthlyAlreadyPaid ? 0 : amounts.monthlyEstimate;
+
+  const displayAmount = billingCycle === "annual"
+    ? amounts.foundingAnnualPrice
+    : amounts.monthlyEstimate;
+  const totalRemaining = monthlyAlreadyPaid ? 0 : displayAmount;
 
   const handlePayOnline = async () => {
     setIsPaymentLoading(true);
@@ -82,6 +88,7 @@ export default function PaymentPage() {
         }>("/payments/create-dodo-checkout", {
           planType: selectedPlan,
           paymentType: "MONTHLY_ONLY",
+          billingCycle,
           email: user?.email,
           currency: "ZAR",
         });
@@ -93,6 +100,7 @@ export default function PaymentPage() {
         }>("/payments/create-checkout", {
           planType: selectedPlan,
           paymentType: "MONTHLY_ONLY",
+          billingCycle,
           email: user?.email,
         });
         window.location.href = response.checkoutUrl;
@@ -137,7 +145,7 @@ export default function PaymentPage() {
       >
         <h1 className="text-3xl font-bold">Choose Your Plan</h1>
         <p className="text-muted-foreground mt-2">
-          Select the plan that best fits your school's needs
+          Select the plan that best fits your school&apos;s needs
         </p>
       </motion.div>
 
@@ -145,7 +153,7 @@ export default function PaymentPage() {
         initial={{ opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="flex justify-center"
+        className="flex flex-col sm:flex-row justify-center items-center gap-4"
       >
         <Tabs
           value={paymentCurrency}
@@ -156,7 +164,33 @@ export default function PaymentPage() {
             <TabsTrigger value="ZAR">ZAR (R)</TabsTrigger>
           </TabsList>
         </Tabs>
+        <Tabs
+          value={billingCycle}
+          onValueChange={(v) => setBillingCycle(v as BillingCycle)}
+        >
+          <TabsList>
+            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            <TabsTrigger value="annual" className="gap-1.5">
+              Annual
+              <Badge variant="brand" size="sm" className="text-[10px] py-0 px-1.5">
+                Save 25%
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </motion.div>
+
+      {billingCycle === "annual" && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <p className="text-sm text-brand font-medium">
+            🏫 Founding Partner Schools — Exclusive 25% off annual plans
+          </p>
+        </motion.div>
+      )}
 
       {error && (
         <Alert variant="destructive">
@@ -182,9 +216,8 @@ export default function PaymentPage() {
               <Card
                 hover={!isLocked}
                 onClick={() => !isLocked && setSelectedPlan(plan)}
-                className={`relative ${!isLocked ? "cursor-pointer" : "cursor-not-allowed opacity-60"} transition-all ${
-                  isSelected ? "bg-brand border-brand ring-4 ring-brand/20" : "bg-muted/40"
-                }`}
+                className={`relative ${!isLocked ? "cursor-pointer" : "cursor-not-allowed opacity-60"} transition-all ${isSelected ? "bg-brand border-brand ring-4 ring-brand/20" : "bg-muted/40"
+                  }`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -203,14 +236,30 @@ export default function PaymentPage() {
 
                 <CardContent className="space-y-6">
                   <div className="text-center">
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                        {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
-                      </span>
-                      <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
-                        /month
-                      </span>
-                    </div>
+                    {billingCycle === "annual" ? (
+                      <div>
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
+                            {fmt(planAmounts.foundingAnnualPrice, paymentCurrency)}
+                          </span>
+                          <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
+                            /year
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-1 ${isSelected ? "text-blue-200" : "text-muted-foreground"}`}>
+                          {fmt(Math.round((planAmounts.foundingAnnualPrice / 12) * 100) / 100, paymentCurrency)}/mo — <span className="line-through">{fmt(planAmounts.annualPrice, paymentCurrency)}</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
+                          {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
+                        </span>
+                        <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
+                          /month
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <ul className="space-y-3">
@@ -254,7 +303,9 @@ export default function PaymentPage() {
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="font-medium">
                   {planMeta.name} Plan{" "}
-                  <span className="text-xs text-muted-foreground">monthly</span>
+                  <span className="text-xs text-muted-foreground">
+                    {billingCycle === "annual" ? "annual" : "monthly"}
+                  </span>
                 </span>
                 {monthlyAlreadyPaid ? (
                   <Badge variant="outline" className="text-success border-success/40">
@@ -262,9 +313,15 @@ export default function PaymentPage() {
                     Paid
                   </Badge>
                 ) : (
-                  <span className="font-semibold">{fmt(amounts.monthlyEstimate, paymentCurrency)}</span>
+                  <span className="font-semibold">{fmt(displayAmount, paymentCurrency)}</span>
                 )}
               </div>
+              {billingCycle === "annual" && !monthlyAlreadyPaid && (
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>Standard annual price</span>
+                  <span className="line-through">{fmt(amounts.annualPrice, paymentCurrency)}</span>
+                </div>
+              )}
             </div>
 
             {totalRemaining > 0 && (
@@ -278,8 +335,17 @@ export default function PaymentPage() {
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded">
                 <HugeiconsIcon icon={InformationCircleIcon} size={16} className="shrink-0 mt-0.5" />
                 <span>
-                  You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
-                  You can cancel or change your plan at any time.
+                  {billingCycle === "annual" ? (
+                    <>
+                      You&apos;ll be charged {fmt(amounts.foundingAnnualPrice, paymentCurrency)} for the year as a founding partner school.
+                      After 12 months, renewal is at the standard annual rate.
+                    </>
+                  ) : (
+                    <>
+                      You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
+                      You can cancel or change your plan at any time.
+                    </>
+                  )}
                 </span>
               </div>
             )}
