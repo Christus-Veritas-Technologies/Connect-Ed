@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
@@ -202,9 +203,16 @@ function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
-            <span className="text-sm font-bold text-white tracking-tight">CE</span>
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative size-10 transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.png"
+              alt="Connect-Ed Logo"
+              width={40}
+              height={40}
+              className="object-contain rounded-full"
+              priority
+            />
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-base font-semibold text-foreground tracking-tight">
@@ -272,7 +280,27 @@ function Hero() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 text-center">
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
+        {/* Logo Hero */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          custom={0}
+          className="flex justify-center mb-6"
+        >
+          <div className="relative w-20 h-20 md:w-24 md:h-24">
+            <Image
+              src="/logo.png"
+              alt="Connect-Ed"
+              width={96}
+              height={96}
+              className="object-contain drop-shadow-xl rounded-full"
+              priority
+            />
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
           <Badge variant="secondary" size="lg" className="mb-6 border border-border/60 gap-2">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Trusted by Schools Worldwide
@@ -283,7 +311,7 @@ function Hero() {
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          custom={1}
+          custom={2}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
         >
           The Operating System
@@ -737,10 +765,14 @@ function Footer() {
           {/* Brand column */}
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
-                <span className="text-xs font-bold text-white tracking-tight">
-                  CE
-                </span>
+              <div className="relative size-10">
+                <Image
+                  src="/logo.png"
+                  alt="Connect-Ed Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain rounded-full"
+                />
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-sm font-semibold text-foreground tracking-tight">

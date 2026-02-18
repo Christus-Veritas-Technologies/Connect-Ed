@@ -151,6 +151,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <meta name="apple-mobile-web-app-title" content="Connect-Ed" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <QueryProvider>
