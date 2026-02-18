@@ -47,10 +47,8 @@ dashboard.get("/stats", requireAuth, async (c) => {
           plan: true,
           emailQuota: true,
           whatsappQuota: true,
-          smsQuota: true,
           emailUsed: true,
           whatsappUsed: true,
-          smsUsed: true,
         },
       }),
 
@@ -246,10 +244,6 @@ dashboard.get("/stats", requireAuth, async (c) => {
         whatsapp: {
           used: school?.whatsappUsed || 0,
           limit: school?.whatsappQuota || 200,
-        },
-        sms: {
-          used: school?.smsUsed || 0,
-          limit: school?.smsQuota || 100,
         },
       },
       recentActivity: {

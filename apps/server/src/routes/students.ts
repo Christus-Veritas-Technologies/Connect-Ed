@@ -304,7 +304,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     // Execute all notifications
     await Promise.all(notifications);
 
-    // Send welcome email + WhatsApp + SMS with credentials if email provided (respects school preferences)
+    // Send welcome email + WhatsApp with credentials if email provided (respects school preferences)
     if (student.email && generatedPassword) {
       const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 

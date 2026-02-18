@@ -84,7 +84,7 @@ const features = [
     icon: Money01Icon,
     title: "Fee Collection & Tracking",
     description:
-      "Automate fee schedules, send reminders via SMS, email, or WhatsApp, and accept secure online payments.",
+      "Automate fee schedules, send reminders via email or WhatsApp, and accept secure online payments.",
   },
   {
     icon: ChartHistogramIcon,
@@ -535,10 +535,10 @@ function PricingPreview() {
         "Expense tracking",
         "Financial reports (PDF export)",
         "150 GB cloud storage",
-        "Email, WhatsApp & SMS messaging",
+        "Email & WhatsApp messaging",
       ],
-      signupFee: currency === "USD" ? 400 : 4000,
       perTermCost: currency === "USD" ? 240 : 2400,
+      monthlyEstimate: currency === "USD" ? 40 : 800,
     },
     {
       name: "Growth",
@@ -553,8 +553,8 @@ function PricingPreview() {
         "400 GB cloud storage",
         "Premium support",
       ],
-      signupFee: currency === "USD" ? 750 : 15000,
       perTermCost: currency === "USD" ? 225 : 4500,
+      monthlyEstimate: currency === "USD" ? 75 : 1500,
     },
     {
       name: "Enterprise",
@@ -567,8 +567,8 @@ function PricingPreview() {
         "1,000 GB cloud storage",
         "24/7 dedicated support",
       ],
-      signupFee: currency === "USD" ? 1200 : 24000,
       perTermCost: currency === "USD" ? 360 : 7200,
+      monthlyEstimate: currency === "USD" ? 120 : 2400,
     },
   ];
 
@@ -592,7 +592,7 @@ function PricingPreview() {
             className="mx-auto mt-4 max-w-xl text-muted-foreground"
           >
             Select a plan that matches your institution&apos;s size. All plans
-            include a one-time setup fee and full onboarding support.
+            include full onboarding support.
           </motion.p>
         </AnimatedSection>
 
@@ -638,19 +638,14 @@ function PricingPreview() {
                   {plan.description}
                 </p>
 
-                <div className="mt-6 mb-6 flex flex-col gap-3">
+                <div className="mt-6 mb-6">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Setup fee (one-time)</p>
-                    <div className="text-lg font-semibold text-foreground">
-                      {fmt(plan.signupFee, currency)}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">Then per term</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">Per month</p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold tracking-tight text-foreground italic">
-                        {fmt(plan.perTermCost, currency)}
+                        {fmt(plan.monthlyEstimate, currency)}
                       </span>
+                      <span className="text-sm text-muted-foreground">/month</span>
                     </div>
                   </div>
                 </div>

@@ -54,7 +54,6 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
           onboardingComplete: false,
           emailQuota: PLAN_FEATURES.LITE.emailQuota,
           whatsappQuota: PLAN_FEATURES.LITE.whatsappQuota,
-          smsQuota: PLAN_FEATURES.LITE.smsQuota,
         },
       });
 

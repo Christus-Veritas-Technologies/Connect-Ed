@@ -57,9 +57,9 @@ const planOrder: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 const faqs = [
     {
-        question: "Is there a one-time setup fee?",
+        question: "How does billing work?",
         answer:
-            "Yes — each plan has a one-time setup fee that covers full onboarding, data migration, and configuration. You'll see the exact amount during sign-up.",
+            "All plans are billed monthly. You'll be charged at the start of each month. You can cancel or change your plan at any time.",
     },
     {
         question: "Can I switch plans later?",
@@ -112,7 +112,7 @@ export default function PricingPage() {
                         className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed"
                     >
                         Select a plan that matches your institution&apos;s size. All plans
-                        include a one-time setup fee and full onboarding support.
+                        include full onboarding support.
                     </motion.p>
                 </div>
             </section>
@@ -153,14 +153,6 @@ export default function PricingPage() {
                                         </p>
 
                                         <div className="mt-6 mb-2">
-                                            <div className="flex items-baseline gap-1 justify-center">
-                                                <span className="text-sm font-medium text-muted-foreground">
-                                                    {fmt(plan.signupFee, "USD")}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    setup
-                                                </span>
-                                            </div>
                                             <div className="flex items-baseline gap-1 justify-center mt-1">
                                                 <span className="text-4xl font-bold tracking-tight text-foreground italic">
                                                     {fmt(plan.monthlyEstimate, "USD")}

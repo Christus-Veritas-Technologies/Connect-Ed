@@ -1,6 +1,5 @@
 import { sendEmail, type EmailType } from "./email";
 import { sendWhatsApp, sendWhatsAppWelcome } from "./whatsapp";
-import { sendSms } from "./sms";
 import { getSchoolNotificationPrefs } from "../routes/notifications";
 
 // ============================================
@@ -24,22 +23,15 @@ interface NotifyChannelsOptions {
     content: string;
     isBulk?: boolean;
   };
-
-  // SMS
-  sms?: {
-    phone: string;
-    content: string;
-  };
 }
 
 interface NotifyResult {
   emailSent: boolean;
   whatsappSent: boolean;
-  smsSent: boolean;
 }
 
 /**
- * Send notifications across all enabled channels (email, whatsapp, sms)
+ * Send notifications across all enabled channels (email, whatsapp)
  * based on the school's notification preferences.
  *
  * Usage:
@@ -48,7 +40,7 @@ interface NotifyResult {
  *   schoolId,
  *   email: { to: "user@example.com", subject: "Welcome", html: "<h1>Hi</h1>" },
  *   whatsapp: { phone: "+263771234567", content: "Welcome to our school!" },
- *   sms: { phone: "+263771234567", content: "Welcome to our school!" },
+ *   whatsapp: { phone: "+263771234567", content: "Welcome to our school!" },
  * });
  * ```
  */
@@ -59,7 +51,6 @@ export async function notifyAllChannels(options: NotifyChannelsOptions): Promise
   const result: NotifyResult = {
     emailSent: false,
     whatsappSent: false,
-    smsSent: false,
   };
 
   const promises: Promise<void>[] = [];
@@ -93,26 +84,13 @@ export async function notifyAllChannels(options: NotifyChannelsOptions): Promise
     );
   }
 
-  // SMS
-  if (prefs.sms && options.sms) {
-    promises.push(
-      sendSms({
-        phone: options.sms.phone,
-        content: options.sms.content,
-        schoolId,
-      }).then((sent) => {
-        result.smsSent = sent;
-      })
-    );
-  }
-
   await Promise.allSettled(promises);
   return result;
 }
 
 /**
  * Send a welcome notification to a newly created user across all channels.
- * Includes email with credentials and WhatsApp/SMS welcome messages.
+ * Includes email with credentials and WhatsApp welcome messages.
  */
 export async function notifyWelcome(options: {
   schoolId: string;
@@ -126,8 +104,6 @@ export async function notifyWelcome(options: {
 }): Promise<NotifyResult> {
   const { schoolId, schoolName, name, email, phone, password, role, emailHtml } = options;
 
-  const smsContent = `Welcome to ${schoolName}! Your Connect-Ed ${role.toLowerCase()} account is ready. Login: ${email} | Password: ${password}. Change your password after first login.`;
-
   return notifyAllChannels({
     schoolId,
     email: {
@@ -140,10 +116,6 @@ export async function notifyWelcome(options: {
       whatsapp: {
         phone,
         content: `🎓 *Welcome to ${schoolName}!*\n\nHi ${name}, your Connect-Ed account has been created.\n\n🔐 *Login Credentials*\nEmail: ${email}\nPassword: ${password}\n\n⚠️ Please change your password after your first login.\n\n_Sent via Connect-Ed_`,
-      },
-      sms: {
-        phone,
-        content: smsContent,
       },
     }),
   });
@@ -160,10 +132,9 @@ export async function notifyGeneric(options: {
   subject: string;
   emailHtml: string;
   whatsappContent: string;
-  smsContent: string;
   emailType?: EmailType;
 }): Promise<NotifyResult> {
-  const { schoolId, email, phone, subject, emailHtml, whatsappContent, smsContent, emailType } = options;
+  const { schoolId, email, phone, subject, emailHtml, whatsappContent, emailType } = options;
 
   return notifyAllChannels({
     schoolId,
@@ -179,10 +150,6 @@ export async function notifyGeneric(options: {
       whatsapp: {
         phone,
         content: whatsappContent,
-      },
-      sms: {
-        phone,
-        content: smsContent,
       },
     }),
   });

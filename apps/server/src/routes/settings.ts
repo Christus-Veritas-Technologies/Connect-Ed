@@ -382,7 +382,7 @@ settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
       },
     });
 
-    // Create notification and send email/whatsapp/sms to each user (respecting preferences)
+    // Create notification and send email/whatsapp to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
       // Create in-app notification (createNotification already checks prefs)
       await createNotification({
@@ -415,7 +415,6 @@ settings.post("/period/end", requireRole(Role.ADMIN), async (c) => {
           newPeriod: "holiday",
         }),
         whatsappContent: `🌴 *Holiday Period Started*\n\nHi ${user.name},\n\nTerm ${school.currentTermNumber} of ${school.currentTermYear} at *${updatedSchool.name}* has ended. Enjoy the holiday break!\n\n_Sent via Connect-Ed_`,
-        smsContent: `Holiday Period: Term ${school.currentTermNumber} at ${updatedSchool.name} has ended. Enjoy the break!`,
         emailType: "NOREPLY",
       });
     });
@@ -491,7 +490,7 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
       },
     });
 
-    // Create notification and send email/whatsapp/sms to each user (respecting preferences)
+    // Create notification and send email/whatsapp to each user (respecting preferences)
     const notificationPromises = users.map(async (user) => {
       // Create in-app notification (createNotification already checks prefs)
       await createNotification({
@@ -524,7 +523,6 @@ settings.post("/period/start-term", requireRole(Role.ADMIN), zValidator("json", 
           newPeriod: "term",
         }),
         whatsappContent: `🎓 *Term ${data.termNumber} Has Started!*\n\nHi ${user.name},\n\nWelcome back! Term ${data.termNumber} of ${data.year} at *${updatedSchool.name}* has officially begun.\n\nLet's have a great term!\n\n_Sent via Connect-Ed_`,
-        smsContent: `Welcome back! Term ${data.termNumber} of ${data.year} at ${updatedSchool.name} has started. Let's have a great term!`,
         emailType: "NOREPLY",
       });
     });

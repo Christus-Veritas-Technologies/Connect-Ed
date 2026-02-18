@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -28,7 +28,6 @@ type PaymentCurrency = "USD" | "ZAR";
 
 interface PlanStatus {
   monthlyPaymentPaid: boolean;
-  onceOffPaymentPaid: boolean;
   paid: boolean;
   selectedPlan: Plan | null;
 }
@@ -49,19 +48,16 @@ export default function PaymentPage() {
     logoutMutation.mutate();
   };
 
-  // Fetch plan payment status on mount
   useEffect(() => {
     const fetchPlanStatus = async () => {
       try {
         const data = await api.get<PlanStatus>("/payments/plan-status");
         setPlanStatus(data);
-        // If user already paid for a specific plan, set that as selected
         if (data.selectedPlan) {
           setSelectedPlan(data.selectedPlan);
         }
       } catch {
-        // No plan payment record yet — everything is unpaid
-        setPlanStatus({ monthlyPaymentPaid: false, onceOffPaymentPaid: false, paid: false, selectedPlan: null });
+        setPlanStatus({ monthlyPaymentPaid: false, paid: false, selectedPlan: null });
       } finally {
         setIsLoadingStatus(false);
       }
@@ -71,27 +67,12 @@ export default function PaymentPage() {
 
   const planMeta = PRICING[selectedPlan];
   const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
-
-  // Determine what's already paid
   const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
-  const setupAlreadyPaid = planStatus?.onceOffPaymentPaid ?? false;
+  const totalRemaining = monthlyAlreadyPaid ? 0 : amounts.monthlyEstimate;
 
-  // Calculate remaining amounts
-  const setupFeeRemaining = setupAlreadyPaid ? 0 : amounts.signupFee;
-  const monthlyRemaining = monthlyAlreadyPaid ? 0 : amounts.monthlyEstimate;
-  const totalRemaining = setupFeeRemaining + monthlyRemaining;
-
-  // Determine the payment type the server should use
-  const getPaymentType = (): string => {
-    if (monthlyAlreadyPaid && !setupAlreadyPaid) return "SETUP_ONLY";
-    return "FULL";
-  };
-
-  const handlePayOnline = async (monthlyOnly = false) => {
+  const handlePayOnline = async () => {
     setIsPaymentLoading(true);
     setError("");
-
-    const paymentType = monthlyOnly ? "MONTHLY_ONLY" : getPaymentType();
 
     try {
       if (paymentCurrency === "ZAR") {
@@ -100,7 +81,7 @@ export default function PaymentPage() {
           paymentId: string;
         }>("/payments/create-dodo-checkout", {
           planType: selectedPlan,
-          paymentType,
+          paymentType: "MONTHLY_ONLY",
           email: user?.email,
           currency: "ZAR",
         });
@@ -111,7 +92,7 @@ export default function PaymentPage() {
           intermediatePaymentId: string;
         }>("/payments/create-checkout", {
           planType: selectedPlan,
-          paymentType,
+          paymentType: "MONTHLY_ONLY",
           email: user?.email,
         });
         window.location.href = response.checkoutUrl;
@@ -135,7 +116,6 @@ export default function PaymentPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Dev Logout Button */}
       {process.env.NODE_ENV === "development" && (
         <div className="flex justify-end">
           <Button
@@ -150,23 +130,17 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-bold">
-          {monthlyAlreadyPaid ? "Complete Your Setup" : "Choose Your Plan"}
-        </h1>
+        <h1 className="text-3xl font-bold">Choose Your Plan</h1>
         <p className="text-muted-foreground mt-2">
-          {monthlyAlreadyPaid
-            ? "Your first month\u2019s fee has been paid. Complete the one-time setup fee to get started."
-            : "Select the plan that best fits your school\u2019s needs"}
+          Select the plan that best fits your school's needs
         </p>
       </motion.div>
 
-      {/* Currency Tabs */}
       <motion.div
         initial={{ opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
@@ -190,7 +164,6 @@ export default function PaymentPage() {
         </Alert>
       )}
 
-      {/* Plan Cards */}
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map((plan, index) => {
           const planInfo = PRICING[plan];
@@ -209,10 +182,9 @@ export default function PaymentPage() {
               <Card
                 hover={!isLocked}
                 onClick={() => !isLocked && setSelectedPlan(plan)}
-                className={`relative ${!isLocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} transition-all ${isSelected
-                  ? "bg-brand border-brand ring-4 ring-brand/20"
-                  : "bg-muted/40"
-                  }`}
+                className={`relative ${!isLocked ? "cursor-pointer" : "cursor-not-allowed opacity-60"} transition-all ${
+                  isSelected ? "bg-brand border-brand ring-4 ring-brand/20" : "bg-muted/40"
+                }`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -231,20 +203,13 @@ export default function PaymentPage() {
 
                 <CardContent className="space-y-6">
                   <div className="text-center">
-                    <div className="flex items-baseline justify-center gap-2">
-                      <div>
-                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Setup fee (one-time)</div>
-                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
-                          {fmt(planAmounts.signupFee, paymentCurrency)}
-                        </span>
-                      </div>
-                      <span className={`text-lg mt-6 ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>+</span>
-                      <div>
-                        <div className={`text-sm mb-1 ${isSelected ? "text-white" : "text-muted-foreground"}`}>Then monthly</div>
-                        <span className={`text-3xl font-bold ${isSelected ? "text-white" : ""}`}>
-                          {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
-                        </span>
-                      </div>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
+                        {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
+                      </span>
+                      <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
+                        /month
+                      </span>
                     </div>
                   </div>
 
@@ -254,22 +219,16 @@ export default function PaymentPage() {
                         <HugeiconsIcon
                           icon={CheckmarkCircle02Icon}
                           size={18}
-                          className={`shrink-0 mt-0.5 ${isSelected ? "text-blue-200" : "text-success"
-                            }`}
+                          className={`shrink-0 mt-0.5 ${isSelected ? "text-blue-200" : "text-success"}`}
                         />
-                        <span className={isSelected ? "text-white" : ""}>
-                          {feature}
-                        </span>
+                        <span className={isSelected ? "text-white" : ""}>{feature}</span>
                       </li>
                     ))}
                   </ul>
 
                   <Button
                     variant={isSelected ? "secondary" : "outline"}
-                    className={`w-full ${isSelected
-                      ? "bg-white text-brand hover:bg-white/90"
-                      : ""
-                      }`}
+                    className={`w-full ${isSelected ? "bg-white text-brand hover:bg-white/90" : ""}`}
                     onClick={() => setSelectedPlan(plan)}
                   >
                     {isSelected ? "Selected" : "Select Plan"}
@@ -281,7 +240,6 @@ export default function PaymentPage() {
         })}
       </div>
 
-      {/* Payment Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -290,36 +248,13 @@ export default function PaymentPage() {
         <Card className="max-w-xl mx-auto">
           <CardHeader>
             <CardTitle>Payment Summary</CardTitle>
-            {monthlyAlreadyPaid && !setupAlreadyPaid && (
-              <Alert className="mt-3 border-success/30 bg-success/5">
-                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-success" />
-                <AlertDescription className="text-success">
-                  Your first month&apos;s fee has been confirmed! Only the setup fee remains.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Line items */}
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="font-medium">
-                  Setup Fee ({planMeta.name}){" "}
-                  <span className="text-xs text-muted-foreground">one-time</span>
-                </span>
-                {setupAlreadyPaid ? (
-                  <Badge variant="outline" className="text-success border-success/40">
-                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} className="mr-1" />
-                    Paid
-                  </Badge>
-                ) : (
-                  <span className="font-semibold">{fmt(amounts.signupFee, paymentCurrency)}</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="font-medium">
-                  First Month Charge{" "}
-                  <span className="text-xs text-muted-foreground">recurring</span>
+                  {planMeta.name} Plan{" "}
+                  <span className="text-xs text-muted-foreground">monthly</span>
                 </span>
                 {monthlyAlreadyPaid ? (
                   <Badge variant="outline" className="text-success border-success/40">
@@ -332,7 +267,6 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            {/* Total */}
             {totalRemaining > 0 && (
               <div className="flex justify-between py-2 text-lg font-bold">
                 <span>Total Due Today</span>
@@ -340,51 +274,30 @@ export default function PaymentPage() {
               </div>
             )}
 
-            {/* Info box — show when both are unpaid */}
-            {!monthlyAlreadyPaid && !setupAlreadyPaid && (
+            {!monthlyAlreadyPaid && (
               <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded">
-                <HugeiconsIcon
-                  icon={InformationCircleIcon}
-                  size={16}
-                  className="shrink-0 mt-0.5"
-                />
+                <HugeiconsIcon icon={InformationCircleIcon} size={16} className="shrink-0 mt-0.5" />
                 <span>
-                  <strong>Setup fee:</strong> Your setup fee of {fmt(amounts.signupFee, paymentCurrency)} is
-                  charged only once. You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every
-                  month after that.
+                  You'll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
+                  You can cancel or change your plan at any time.
                 </span>
               </div>
             )}
 
-            {/* Payment buttons */}
             {totalRemaining > 0 ? (
-              <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  loading={isPaymentLoading}
-                  onClick={() => handlePayOnline(false)}
-                >
-                  {!isPaymentLoading && (
-                    <>
-                      Pay {fmt(totalRemaining, paymentCurrency)} Now
-                      <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                    </>
-                  )}
-                </Button>
-
-                {/* Show "Pay first month only" option only when both are still unpaid */}
-                {!monthlyAlreadyPaid && !setupAlreadyPaid && (
-                  <button
-                    type="button"
-                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 underline underline-offset-4"
-                    onClick={() => handlePayOnline(true)}
-                    disabled={isPaymentLoading}
-                  >
-                    Pay first month only ({fmt(amounts.monthlyEstimate, paymentCurrency)})
-                  </button>
+              <Button
+                className="w-full"
+                size="lg"
+                loading={isPaymentLoading}
+                onClick={() => handlePayOnline()}
+              >
+                {!isPaymentLoading && (
+                  <>
+                    Pay {fmt(totalRemaining, paymentCurrency)} Now
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
+                  </>
                 )}
-              </div>
+              </Button>
             ) : (
               <div className="text-center py-4">
                 <HugeiconsIcon icon={CheckmarkCircle02Icon} size={32} className="text-success mx-auto mb-2" />

@@ -7,7 +7,6 @@ import {
   generateFinalWarningEmail,
 } from "../lib/email";
 import { sendWhatsApp } from "../lib/whatsapp";
-import { sendSms } from "../lib/sms";
 import { getSchoolNotificationPrefs } from "./notifications";
 
 const billing = new Hono();
@@ -86,20 +85,13 @@ billing.post("/check-overdue", async (c) => {
           }
         }
 
-        // Send WhatsApp + SMS to admins with phone numbers
+        // Send WhatsApp to admins with phone numbers
         for (const user of school.users) {
           if (user.phone) {
             if (prefs.whatsapp) {
               await sendWhatsApp({
                 phone: user.phone,
                 content: `⏰ *Payment Reminder (Day ${graceDay}/3)*\n\nHi ${user.name},\n\nYour payment for *${schoolName}* is overdue. You have *${3 - graceDay} day${3 - graceDay !== 1 ? "s" : ""}* left before access is suspended.\n\nPlease make your payment as soon as possible.\n\n_Connect-Ed_`,
-                schoolId: school.id,
-              });
-            }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `Payment Reminder: Day ${graceDay}/3 for ${schoolName}. ${3 - graceDay} day(s) left before access is suspended. Pay now. - Connect-Ed`,
                 schoolId: school.id,
               });
             }
@@ -134,13 +126,6 @@ billing.post("/check-overdue", async (c) => {
                 schoolId: school.id,
               });
             }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `ACCESS SUSPENDED: ${schoolName} has been locked due to non-payment. Pay now to restore access. - Connect-Ed`,
-                schoolId: school.id,
-              });
-            }
           }
         }
 
@@ -169,13 +154,6 @@ billing.post("/check-overdue", async (c) => {
               await sendWhatsApp({
                 phone: user.phone,
                 content: `🚨 *FINAL NOTICE*\n\nHi ${user.name},\n\n*${schoolName}* will be permanently removed from Connect-Ed if payment is not received immediately.\n\nAll data will be deleted. This action is irreversible.\n\nPay now to prevent this.\n\n_Connect-Ed_`,
-                schoolId: school.id,
-              });
-            }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `FINAL NOTICE: ${schoolName} will be removed from Connect-Ed. Pay immediately to prevent permanent data deletion. - Connect-Ed`,
                 schoolId: school.id,
               });
             }

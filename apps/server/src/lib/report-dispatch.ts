@@ -1,7 +1,6 @@
 import { db } from "@repo/db";
 import { sendEmail } from "./email";
 import { sendWhatsApp } from "./whatsapp";
-import { sendSms } from "./sms";
 import { getSchoolNotificationPrefs } from "../routes/notifications";
 
 // ============================================
@@ -615,21 +614,6 @@ async function sendWhatsAppReport(
 }
 
 // ============================================
-// Send SMS report (summary only due to SMS length limits)
-// ============================================
-
-async function sendSmsReport(
-  phone: string,
-  studentName: string,
-  averageMark: number,
-  schoolName: string,
-  schoolId: string
-): Promise<boolean> {
-  const smsContent = `Academic Report: ${studentName} scored an average of ${averageMark}% this term at ${schoolName}. Log in to Connect-Ed for the full report.`;
-  return sendSms({ phone, content: smsContent, schoolId });
-}
-
-// ============================================
 // Main dispatch: send report for ONE student to their parent(s)
 // ============================================
 
@@ -712,17 +696,6 @@ export async function sendReportToParent(
   if (prefs.whatsapp && parent.phone) {
     const text = generateReportWhatsAppText(report);
     whatsappSent = await sendWhatsAppReport(parent.phone, text, schoolId);
-  }
-
-  // 6. Send SMS (if enabled and parent has phone)
-  if (prefs.sms && parent.phone) {
-    await sendSmsReport(
-      parent.phone,
-      studentName,
-      report.overall.averageMark,
-      report.school.name,
-      schoolId
-    );
   }
 
   return {

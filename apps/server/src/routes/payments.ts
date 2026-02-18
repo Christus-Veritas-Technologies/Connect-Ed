@@ -26,29 +26,14 @@ function getNextPaymentDate(): Date {
 }
 
 /**
- * Determine payment amount based on the paymentType and school's PlanPayment status.
- * Returns { amount, effectiveType } where effectiveType is what was actually charged.
+ * Determine payment amount — now always monthly-only.
  */
 function resolvePaymentAmount(
-  planPricing: { signupFee: number; monthlyEstimate: number },
+  planPricing: { monthlyEstimate: number },
   paymentType: string,
-  planPayment: { monthlyPaymentPaid: boolean; onceOffPaymentPaid: boolean } | null
-): { amount: number; effectiveType: "FULL" | "MONTHLY_ONLY" | "SETUP_ONLY" } {
-  const monthlyPaid = planPayment?.monthlyPaymentPaid ?? false;
-  const setupPaid = planPayment?.onceOffPaymentPaid ?? false;
-
-  if (paymentType === "MONTHLY_ONLY") {
-    // Explicitly paying only the monthly fee
-    return { amount: planPricing.monthlyEstimate, effectiveType: "MONTHLY_ONLY" };
-  }
-
-  if (paymentType === "SETUP_ONLY" || monthlyPaid) {
-    // Monthly already paid, only setup fee remaining
-    return { amount: planPricing.signupFee, effectiveType: "SETUP_ONLY" };
-  }
-
-  // Full payment (setup + monthly)
-  return { amount: planPricing.signupFee + planPricing.monthlyEstimate, effectiveType: "FULL" };
+  planPayment: { monthlyPaymentPaid: boolean } | null
+): { amount: number; effectiveType: "MONTHLY_ONLY" } {
+  return { amount: planPricing.monthlyEstimate, effectiveType: "MONTHLY_ONLY" };
 }
 
 /**
@@ -86,7 +71,6 @@ payments.get("/plan-status", requireAuth, async (c) => {
 
     return successResponse(c, {
       monthlyPaymentPaid: planPayment?.monthlyPaymentPaid ?? false,
-      onceOffPaymentPaid: planPayment?.onceOffPaymentPaid ?? false,
       paid: planPayment?.paid ?? false,
       selectedPlan: lastPaidPayment?.plan ?? null,
     });
@@ -137,30 +121,19 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
         });
 
         const planPaymentData: any = {};
-        if (effectiveType === "FULL") {
-          planPaymentData.monthlyPaymentPaid = true;
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        } else if (effectiveType === "MONTHLY_ONLY") {
-          planPaymentData.monthlyPaymentPaid = true;
-        } else if (effectiveType === "SETUP_ONLY") {
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        }
+        planPaymentData.monthlyPaymentPaid = true;
+        planPaymentData.paid = true;
 
         await upsertPlanPayment(tx, schoolId, planPaymentData);
-
-        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
         await tx.school.update({
           where: { id: schoolId },
           data: {
-            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            signupFeePaid: true,
             plan: data.planType,
             nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
-            smsQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].smsQuota,
           },
         });
       });
@@ -257,32 +230,15 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
     const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
     const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment);
 
-    // Select appropriate product IDs based on what is being paid
-    const productIds: string[] = [];
+    // Select the monthly product
     const planType = data.planType as PlanType;
-    
-    // Add one-time product if paying for it
-    if (effectiveType === "FULL" || effectiveType === "SETUP_ONLY") {
-      const onetimeKey = `DODO_PRODUCT_${planType}_ONETIME`;
-      const onetimeProductId = process.env[onetimeKey];
-      if (onetimeProductId) {
-        productIds.push(onetimeProductId);
-      }
-    }
-    
-    // Add the monthly product if paying for it
-    if (effectiveType === "FULL" || effectiveType === "MONTHLY_ONLY") {
-      const monthlyKey = `DODO_PRODUCT_${planType}_MONTHLY`;
-      const monthlyProductId = process.env[monthlyKey];
-      if (monthlyProductId) {
-        productIds.push(monthlyProductId);
-      }
-    }
-
-    if (productIds.length === 0) {
-      console.error("No product IDs found for plan:", planType);
+    const monthlyKey = `DODO_PRODUCT_${planType}_MONTHLY`;
+    const monthlyProductId = process.env[monthlyKey];
+    if (!monthlyProductId) {
+      console.error("No monthly product ID found for plan:", planType);
       return errors.internalError(c);
     }
+    const productIds = [monthlyProductId];
 
     // Create intermediate payment record
     const intermediatePayment = await db.intermediatePayment.create({
@@ -310,30 +266,19 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
         });
 
         const planPaymentData: any = {};
-        if (effectiveType === "FULL") {
-          planPaymentData.monthlyPaymentPaid = true;
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        } else if (effectiveType === "MONTHLY_ONLY") {
-          planPaymentData.monthlyPaymentPaid = true;
-        } else if (effectiveType === "SETUP_ONLY") {
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        }
+        planPaymentData.monthlyPaymentPaid = true;
+        planPaymentData.paid = true;
 
         await upsertPlanPayment(tx, schoolId, planPaymentData);
-
-        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
         await tx.school.update({
           where: { id: schoolId },
           data: {
-            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            signupFeePaid: true,
             plan: data.planType,
             nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].whatsappQuota,
-            smsQuota: PLAN_FEATURES[data.planType as keyof typeof PLAN_FEATURES].smsQuota,
           },
         });
       });
@@ -445,34 +390,22 @@ payments.post("/callback", async (c) => {
           data: { paid: true },
         });
 
-        // Update PlanPayment based on what was paid
+        // Update PlanPayment
         const planPaymentData: any = {};
-        if (effectiveType === "FULL") {
-          planPaymentData.monthlyPaymentPaid = true;
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        } else if (effectiveType === "MONTHLY_ONLY") {
-          planPaymentData.monthlyPaymentPaid = true;
-        } else if (effectiveType === "SETUP_ONLY") {
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        }
+        planPaymentData.monthlyPaymentPaid = true;
+        planPaymentData.paid = true;
 
         await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
-
-        // Only set signupFeePaid when the setup fee is included in this payment
-        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment.schoolId },
           data: {
-            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            signupFeePaid: true,
             plan: intermediatePayment.plan,
             nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-            smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
           },
         });
       });
@@ -510,7 +443,6 @@ payments.post("/callback", async (c) => {
           currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
         }),
         whatsappContent: `✅ *Payment Successful!*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${paymentAmount}* for the *${intermediatePayment.plan}* plan has been processed successfully.\n\nTransaction ID: ${intermediatePaymentId}\n\nYour school's plan is now active!\n\n_Connect-Ed_`,
-        smsContent: `Payment of ${paymentAmount} for ${intermediatePayment.plan} plan confirmed. Transaction: ${intermediatePaymentId}. Connect-Ed`,
         emailType: "SALES",
       });
     } else {
@@ -545,7 +477,6 @@ payments.post("/callback", async (c) => {
           currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
         }),
         whatsappContent: `❌ *Payment Failed*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${failPaymentAmount}* for the *${intermediatePayment.plan}* plan could not be processed.\n\nPlease try again or contact your bank.\n\n_Connect-Ed_`,
-        smsContent: `Payment of ${failPaymentAmount} for ${intermediatePayment.plan} plan failed. Please try again. Connect-Ed`,
         emailType: "SALES",
       });
     }
@@ -649,18 +580,10 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
             data: { paid: true },
           });
 
-          // Update PlanPayment based on what was paid
+          // Update PlanPayment
           const planPaymentData: any = {};
-          if (effectiveType === "FULL") {
-            planPaymentData.monthlyPaymentPaid = true;
-            planPaymentData.onceOffPaymentPaid = true;
-            planPaymentData.paid = true;
-          } else if (effectiveType === "MONTHLY_ONLY") {
-            planPaymentData.monthlyPaymentPaid = true;
-          } else if (effectiveType === "SETUP_ONLY") {
-            planPaymentData.onceOffPaymentPaid = true;
-            planPaymentData.paid = true;
-          }
+          planPaymentData.monthlyPaymentPaid = true;
+          planPaymentData.paid = true;
 
           const existing = await tx.planPayment.findFirst({ where: { schoolId: intermediatePayment!.schoolId } });
           if (existing) {
@@ -669,17 +592,14 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
             await tx.planPayment.create({ data: { schoolId: intermediatePayment!.schoolId, ...planPaymentData } });
           }
 
-          const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
-
           await tx.school.update({
             where: { id: intermediatePayment!.schoolId },
             data: {
-              ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+              signupFeePaid: true,
               plan: intermediatePayment!.plan,
               nextPaymentDate: getNextPaymentDate(),
               emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
               whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-              smsQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].smsQuota,
             },
           });
         });
@@ -747,34 +667,22 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
           data: { paid: true },
         });
 
-        // Update PlanPayment based on what was paid
+        // Update PlanPayment
         const planPaymentData: any = {};
-        if (effectiveType === "FULL") {
-          planPaymentData.monthlyPaymentPaid = true;
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        } else if (effectiveType === "MONTHLY_ONLY") {
-          planPaymentData.monthlyPaymentPaid = true;
-        } else if (effectiveType === "SETUP_ONLY") {
-          planPaymentData.onceOffPaymentPaid = true;
-          planPaymentData.paid = true;
-        }
+        planPaymentData.monthlyPaymentPaid = true;
+        planPaymentData.paid = true;
 
         await upsertPlanPayment(tx, intermediatePayment!.schoolId, planPaymentData);
-
-        // Only set signupFeePaid when the setup fee is included
-        const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
         // Update school's payment status and plan details
         await tx.school.update({
           where: { id: intermediatePayment!.schoolId },
           data: {
-            ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+            signupFeePaid: true,
             plan: intermediatePayment!.plan,
             nextPaymentDate: getNextPaymentDate(),
             emailQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].emailQuota,
             whatsappQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-            smsQuota: PLAN_FEATURES[intermediatePayment!.plan as keyof typeof PLAN_FEATURES].smsQuota,
           },
         });
       });
@@ -800,7 +708,7 @@ payments.get("/verify/:intermediatePaymentId", async (c) => {
   }
 });
 
-// POST /payments/confirm-manual-payment - Handle manual once-off payment
+// POST /payments/confirm-manual-payment - Handle manual payment confirmation
 payments.post("/confirm-manual-payment", requireAuth, async (c) => {
   try {
     const schoolId = c.get("schoolId");
@@ -819,21 +727,20 @@ payments.post("/confirm-manual-payment", requireAuth, async (c) => {
 
     const planPricing = getPlanAmounts(plan as PlanType);
 
-    // Mark once-off payment as paid, only monthly remains
+    // Mark payment as paid
     const existing = await db.planPayment.findFirst({ where: { schoolId } });
     let planPaymentRecord;
     if (existing) {
       planPaymentRecord = await db.planPayment.update({
         where: { id: existing.id },
-        data: { onceOffPaymentPaid: true },
+        data: { monthlyPaymentPaid: true, paid: true },
       });
     } else {
       planPaymentRecord = await db.planPayment.create({
         data: {
           schoolId,
-          onceOffPaymentPaid: true,
-          monthlyPaymentPaid: false,
-          paid: false,
+          monthlyPaymentPaid: true,
+          paid: true,
         },
       });
     }
@@ -881,9 +788,7 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
 
     const planPricing = getPlanAmounts(planType as PlanType);
 
-    const amount = paymentType === "SIGNUP"
-      ? planPricing.signupFee + planPricing.monthlyEstimate
-      : planPricing.monthlyEstimate;
+    const amount = planPricing.monthlyEstimate;
 
     // Create payment record and update school in transaction
     const result = await db.$transaction(async (tx) => {
@@ -891,30 +796,24 @@ payments.post("/verify-manual", requireAuth, requireRole("ADMIN" as any), async 
         data: {
           schoolId: targetSchoolId,
           amount,
-          type: paymentType === "SIGNUP" ? PaymentType.SIGNUP_FEE : PaymentType.TERM_PAYMENT,
+          type: PaymentType.TERM_PAYMENT,
           status: PaymentStatus.COMPLETED,
           paymentMethod: PaymentMethod.CASH,
           reference: reference || `manual_${Date.now()}`,
-          // notes field doesn't exist in SchoolPayment model
         },
       });
 
       const updateData: any = {
+        signupFeePaid: true,
+        plan: planType,
         nextPaymentDate: getNextPaymentDate(),
+        emailQuota: PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES].emailQuota,
+        whatsappQuota: PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES].whatsappQuota,
+        isActive: true,
+        emailUsed: 0,
+        whatsappUsed: 0,
+        quotaResetDate: new Date(),
       };
-      if (paymentType === "SIGNUP") {
-        updateData.signupFeePaid = true;
-        updateData.plan = planType;
-        updateData.emailQuota = PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES].emailQuota;
-        updateData.whatsappQuota = PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES].whatsappQuota;
-        updateData.smsQuota = PLAN_FEATURES[planType as keyof typeof PLAN_FEATURES].smsQuota;
-      } else {
-        updateData.isActive = true;
-        updateData.emailUsed = 0;
-        updateData.whatsappUsed = 0;
-        updateData.smsUsed = 0;
-        updateData.quotaResetDate = new Date();
-      }
 
       const school = await tx.school.update({
         where: { id: targetSchoolId },
@@ -988,33 +887,22 @@ payments.post("/test-complete/:intermediatePaymentId", async (c) => {
         data: { paid: true },
       });
 
-      // Update PlanPayment based on what was paid
+      // Update PlanPayment
       const planPaymentData: any = {};
-      if (effectiveType === "FULL") {
-        planPaymentData.monthlyPaymentPaid = true;
-        planPaymentData.onceOffPaymentPaid = true;
-        planPaymentData.paid = true;
-      } else if (effectiveType === "MONTHLY_ONLY") {
-        planPaymentData.monthlyPaymentPaid = true;
-      } else if (effectiveType === "SETUP_ONLY") {
-        planPaymentData.onceOffPaymentPaid = true;
-        planPaymentData.paid = true;
-      }
+      planPaymentData.monthlyPaymentPaid = true;
+      planPaymentData.paid = true;
 
       await upsertPlanPayment(tx, intermediatePayment.schoolId, planPaymentData);
-
-      const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
 
       // Update school's payment status and plan details
       await tx.school.update({
         where: { id: intermediatePayment.schoolId },
         data: {
-          ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+          signupFeePaid: true,
           plan: intermediatePayment.plan,
           nextPaymentDate: getNextPaymentDate(),
           emailQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].emailQuota,
           whatsappQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].whatsappQuota,
-          smsQuota: PLAN_FEATURES[intermediatePayment.plan as keyof typeof PLAN_FEATURES].smsQuota,
         },
       });
     });

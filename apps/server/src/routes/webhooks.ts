@@ -6,7 +6,6 @@ import { fmtServer, type CurrencyCode } from "../lib/currency";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { sendEmail, generatePaymentSuccessEmail, generatePaymentFailedEmail } from "../lib/email";
 import { sendWhatsApp } from "../lib/whatsapp";
-import { sendSms } from "../lib/sms";
 
 const webhooks = new Hono();
 
@@ -96,18 +95,11 @@ webhooks.post("/dodo", async (c) => {
             data: { paid: true },
           });
 
-          // Upsert PlanPayment based on what was paid
-          const planPaymentData: any = {};
-          if (effectiveType === "FULL") {
-            planPaymentData.monthlyPaymentPaid = true;
-            planPaymentData.onceOffPaymentPaid = true;
-            planPaymentData.paid = true;
-          } else if (effectiveType === "MONTHLY_ONLY") {
-            planPaymentData.monthlyPaymentPaid = true;
-          } else if (effectiveType === "SETUP_ONLY") {
-            planPaymentData.onceOffPaymentPaid = true;
-            planPaymentData.paid = true;
-          }
+          // Upsert PlanPayment — always mark monthly paid
+          const planPaymentData: any = {
+            monthlyPaymentPaid: true,
+            paid: true,
+          };
 
           // Upsert PlanPayment
           const existing = await tx.planPayment.findFirst({ where: { schoolId: intermediatePayment.schoolId } });
@@ -117,18 +109,14 @@ webhooks.post("/dodo", async (c) => {
             await tx.planPayment.create({ data: { schoolId: intermediatePayment.schoolId, ...planPaymentData } });
           }
 
-          // Only set signupFeePaid when the setup fee is included
-          const shouldMarkSignupPaid = effectiveType === "FULL" || effectiveType === "SETUP_ONLY";
-
           await tx.school.update({
             where: { id: intermediatePayment.schoolId },
             data: {
-              ...(shouldMarkSignupPaid && { signupFeePaid: true }),
+              signupFeePaid: true,
               plan: intermediatePayment.plan,
               nextPaymentDate: (() => { const d = new Date(); d.setDate(d.getDate() + 31); return d; })(),
               emailQuota: planFeatures.emailQuota,
               whatsappQuota: planFeatures.whatsappQuota,
-              smsQuota: planFeatures.smsQuota,
             },
           });
         });
@@ -170,9 +158,6 @@ webhooks.post("/dodo", async (c) => {
         const successMsg = `✅ Payment of ${fmtServer(Number(intermediatePayment.amount), currency)} for your ${intermediatePayment.plan} plan has been processed successfully.`;
         if (prefs.whatsapp && intermediatePayment.user.phone) {
           await sendWhatsApp({ phone: intermediatePayment.user.phone, content: successMsg, schoolId: intermediatePayment.schoolId });
-        }
-        if (prefs.sms && intermediatePayment.user.phone) {
-          await sendSms({ phone: intermediatePayment.user.phone, content: successMsg, schoolId: intermediatePayment.schoolId });
         }
 
         console.log(`Dodo payment succeeded for school ${intermediatePayment.schoolId}, plan: ${intermediatePayment.plan}`);
@@ -233,9 +218,6 @@ webhooks.post("/dodo", async (c) => {
           const failMsg = `⚠️ Your payment of ${fmtServer(Number(failedPayment.amount), failCurrency)} for the ${failedPayment.plan} plan failed. Please try again or contact support.`;
           if (failPrefs.whatsapp && failedPayment.user.phone) {
             await sendWhatsApp({ phone: failedPayment.user.phone, content: failMsg, schoolId: failedPayment.schoolId });
-          }
-          if (failPrefs.sms && failedPayment.user.phone) {
-            await sendSms({ phone: failedPayment.user.phone, content: failMsg, schoolId: failedPayment.schoolId });
           }
         }
 
