@@ -281,10 +281,10 @@ function Hero() {
 
       <div className="mx-auto max-w-6xl px-6 text-center">
         {/* Logo Hero */}
-        <motion.div 
-          variants={fadeUp} 
-          initial="hidden" 
-          animate="visible" 
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
           custom={0}
           className="flex justify-center mb-6"
         >
