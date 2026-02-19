@@ -10,17 +10,15 @@ export {
   calculateMonthlyPayment,
 } from "@repo/payments";
 
+// Re-export PRICING_USD as PRICING for simpler usage
+import { PRICING_USD } from "@repo/payments";
+
 // USD pricing with UI metadata (name, description, features, quotas)
 export const PRICING = {
   LITE: {
     name: "Lite",
     description: "Perfect for small schools getting started with digital management",
-    perTermCost: 240,
-    monthlyEstimate: 40,
-    firstMonthlyPrice: 34,
-    annualPrice: 480,
-    foundingAnnualPrice: 360,
-    studentLimit: 300,
+    ...PRICING_USD.LITE,
     features: [
       "Up to 300 students",
       "Admin & Receptionist access",
@@ -42,12 +40,7 @@ export const PRICING = {
   GROWTH: {
     name: "Growth",
     description: "For growing schools that need teacher portals and class management",
-    perTermCost: 225,
-    monthlyEstimate: 75,
-    firstMonthlyPrice: 64,
-    annualPrice: 900,
-    foundingAnnualPrice: 675,
-    studentLimit: 800,
+    ...PRICING_USD.GROWTH,
     features: [
       "Up to 800 students",
       "Admin, Receptionist & Teacher access",
@@ -70,12 +63,7 @@ export const PRICING = {
   ENTERPRISE: {
     name: "Enterprise",
     description: "For large institutions — custom student capacity, full platform access",
-    perTermCost: 360,
-    monthlyEstimate: 120,
-    firstMonthlyPrice: 102,
-    annualPrice: 1440,
-    foundingAnnualPrice: 1080,
-    studentLimit: 0,
+    ...PRICING_USD.ENTERPRISE,
     features: [
       "2,000+ students (custom capacity)",
       "Full access for all roles",
