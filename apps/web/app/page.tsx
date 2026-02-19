@@ -937,7 +937,7 @@ function Footer() {
             &copy; {new Date().getFullYear()} Connect-Ed. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            Built for schools everywhere 🌍
+            Built for schools everywhere
           </p>
         </div>
       </div>
