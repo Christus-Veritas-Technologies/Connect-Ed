@@ -63,14 +63,8 @@ export default function PaymentCallbackScreen() {
 
     const handleContinue = () => {
         if (paymentSuccess) {
-            // Determine where to redirect based on payment type
-            if (type === 'SETUP_ONLY' || type === 'FULL') {
-                // Setup fee paid, might need onboarding
-                router.replace('/(tabs)');
-            } else {
-                // Monthly payment only
-                router.replace('/(tabs)');
-            }
+            // Payment successful - go to main app
+            router.replace('/(tabs)');
         } else {
             // Failed payment - go back to payment screen
             router.replace('/(tabs)/payment');

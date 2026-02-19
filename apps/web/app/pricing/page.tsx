@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
@@ -9,6 +10,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navbar, Footer } from "@/components/marketing-layout";
 import { PRICING } from "@/lib/pricing";
 import { fmt } from "@/lib/currency";
@@ -57,14 +59,19 @@ const planOrder: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
 const faqs = [
     {
-        question: "Is there a one-time setup fee?",
+        question: "How does billing work?",
         answer:
-            "Yes — each plan has a one-time setup fee that covers full onboarding, data migration, and configuration. You'll see the exact amount during sign-up.",
+            "Choose between monthly or annual billing. Monthly plans are charged each month. Annual plans are paid upfront with a 25% founding partner discount — and automatically renew at the standard annual rate.",
+    },
+    {
+        question: "What happens when my annual plan expires?",
+        answer:
+            "Your plan continues seamlessly. After the founding partner period ends, you'll renew at the standard annual rate. You can also switch to monthly billing at any time from your settings.",
     },
     {
         question: "Can I switch plans later?",
         answer:
-            "Absolutely. You can upgrade or downgrade your plan at any time from the settings page. Changes take effect at the start of the next term.",
+            "Absolutely. You can upgrade or downgrade your plan at any time from the settings page. Changes take effect at the start of the next billing period.",
     },
     {
         question: "How does cloud storage work?",
@@ -76,9 +83,16 @@ const faqs = [
         answer:
             "We accept mobile money, bank transfers, and card payments through our secure payment gateway.",
     },
+    {
+        question: "What are student limits?",
+        answer:
+            "Lite supports up to 300 students, Growth up to 800 students, and Enterprise offers custom capacity for 2,000+ students. Contact us if you need a custom arrangement.",
+    },
 ];
 
 export default function PricingPage() {
+    const [billing, setBilling] = React.useState<"monthly" | "annual">("monthly");
+
     return (
         <main className="min-h-screen bg-background">
             <Navbar />
@@ -112,19 +126,79 @@ export default function PricingPage() {
                         className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed"
                     >
                         Select a plan that matches your institution&apos;s size. All plans
-                        include a one-time setup fee and full onboarding support.
+                        include full onboarding support.
+                    </motion.p>
+                    <motion.p
+                        variants={fadeUp}
+                        initial="hidden"
+                        animate="visible"
+                        custom={2.5}
+                        className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground italic"
+                    >
+                        Reports that took days now take minutes. Fee tracking that was error-prone is now automated.
                     </motion.p>
                 </div>
             </section>
 
+            {/* Billing toggle */}
+            <section className="py-6">
+                <div className="mx-auto max-w-6xl px-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 }}
+                        className="flex justify-center"
+                    >
+                        <Tabs value={billing} onValueChange={(v) => setBilling(v as "monthly" | "annual")}>
+                            <TabsList>
+                                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                                <TabsTrigger value="annual" className="gap-1.5">
+                                    Annual
+                                    <Badge variant="brand" size="sm" className="text-[10px] py-0 px-1.5">
+                                        Save 25%
+                                    </Badge>
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </motion.div>
+
+                    {billing === "annual" && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-center mt-6"
+                        >
+                            <div className="inline-flex items-center gap-2 rounded-full bg-brand/5 border border-brand/20 px-4 py-2 text-sm">
+                                <span className="size-2 rounded-full bg-brand animate-pulse" />
+                                <span className="text-brand font-medium">
+                                    Founding Partner Schools — Exclusive 25% off annual plans. Limited spots available.
+                                </span>
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
+            </section>
+
             {/* Pricing cards */}
-            <section className="py-20">
+            <section className="py-14">
                 <div className="mx-auto max-w-6xl px-6">
                     <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
                         {planOrder.map((planKey, i) => {
                             const plan = PRICING[planKey];
                             const isPopular = planKey === "GROWTH";
                             const includedFrom = planKey === "GROWTH" ? "Lite" : planKey === "ENTERPRISE" ? "Growth" : null;
+                            const isFirstPayment = true; // Show first-payment pricing on public page
+
+                            const displayPrice = billing === "annual"
+                                ? plan.foundingAnnualPrice
+                                : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+                            const regularPrice = billing === "annual"
+                                ? plan.annualPrice
+                                : plan.monthlyEstimate;
+                            const effectiveMonthly = billing === "annual"
+                                ? Math.round((plan.foundingAnnualPrice / 12) * 100) / 100
+                                : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+                            const discountPercent = billing === "annual" ? 25 : 15;
 
                             return (
                                 <motion.div
@@ -153,22 +227,45 @@ export default function PricingPage() {
                                         </p>
 
                                         <div className="mt-6 mb-2">
-                                            <div className="flex items-baseline gap-1 justify-center">
-                                                <span className="text-sm font-medium text-muted-foreground">
-                                                    {fmt(plan.signupFee, "USD")}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    setup
-                                                </span>
-                                            </div>
-                                            <div className="flex items-baseline gap-1 justify-center mt-1">
-                                                <span className="text-4xl font-bold tracking-tight text-foreground italic">
-                                                    {fmt(plan.monthlyEstimate, "USD")}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    /month
-                                                </span>
-                                            </div>
+                                            {billing === "annual" ? (
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1 justify-center">
+                                                        <Badge variant="success" size="sm" className="text-[10px]">
+                                                            {discountPercent}% off first year
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-1 justify-center mt-1">
+                                                        <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                                                            {fmt(displayPrice, "USD")}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            /year
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground text-center mt-1">
+                                                        {fmt(effectiveMonthly, "USD")}/mo — <span className="line-through">{fmt(regularPrice, "USD")}</span>
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1 justify-center">
+                                                        <Badge variant="success" size="sm" className="text-[10px]">
+                                                            {discountPercent}% off first month
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-1 justify-center mt-1">
+                                                        <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                                                            {fmt(displayPrice, "USD")}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            /month
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground text-center mt-1">
+                                                        Then {fmt(regularPrice, "USD")}/mo
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <Button
@@ -204,6 +301,23 @@ export default function PricingPage() {
                                 </motion.div>
                             );
                         })}
+                    </AnimatedSection>
+
+                    {/* ROI nudge */}
+                    <AnimatedSection className="mt-12">
+                        <motion.div
+                            variants={fadeUp}
+                            className="max-w-2xl mx-auto rounded-2xl border border-brand/20 bg-brand/5 p-6 text-center"
+                        >
+                            <p className="text-sm text-foreground font-medium mb-2">
+                                The real cost of not going digital
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                With 400 students each paying $50 per term, you process $20,000 per term.
+                                If tracking errors are even 2%, that&apos;s $400 lost.
+                                Our system starts at just $40/month.
+                            </p>
+                        </motion.div>
                     </AnimatedSection>
                 </div>
             </section>
@@ -248,8 +362,11 @@ export default function PricingPage() {
                         >
                             Ready to Get Started?
                         </motion.h2>
-                        <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-md mx-auto">
-                            Create your account today — no credit card required.
+                        <motion.p variants={fadeUp} className="text-muted-foreground mb-3 max-w-md mx-auto">
+                            We&apos;re onboarding our first founding partner schools — create your account today.
+                        </motion.p>
+                        <motion.p variants={fadeUp} className="text-sm text-muted-foreground/70 italic mb-8 max-w-sm mx-auto">
+                            &ldquo;Reports generated in minutes instead of days. Fee tracking errors eliminated.&rdquo;
                         </motion.p>
                         <motion.div variants={fadeUp}>
                             <Button size="xl" asChild>

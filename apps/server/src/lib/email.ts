@@ -177,6 +177,56 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 }
 
+/**
+ * Send system emails (verification, notifications to admin) without quota checking
+ */
+export async function sendSystemEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  type?: EmailType;
+}): Promise<boolean> {
+  const { to, subject, html, type = "NOREPLY" } = params;
+
+  try {
+    console.log(`📧 Sending system ${type} email:`, { to, subject });
+
+    // Create appropriate transporter based on email type
+    let transporter;
+    let fromEmail;
+    
+    switch (type) {
+      case "NOREPLY":
+        transporter = createNoReplyTransporter();
+        fromEmail = process.env.NOREPLY_FROM_EMAIL || "Connect-Ed <no-reply@connect-ed.co.zw>";
+        break;
+      case "SALES":
+        transporter = createSalesTransporter();
+        fromEmail = process.env.SALES_FROM_EMAIL || "Connect-Ed Sales <sales@connect-ed.co.zw>";
+        break;
+      case "KIN":
+      default:
+        transporter = createKinTransporter();
+        fromEmail = process.env.KIN_FROM_EMAIL || "Kin - Connect-Ed <kin@connect-ed.co.zw>";
+        break;
+    }
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: fromEmail,
+      to,
+      subject,
+      html,
+    });
+
+    console.log(`✅ System ${type} email sent successfully:`, info.messageId);
+    return true;
+  } catch (error) {
+    console.error(`❌ System ${type} email sending failed:`, error);
+    return false;
+  }
+}
+
 export function generatePaymentSuccessEmail(params: {
   name: string;
   amount: number;
@@ -694,6 +744,122 @@ export function generatePeriodChangeEmail(params: {
                 This is an automated notification. Please do not reply to this email.
               </p>
             </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+export function generateEmailVerificationEmail(params: {
+  name: string;
+  verificationCode: string;
+}): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .code-box { background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0; border: 2px dashed #3b82f6; }
+          .code { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1d4ed8; font-family: monospace; }
+          .warning { background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; font-size: 14px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✉️ Verify Your Email</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${params.name},</p>
+            <p>Welcome to Connect-Ed! Please verify your email address to complete your registration.</p>
+            
+            <p style="font-weight: bold; margin-top: 25px;">Your verification code is:</p>
+            
+            <div class="code-box">
+              <div class="code">${params.verificationCode}</div>
+            </div>
+
+            <p style="text-align: center; color: #6b7280;">
+              Enter this code in the verification page to activate your account.
+            </p>
+
+            <div class="warning">
+              <strong>⏱️ Important:</strong> This verification code expires in <strong>15 minutes</strong>.
+            </div>
+
+            <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+              If you didn't create an account with Connect-Ed, you can safely ignore this email.
+            </p>
+          </div>
+          <div class="footer">
+            <p>Connect-Ed School Management System</p>
+            <p style="margin-top: 15px; font-size: 12px;">
+              This is an automated message. Please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+export function generateNewSignupNotification(params: {
+  userName: string;
+  userEmail: string;
+  signupDate: string;
+}): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .info-box { background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+          .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+          .info-label { font-weight: bold; width: 120px; color: #6b7280; }
+          .info-value { flex: 1; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 New Signup Alert</h1>
+          </div>
+          <div class="content">
+            <p>Hi Kin,</p>
+            <p>A new school has signed up for Connect-Ed!</p>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <div class="info-label">Name:</div>
+                <div class="info-value">${params.userName}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Email:</div>
+                <div class="info-value">${params.userEmail}</div>
+              </div>
+              <div class="info-row" style="border-bottom: none;">
+                <div class="info-label">Signup Date:</div>
+                <div class="info-value">${params.signupDate}</div>
+              </div>
+            </div>
+
+            <p style="color: #6b7280; margin-top: 25px;">
+              The user has been sent a verification email and will need to verify their email address before proceeding.
+            </p>
+          </div>
+          <div class="footer">
+            <p>Connect-Ed Admin Notification</p>
           </div>
         </div>
       </body>

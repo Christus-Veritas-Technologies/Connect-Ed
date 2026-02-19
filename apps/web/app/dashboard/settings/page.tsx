@@ -155,7 +155,7 @@ export default function SettingsPage() {
   };
 
   const handleToggleNotification = async (
-    key: "notifyEmail" | "notifyWhatsapp" | "notifySms" | "notifyInApp",
+    key: "notifyEmail" | "notifyWhatsapp" | "notifyInApp",
     value: boolean
   ) => {
     try {
@@ -271,13 +271,6 @@ export default function SettingsPage() {
       enabled: prefs?.notifyWhatsapp ?? true,
     },
     {
-      key: "notifySms" as const,
-      label: "SMS Notifications",
-      description: "Receive notifications via text messages",
-      icon: Smartphone,
-      enabled: prefs?.notifySms ?? true,
-    },
-    {
       key: "notifyInApp" as const,
       label: "In-App Notifications",
       description:
@@ -305,13 +298,6 @@ export default function SettingsPage() {
       limit: authSchool?.whatsappQuota ?? planPricing?.quotas?.whatsapp,
       unit: "messages",
       helper: "Monthly WhatsApp quota",
-    },
-    {
-      label: "SMS messages",
-      used: authSchool?.smsUsed ?? 0,
-      limit: authSchool?.smsQuota ?? planPricing?.quotas?.sms,
-      unit: "messages",
-      helper: "Monthly SMS quota",
     },
   ];
 
@@ -807,7 +793,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3 max-w-3xl">
+                <div className="grid gap-4 sm:grid-cols-2 max-w-3xl">
                   <QuotaItem
                     label="Emails"
                     used={schoolData.school.emailUsed}
@@ -819,12 +805,6 @@ export default function SettingsPage() {
                     used={schoolData.school.whatsappUsed}
                     total={schoolData.school.whatsappQuota}
                     icon={MessageSquare}
-                  />
-                  <QuotaItem
-                    label="SMS"
-                    used={schoolData.school.smsUsed}
-                    total={schoolData.school.smsQuota}
-                    icon={Smartphone}
                   />
                 </div>
                 {schoolData.school.quotaResetDate && (

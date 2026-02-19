@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -19,7 +19,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type VerifyStatus = "loading" | "success" | "error";
-type PaymentType = "FULL" | "MONTHLY_ONLY" | "SETUP_ONLY";
 
 export default function PaymentSuccessPage() {
     const searchParams = useSearchParams();
@@ -29,9 +28,7 @@ export default function PaymentSuccessPage() {
     const [error, setError] = useState("");
 
     const intermediatePaymentId = searchParams.get("intermediatePaymentId");
-    const paymentType = (searchParams.get("type") || "FULL") as PaymentType;
 
-    // Use school's plan to determine pricing
     const plan = school?.plan || "LITE";
     const currency = (school?.currency || "USD") as CurrencyCode;
     const amounts = getPlanAmounts(plan, currency === "ZAR" ? "ZAR" : "USD");
@@ -52,19 +49,14 @@ export default function PaymentSuccessPage() {
                 try {
                     await api.get(`/payments/verify/${intermediatePaymentId}`);
                     setStatus("success");
-
-                    // Refresh auth to pick up updated school data
                     await checkAuth();
                     return;
                 } catch (err) {
                     lastError = err instanceof Error ? err : new Error("Failed to verify payment");
-
-                    // If this was the last attempt, show the error
                     if (attempt === maxRetries - 1) {
                         setError(lastError.message);
                         setStatus("error");
                     } else {
-                        // Wait 2 seconds before retrying
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 }
@@ -75,13 +67,7 @@ export default function PaymentSuccessPage() {
     }, [intermediatePaymentId]);
 
     const handleContinue = () => {
-        if (paymentType === "MONTHLY_ONLY") {
-            // Monthly only — setup fee still pending, go back to payment page
-            router.push("/payment");
-        } else {
-            // Full or setup-only — signupFeePaid should be true, proceed to onboarding
-            router.push("/onboarding");
-        }
+        router.push("/onboarding");
     };
 
     if (status === "loading") {
@@ -125,7 +111,6 @@ export default function PaymentSuccessPage() {
         );
     }
 
-    // Success state — different messaging based on payment type
     return (
         <div className="max-w-md mx-auto">
             <motion.div
@@ -151,74 +136,22 @@ export default function PaymentSuccessPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6 text-center">
-                        {paymentType === "MONTHLY_ONLY" ? (
-                            <>
-                                <div className="space-y-2">
-                                    <p className="text-muted-foreground">
-                                        Your first month&apos;s fee of{" "}
-                                        <strong className="text-foreground">
-                                            {fmt(amounts.monthlyEstimate, currency === "ZAR" ? "ZAR" : "USD")}
-                                        </strong>{" "}
-                                        has been paid.
-                                    </p>
-                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 mt-4">
-                                        <p className="text-sm text-amber-800 font-medium">
-                                            Setup fee still required
-                                        </p>
-                                        <p className="text-sm text-amber-700 mt-1">
-                                            Your one-time setup fee of{" "}
-                                            <strong>
-                                                {fmt(amounts.signupFee, currency === "ZAR" ? "ZAR" : "USD")}
-                                            </strong>{" "}
-                                            for the {planMeta.name} plan is still pending. You&apos;ll need to
-                                            pay this to access your dashboard.
-                                        </p>
-                                    </div>
-                                </div>
-                                <Button className="w-full" size="lg" onClick={handleContinue}>
-                                    Pay Setup Fee
-                                    <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                                </Button>
-                            </>
-                        ) : paymentType === "SETUP_ONLY" ? (
-                            <>
-                                <div className="space-y-2">
-                                    <p className="text-muted-foreground">
-                                        Your setup fee of{" "}
-                                        <strong className="text-foreground">
-                                            {fmt(amounts.signupFee, currency === "ZAR" ? "ZAR" : "USD")}
-                                        </strong>{" "}
-                                        has been paid. Your account is now fully active!
-                                    </p>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                        Let&apos;s set up your school and get you started.
-                                    </p>
-                                </div>
-                                <Button className="w-full" size="lg" onClick={handleContinue}>
-                                    Continue to Setup
-                                    <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <div className="space-y-2">
-                                    <p className="text-muted-foreground">
-                                        Your payment of{" "}
-                                        <strong className="text-foreground">
-                                            {fmt(amounts.signupFee + amounts.monthlyEstimate, currency === "ZAR" ? "ZAR" : "USD")}
-                                        </strong>{" "}
-                                        for the {planMeta.name} plan has been processed.
-                                    </p>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                        Welcome to Connect-Ed! Let&apos;s set up your school.
-                                    </p>
-                                </div>
-                                <Button className="w-full" size="lg" onClick={handleContinue}>
-                                    Continue to Setup
-                                    <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
-                                </Button>
-                            </>
-                        )}
+                        <div className="space-y-2">
+                            <p className="text-muted-foreground">
+                                Your payment of{" "}
+                                <strong className="text-foreground">
+                                    {fmt(amounts.monthlyEstimate, currency === "ZAR" ? "ZAR" : "USD")}
+                                </strong>{" "}
+                                for the {planMeta.name} plan has been processed.
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Welcome to Connect-Ed! Let&apos;s set up your school.
+                            </p>
+                        </div>
+                        <Button className="w-full" size="lg" onClick={handleContinue}>
+                            Continue to Setup
+                            <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
+                        </Button>
 
                         <p className="text-xs text-muted-foreground">
                             A confirmation email has been sent to your inbox.

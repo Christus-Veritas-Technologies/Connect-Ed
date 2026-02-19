@@ -16,7 +16,6 @@ interface DashboardStats {
   quotaUsage: {
     email: { used: number; limit: number };
     whatsapp: { used: number; limit: number };
-    sms: { used: number; limit: number };
   };
   monthlyRevenue?: Array<{ month: string; collected: number }>;
   recentActivity?: {
@@ -51,7 +50,6 @@ interface FinancialReport {
 interface MessageQuota {
   email: { used: number; limit: number; remaining: number };
   whatsapp: { used: number; limit: number; remaining: number };
-  sms: { used: number; limit: number; remaining: number };
   quotaResetDate: string | null;
 }
 

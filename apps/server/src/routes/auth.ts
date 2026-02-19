@@ -19,9 +19,11 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
 } from "../lib/validation";
 import { successResponse, errors, errorResponse } from "../lib/response";
-import { sendEmail, generatePasswordResetEmail } from "../lib/email";
+import { sendEmail, generatePasswordResetEmail, sendSystemEmail, generateEmailVerificationEmail, generateNewSignupNotification } from "../lib/email";
 import { randomBytes } from "crypto";
 
 const auth = new Hono();
@@ -43,6 +45,10 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Generate 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     // Create school and admin user in a transaction
     const { user, school } = await db.$transaction(async (tx) => {
       // Create school with default Lite plan
@@ -54,7 +60,6 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
           onboardingComplete: false,
           emailQuota: PLAN_FEATURES.LITE.emailQuota,
           whatsappQuota: PLAN_FEATURES.LITE.whatsappQuota,
-          smsQuota: PLAN_FEATURES.LITE.smsQuota,
         },
       });
 
@@ -66,10 +71,48 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
           name,
           role: Role.ADMIN,
           schoolId: school.id,
+          emailVerified: false,
+          emailVerificationCode: verificationCode,
+          emailVerificationExpiry: verificationExpiry,
         },
       });
 
       return { user, school };
+    });
+
+    // Send verification email to user
+    const verificationEmailHtml = generateEmailVerificationEmail({
+      name,
+      verificationCode,
+    });
+
+    await sendSystemEmail({
+      to: email.toLowerCase(),
+      subject: "Verify your Connect-Ed account",
+      html: verificationEmailHtml,
+      type: "NOREPLY",
+    });
+
+    // Notify Kin about new signup
+    const signupDate = new Date().toLocaleString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const notificationHtml = generateNewSignupNotification({
+      userName: name,
+      userEmail: email.toLowerCase(),
+      signupDate,
+    });
+
+    await sendSystemEmail({
+      to: "kin@connect-ed.co.zw",
+      subject: `New Signup: ${name}`,
+      html: notificationHtml,
+      type: "NOREPLY",
     });
 
     // Generate tokens
@@ -104,11 +147,130 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
           signupFeePaid: school.signupFeePaid,
         },
         accessToken,
+        emailVerified: user.emailVerified,
       },
       201
     );
   } catch (error) {
     console.error("Signup error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /auth/verify-email
+auth.post("/verify-email", zValidator("json", verifyEmailSchema), async (c) => {
+  try {
+    const { code } = c.req.valid("json");
+    
+    // Get user ID from JWT (they should be logged in after signup)
+    const payload = c.get("jwtPayload") as any;
+    if (!payload?.userId) {
+      return errors.unauthorized(c, "Please log in to verify your email");
+    }
+
+    // Find user
+    const user = await db.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (!user) {
+      return errors.notFound(c, "User not found");
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return successResponse(c, { 
+        message: "Email already verified",
+        emailVerified: true,
+      });
+    }
+
+    // Check if code matches
+    if (user.emailVerificationCode !== code) {
+      return errorResponse(c, "INVALID_CODE", "Invalid verification code", 400);
+    }
+
+    // Check if code is expired
+    if (!user.emailVerificationExpiry || user.emailVerificationExpiry < new Date()) {
+      return errorResponse(c, "CODE_EXPIRED", "Verification code has expired. Please request a new code.", 400);
+    }
+
+    // Mark email as verified
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationExpiry: null,
+      },
+    });
+
+    return successResponse(c, {
+      message: "Email verified successfully",
+      emailVerified: true,
+    });
+  } catch (error) {
+    console.error("Email verification error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// POST /auth/resend-verification
+auth.post("/resend-verification", zValidator("json", resendVerificationSchema), async (c) => {
+  try {
+    const { email } = c.req.valid("json");
+
+    // Find user
+    const user = await db.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      // Don't reveal if email exists
+      return successResponse(c, {
+        message: "If an account exists with this email, a verification code has been sent",
+      });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return successResponse(c, {
+        message: "Email already verified",
+        emailVerified: true,
+      });
+    }
+
+    // Generate new code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Update user
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationCode: verificationCode,
+        emailVerificationExpiry: verificationExpiry,
+      },
+    });
+
+    // Send verification email
+    const verificationEmailHtml = generateEmailVerificationEmail({
+      name: user.name,
+      verificationCode,
+    });
+
+    await sendSystemEmail({
+      to: user.email,
+      subject: "Verify your Connect-Ed account",
+      html: verificationEmailHtml,
+      type: "NOREPLY",
+    });
+
+    return successResponse(c, {
+      message: "Verification code sent to your email",
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error);
     return errors.internalError(c);
   }
 });
@@ -162,6 +324,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
           name: staffUser.name,
           role: staffUser.role,
           onboardingComplete: staffUser.onboardingComplete,
+          emailVerified: staffUser.emailVerified,
         },
         school: {
           id: staffUser.school.id,

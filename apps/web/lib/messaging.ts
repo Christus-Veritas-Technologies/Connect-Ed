@@ -28,8 +28,6 @@ export async function checkQuota(
       emailUsed: true,
       whatsappQuota: true,
       whatsappUsed: true,
-      smsQuota: true,
-      smsUsed: true,
     },
   });
 
@@ -50,12 +48,6 @@ export async function checkQuota(
         used: school.whatsappUsed,
         limit: school.whatsappQuota,
       };
-    case "SMS":
-      return {
-        available: school.smsUsed < school.smsQuota,
-        used: school.smsUsed,
-        limit: school.smsQuota,
-      };
     default:
       return { available: false, used: 0, limit: 0 };
   }
@@ -74,12 +66,6 @@ async function incrementQuota(schoolId: string, type: MessageType) {
       await db.school.update({
         where: { id: schoolId },
         data: { whatsappUsed: { increment: 1 } },
-      });
-      break;
-    case "SMS":
-      await db.school.update({
-        where: { id: schoolId },
-        data: { smsUsed: { increment: 1 } },
       });
       break;
   }
@@ -107,18 +93,6 @@ async function sendWhatsApp(
   // TODO: Integrate with WhatsApp Business API
   console.log(`[WHATSAPP] To: ${recipient}`);
   console.log(`[WHATSAPP] Content: ${content}`);
-  
-  return { success: true };
-}
-
-// Send SMS (mock implementation)
-async function sendSMS(
-  recipient: string,
-  content: string
-): Promise<{ success: boolean; error?: string }> {
-  // TODO: Integrate with SMS provider (Twilio, etc.)
-  console.log(`[SMS] To: ${recipient}`);
-  console.log(`[SMS] Content: ${content}`);
   
   return { success: true };
 }
@@ -158,9 +132,6 @@ export async function sendMessage(options: SendMessageOptions): Promise<MessageR
         break;
       case "WHATSAPP":
         result = await sendWhatsApp(recipient, content);
-        break;
-      case "SMS":
-        result = await sendSMS(recipient, content);
         break;
       default:
         result = { success: false, error: "Invalid message type" };

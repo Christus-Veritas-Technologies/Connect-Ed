@@ -94,3 +94,8 @@ export const PaymentType = {
   SIGNUP_FEE: "SIGNUP_FEE" as const,
   TERM_PAYMENT: "TERM_PAYMENT" as const,
 } as const;
+
+export const BillingCycle = {
+  MONTHLY: "MONTHLY" as const,
+  ANNUAL: "ANNUAL" as const,
+} as const;

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, Plan } from "@repo/db";
-import { requireAuth, requirePlan } from "../middleware/auth";
+import { requireAuth, requirePlan, requireEmailVerified } from "../middleware/auth";
 import { createClassSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { syncChatMembers } from "../lib/chat-sync";

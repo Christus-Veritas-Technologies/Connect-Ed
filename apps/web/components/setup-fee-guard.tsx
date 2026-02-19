@@ -24,10 +24,10 @@ import {
 /**
  * SetupFeeGuard
  *
- * Displayed when the school's one-time setup fee has NOT been paid
+ * Displayed when the school has NOT completed their first payment
  * (school.signupFeePaid === false). Instead of silently redirecting,
- * this guard shows an informative screen telling the admin exactly
- * how much is owed and providing a direct link to the payment page.
+ * this guard shows an informative screen telling the admin they need
+ * to subscribe and provides a direct link to the payment page.
  *
  * Place this guard inside the dashboard layout, after DashboardGuard
  * and BillingGuard, so it only renders for authenticated users.
@@ -35,12 +35,12 @@ import {
 export function SetupFeeGuard({ children }: { children: ReactNode }) {
     const { user, school } = useAuth();
 
-    // Only block admin users whose school hasn't paid the setup fee
+    // Only block admin users whose school hasn't completed payment
     if (!user || !school || user.role !== "ADMIN" || school.signupFeePaid) {
         return <>{children}</>;
     }
 
-    // Calculate the setup fee for the school's selected plan
+    // Get the monthly price for the school's selected plan
     const plan = school.plan || "LITE";
     const currency = school.currency === "ZAR" ? "ZAR" as const : "USD" as const;
     const amounts = getPlanAmounts(plan, currency);
@@ -65,10 +65,10 @@ export function SetupFeeGuard({ children }: { children: ReactNode }) {
                                 <HugeiconsIcon icon={CreditCardIcon} size={32} className="text-amber-600" />
                             </div>
                         </motion.div>
-                        <CardTitle className="text-xl">Setup Fee Required</CardTitle>
+                        <CardTitle className="text-xl">Payment Required</CardTitle>
                         <CardDescription className="text-base mt-2">
-                            Your one-time setup fee hasn&apos;t been paid yet.
-                            Complete the payment to unlock your dashboard.
+                            Your subscription payment hasn&apos;t been completed yet.
+                            Subscribe to unlock your dashboard.
                         </CardDescription>
                     </CardHeader>
 
@@ -78,10 +78,10 @@ export function SetupFeeGuard({ children }: { children: ReactNode }) {
                             <div className="flex justify-between items-center">
                                 <div>
                                     <p className="font-semibold text-lg">{planMeta.name} Plan</p>
-                                    <p className="text-sm text-muted-foreground">One-time setup fee</p>
+                                    <p className="text-sm text-muted-foreground">Monthly subscription</p>
                                 </div>
                                 <p className="text-2xl font-bold text-brand">
-                                    {fmt(amounts.signupFee, currency)}
+                                    {fmt(amounts.monthlyEstimate, currency)}<span className="text-sm font-normal text-muted-foreground">/mo</span>
                                 </p>
                             </div>
                         </div>
@@ -90,16 +90,16 @@ export function SetupFeeGuard({ children }: { children: ReactNode }) {
                         <div className="flex items-start gap-2 text-sm text-amber-800">
                             <HugeiconsIcon icon={AlertCircleIcon} size={18} className="shrink-0 mt-0.5 text-amber-600" />
                             <p>
-                                This is a one-time fee to set up your school on Connect-Ed.
-                                Once paid, you&apos;ll have full access to your dashboard and
-                                all plan features.
+                                Subscribe to your monthly plan to get started with Connect-Ed.
+                                Once subscribed, you&apos;ll have full access to your dashboard
+                                and all plan features.
                             </p>
                         </div>
 
                         {/* CTA */}
                         <Link href="/payment" className="block">
                             <Button className="w-full" size="lg">
-                                Complete Payment
+                                Subscribe Now
                                 <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
                             </Button>
                         </Link>

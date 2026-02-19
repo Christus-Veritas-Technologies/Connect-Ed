@@ -29,6 +29,7 @@ interface School {
   isActive: boolean;
   signupFeePaid: boolean;
   onboardingComplete: boolean;
+  firstPaymentCompleted: boolean;
   country?: string | null;
   currency: "USD" | "ZAR" | "ZIG";
   termlyFee: number | null;

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, FeeStatus, PaymentMethod, NotificationType, NotificationPriority } from "@repo/db";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireEmailVerified } from "../middleware/auth";
 import { createFeeSchema, recordPaymentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { fmtServer, type CurrencyCode } from "../lib/currency";
@@ -10,7 +10,7 @@ import { createNotification } from "./notifications";
 const fees = new Hono();
 
 // Apply auth middleware to all routes
-fees.use("*", requireAuth);
+fees.use("*", requireAuth, requireEmailVerified);
 
 // GET /fees/stats - Get fee statistics
 fees.get("/stats", async (c) => {

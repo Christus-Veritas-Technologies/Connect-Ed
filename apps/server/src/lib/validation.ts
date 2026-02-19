@@ -29,6 +29,14 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 });
 
+export const verifyEmailSchema = z.object({
+  code: z.string().length(6, "Verification code must be 6 digits"),
+});
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 // Onboarding schema
 export const onboardingSchema = z.object({
   country: z.string().optional(),
@@ -136,6 +144,7 @@ export const createCheckoutSchema = z.object({
   paymentType: z.enum(["FULL", "MONTHLY_ONLY", "SETUP_ONLY", "SIGNUP", "RECURRING", "TERM_PAYMENT"]),
   email: z.string().email().optional(),
   returnUrl: z.string().url().optional(), // For deep linking in native apps
+  billingCycle: z.enum(["monthly", "annual"]).optional().default("monthly"),
 });
 
 export const createDodoCheckoutSchema = z.object({
@@ -144,6 +153,7 @@ export const createDodoCheckoutSchema = z.object({
   email: z.string().email().optional(),
   currency: z.enum(["ZAR"]),
   returnUrl: z.string().url().optional(), // For deep linking in native apps
+  billingCycle: z.enum(["monthly", "annual"]).optional().default("monthly"),
 });
 
 // School settings schema
