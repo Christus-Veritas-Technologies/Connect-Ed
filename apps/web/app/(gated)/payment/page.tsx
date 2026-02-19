@@ -24,7 +24,7 @@ type Plan = "LITE" | "GROWTH" | "ENTERPRISE";
 
 const plans: Plan[] = ["LITE", "GROWTH", "ENTERPRISE"];
 
-type PaymentCurrency = "USD" | "ZAR";
+type PaymentCurrency = "USD";
 type BillingCycle = "monthly" | "annual";
 
 interface PlanStatus {
@@ -40,9 +40,7 @@ export default function PaymentPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [error, setError] = useState("");
-  const [paymentCurrency, setPaymentCurrency] = useState<PaymentCurrency>(
-    school?.currency === "ZAR" ? "ZAR" : "USD"
-  );
+  const paymentCurrency: PaymentCurrency = "USD";
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
@@ -162,15 +160,6 @@ export default function PaymentPage() {
         className="flex flex-col sm:flex-row justify-center items-center gap-4"
       >
         <Tabs
-          value={paymentCurrency}
-          onValueChange={(v) => setPaymentCurrency(v as PaymentCurrency)}
-        >
-          <TabsList>
-            <TabsTrigger value="USD">USD ($)</TabsTrigger>
-            <TabsTrigger value="ZAR">ZAR (R)</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Tabs
           value={billingCycle}
           onValueChange={(v) => setBillingCycle(v as BillingCycle)}
         >
@@ -190,10 +179,22 @@ export default function PaymentPage() {
         <motion.div
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center"
+          className="text-center mb-8"
         >
           <p className="text-sm text-brand font-medium">
             Founding Partner Schools — Exclusive 25% off annual plans
+          </p>
+        </motion.div>
+      )}
+
+      {billingCycle === "monthly" && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <p className="text-sm text-brand font-medium">
+            Founding Partner Schools — Exclusive 15% off annual plans. Limited availability.
           </p>
         </motion.div>
       )}

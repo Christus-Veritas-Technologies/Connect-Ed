@@ -534,7 +534,7 @@ function RoleUSPs() {
 /* ─────────────── Pricing Preview ─────────────── */
 
 function PricingPreview() {
-  const [currency, setCurrency] = React.useState<"USD" | "ZAR">("USD");
+  const currency = "USD";
   const [billing, setBilling] = React.useState<"monthly" | "annual">("monthly");
 
   const plans = [
@@ -551,6 +551,7 @@ function PricingPreview() {
         "Email & WhatsApp messaging",
       ],
       monthlyEstimate: currency === "USD" ? 40 : 800,
+      firstMonthlyPrice: currency === "USD" ? 34 : 680,
       annualPrice: currency === "USD" ? 480 : 9600,
       foundingAnnualPrice: currency === "USD" ? 360 : 7200,
     },
@@ -568,6 +569,7 @@ function PricingPreview() {
         "Premium support",
       ],
       monthlyEstimate: currency === "USD" ? 75 : 1500,
+      firstMonthlyPrice: currency === "USD" ? 64 : 1275,
       annualPrice: currency === "USD" ? 900 : 18000,
       foundingAnnualPrice: currency === "USD" ? 675 : 13500,
     },
@@ -584,6 +586,7 @@ function PricingPreview() {
         "24/7 dedicated support",
       ],
       monthlyEstimate: currency === "USD" ? 120 : 2400,
+      firstMonthlyPrice: currency === "USD" ? 102 : 2040,
       annualPrice: currency === "USD" ? 1440 : 28800,
       foundingAnnualPrice: currency === "USD" ? 1080 : 21600,
     },
@@ -620,12 +623,6 @@ function PricingPreview() {
           transition={{ delay: 0.05 }}
           className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-10"
         >
-          <Tabs value={currency} onValueChange={(v) => setCurrency(v as "USD" | "ZAR")}>
-            <TabsList>
-              <TabsTrigger value="USD">USD ($)</TabsTrigger>
-              <TabsTrigger value="ZAR">Rands (R)</TabsTrigger>
-            </TabsList>
-          </Tabs>
           <Tabs value={billing} onValueChange={(v) => setBilling(v as "monthly" | "annual")}>
             <TabsList>
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -647,6 +644,18 @@ function PricingPreview() {
           >
             <p className="text-sm text-brand font-medium">
               Founding Partner Schools — Exclusive 25% off annual plans. Limited availability.
+            </p>
+          </motion.div>
+        )}
+
+        {billing === "monthly" && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <p className="text-sm text-brand font-medium">
+              Founding Partner Schools — Exclusive 15% off annual plans. Limited availability.
             </p>
           </motion.div>
         )}
