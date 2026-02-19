@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, ScrollView, Pressable, Image } from 'react-native';
 import { MotiView } from 'moti';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
@@ -57,8 +57,12 @@ export default function LoginScreen() {
                         transition={{ type: 'timing', duration: 500 }}
                         className="items-center mb-10"
                     >
-                        <View className="h-20 w-20 rounded-2xl bg-brand items-center justify-center mb-4 shadow-lg">
-                            <Text className="text-3xl font-bold text-white">CE</Text>
+                        <View className="mb-4">
+                            <Image
+                                source={require('@/assets/logo.png')}
+                                style={{ width: 80, height: 80, borderRadius: 40 }}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text className="text-2xl font-bold text-foreground">Connect-Ed</Text>
                         <Text className="text-sm text-muted-foreground mt-1">

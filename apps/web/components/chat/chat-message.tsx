@@ -1,8 +1,11 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
+import { Download, FileText, FileSpreadsheet, FileImage, File as FileIcon, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "@/lib/hooks/use-chat";
+import { useChatFileDownload } from "@/lib/hooks/use-chat";
 
 interface ChatMessageBubbleProps {
     message: ChatMessage;
@@ -45,7 +48,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             .slice(0, 2);
     }, [message.senderName]);
 
-    const isSpecial = message.type !== "TEXT";
+    const isSpecial = message.type !== "TEXT" && message.type !== "FILE";
+    const isFile = message.type === "FILE";
 
     return (
         <div className={`flex gap-2.5 ${isOwn ? "flex-row-reverse" : ""} ${showAvatar ? "mt-3" : "mt-0.5"}`}>
@@ -79,13 +83,15 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                 )}
 
                 {/* Message bubble */}
-                {isSpecial ? (
+                {isFile ? (
+                    <FileCard message={message} isOwn={isOwn} />
+                ) : isSpecial ? (
                     <PrimitiveCard message={message} isOwn={isOwn} />
                 ) : (
                     <div
                         className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words ${isOwn
-                                ? "bg-brand text-white rounded-tr-md"
-                                : "bg-gray-100 text-gray-800 rounded-tl-md"
+                            ? "bg-brand text-white rounded-tr-md"
+                            : "bg-gray-100 text-gray-800 rounded-tl-md"
                             }`}
                     >
                         {message.content}
@@ -173,6 +179,97 @@ function PrimitiveCard({ message, isOwn }: { message: ChatMessage; isOwn: boolea
                 {meta.examName != null && (
                     <p className="text-xs text-gray-500">Exam: {String(meta.examName)}</p>
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ─── File Card ───────────────────────────────────────────────
+
+function getFileIcon(mimeType: string) {
+    if (mimeType?.startsWith("image/")) return FileImage;
+    if (mimeType?.includes("spreadsheet") || mimeType?.includes("excel") || mimeType?.includes("csv"))
+        return FileSpreadsheet;
+    if (
+        mimeType?.includes("pdf") ||
+        mimeType?.includes("word") ||
+        mimeType?.includes("document") ||
+        mimeType?.startsWith("text/")
+    )
+        return FileText;
+    return FileIcon;
+}
+
+function getFileColor(mimeType: string): string {
+    if (mimeType?.startsWith("image/")) return "text-purple-500 bg-purple-50";
+    if (mimeType?.includes("spreadsheet") || mimeType?.includes("excel") || mimeType?.includes("csv"))
+        return "text-emerald-500 bg-emerald-50";
+    if (mimeType?.includes("pdf")) return "text-red-500 bg-red-50";
+    if (mimeType?.includes("word") || mimeType?.includes("document"))
+        return "text-blue-500 bg-blue-50";
+    return "text-gray-500 bg-gray-50";
+}
+
+function formatFileSize(bytes: number): string {
+    if (!bytes || bytes === 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function FileCard({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) {
+    const downloadMutation = useChatFileDownload();
+    const [isDownloading, setIsDownloading] = useState(false);
+    const Icon = getFileIcon(message.fileMimeType || "");
+    const colorClass = getFileColor(message.fileMimeType || "");
+
+    const handleDownload = async () => {
+        if (!message.fileId) return;
+        setIsDownloading(true);
+        try {
+            const result = await downloadMutation.mutateAsync(message.fileId);
+            // Open the signed download URL
+            window.open(result.downloadUrl, "_blank");
+        } catch {
+            // silently fail
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    return (
+        <div
+            className={`border rounded-xl overflow-hidden w-64 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${isOwn ? "ml-auto" : ""}`}
+            onClick={handleDownload}
+        >
+            <div className="px-3 py-2.5 flex items-center gap-2.5">
+                <div className={`size-10 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                    <Icon className="size-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-gray-800">
+                        {message.fileName || message.content}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                        {formatFileSize(message.fileSize || 0)}
+                    </p>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="flex-shrink-0 text-gray-400 hover:text-brand"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload();
+                    }}
+                    disabled={isDownloading}
+                >
+                    {isDownloading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                        <Download className="size-4" />
+                    )}
+                </Button>
             </div>
         </div>
     );

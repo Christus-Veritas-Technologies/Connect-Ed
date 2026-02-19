@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
@@ -83,19 +84,19 @@ const features = [
     icon: Money01Icon,
     title: "Fee Collection & Tracking",
     description:
-      "Automate fee schedules, send reminders via SMS, email, or WhatsApp, and accept secure online payments.",
+      "Automate fee schedules, send reminders via email or WhatsApp, and accept secure online payments. Reduce tracking errors that cost schools thousands per term.",
   },
   {
     icon: ChartHistogramIcon,
     title: "Financial Reporting",
     description:
-      "Generate term-based revenue, expense, and balance reports with exportable PDF summaries for audits and board meetings.",
+      "Generate term-based revenue, expense, and balance reports in minutes — not days. Exportable PDF summaries for audits and board meetings.",
   },
   {
     icon: BookOpen01Icon,
     title: "Exams & Report Cards",
     description:
-      "Configure grading scales, record marks per subject, and distribute polished report cards to parents instantly.",
+      "Configure grading scales, record marks per subject, and distribute polished report cards to parents instantly — no more manual printing.",
   },
   {
     icon: SentIcon,
@@ -202,9 +203,16 @@ function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
-            <span className="text-sm font-bold text-white tracking-tight">CE</span>
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative size-10 transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.png"
+              alt="Connect-Ed Logo"
+              width={40}
+              height={40}
+              className="object-contain rounded-full"
+              priority
+            />
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-base font-semibold text-foreground tracking-tight">
@@ -272,7 +280,27 @@ function Hero() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 text-center">
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
+        {/* Logo Hero */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          custom={0}
+          className="flex justify-center mb-6"
+        >
+          <div className="relative w-20 h-20 md:w-24 md:h-24">
+            <Image
+              src="/logo.png"
+              alt="Connect-Ed"
+              width={96}
+              height={96}
+              className="object-contain drop-shadow-xl rounded-full"
+              priority
+            />
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
           <Badge variant="secondary" size="lg" className="mb-6 border border-border/60 gap-2">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Trusted by Schools Worldwide
@@ -283,7 +311,7 @@ function Hero() {
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          custom={1}
+          custom={2}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
         >
           The Operating System
@@ -304,6 +332,18 @@ function Hero() {
           communication into a single platform — so your team can focus on
           what matters most: delivering quality education.
         </motion.p>
+
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          custom={2.5}
+          className="mx-auto mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
+        >
+          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-emerald-500" /> Faster report generation</span>
+          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-brand" /> Better fee tracking</span>
+          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-violet-500" /> Seamless parent communication</span>
+        </motion.div>
 
         <motion.div
           variants={fadeUp}
@@ -494,53 +534,61 @@ function RoleUSPs() {
 /* ─────────────── Pricing Preview ─────────────── */
 
 function PricingPreview() {
-  const [currency, setCurrency] = React.useState<"USD" | "ZAR">("USD");
+  const currency = "USD";
+  const [billing, setBilling] = React.useState<"monthly" | "annual">("monthly");
 
   const plans = [
     {
       name: "Lite",
-      description: "Perfect for small schools with less than 500 students.",
+      description: "For schools with up to 300 students starting their digital journey.",
       features: [
-        "Up to 500 students",
+        "Up to 300 students",
         "Student management",
-        "Fee tracking & reminders",
+        "Fee tracking & automated reminders",
         "Expense tracking",
-        "Financial reports (PDF export)",
+        "Report generation in minutes",
         "150 GB cloud storage",
-        "Email, WhatsApp & SMS messaging",
+        "Email & WhatsApp messaging",
       ],
-      signupFee: currency === "USD" ? 400 : 4000,
-      perTermCost: currency === "USD" ? 240 : 2400,
+      monthlyEstimate: currency === "USD" ? 40 : 800,
+      firstMonthlyPrice: currency === "USD" ? 34 : 680,
+      annualPrice: currency === "USD" ? 480 : 9600,
+      foundingAnnualPrice: currency === "USD" ? 360 : 7200,
     },
     {
       name: "Growth",
-      description: "Ideal for mid-size schools with 500 to 1,200 students.",
+      description: "For mid-size schools with up to 800 students.",
       popular: true,
       includedFrom: "Lite",
       features: [
+        "Up to 800 students",
         "Teacher portal & management",
-        "Class management",
-        "Class communication channels",
+        "Class management & channels",
         "Shared files & resources",
         "400 GB cloud storage",
         "Premium support",
       ],
-      signupFee: currency === "USD" ? 750 : 15000,
-      perTermCost: currency === "USD" ? 225 : 4500,
+      monthlyEstimate: currency === "USD" ? 75 : 1500,
+      firstMonthlyPrice: currency === "USD" ? 64 : 1275,
+      annualPrice: currency === "USD" ? 900 : 18000,
+      foundingAnnualPrice: currency === "USD" ? 675 : 13500,
     },
     {
       name: "Enterprise",
-      description: "Built for large institutions with 2,000 to 3,000 students.",
+      description: "For large institutions with 2,000+ students — custom capacity.",
       includedFrom: "Growth",
       features: [
+        "2,000+ students (custom)",
         "Student & parent portals",
         "Online fee payments",
         "Exam & report card system",
         "1,000 GB cloud storage",
         "24/7 dedicated support",
       ],
-      signupFee: currency === "USD" ? 1200 : 24000,
-      perTermCost: currency === "USD" ? 360 : 7200,
+      monthlyEstimate: currency === "USD" ? 120 : 2400,
+      firstMonthlyPrice: currency === "USD" ? 102 : 2040,
+      annualPrice: currency === "USD" ? 1440 : 28800,
+      foundingAnnualPrice: currency === "USD" ? 1080 : 21600,
     },
   ];
 
@@ -564,104 +612,179 @@ function PricingPreview() {
             className="mx-auto mt-4 max-w-xl text-muted-foreground"
           >
             Select a plan that matches your institution&apos;s size. All plans
-            include a one-time setup fee and full onboarding support.
+            include full onboarding support.
           </motion.p>
         </AnimatedSection>
 
-        {/* Currency tabs */}
+        {/* Currency + Billing toggle */}
         <motion.div
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="flex justify-center mb-10"
+          className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-10"
         >
-          <Tabs value={currency} onValueChange={(v) => setCurrency(v as "USD" | "ZAR")}>
+          <Tabs value={billing} onValueChange={(v) => setBilling(v as "monthly" | "annual")}>
             <TabsList>
-              <TabsTrigger value="USD">USD ($)</TabsTrigger>
-              <TabsTrigger value="ZAR">Rands (R)</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="annual" className="gap-1.5">
+                Annual
+                <Badge variant="brand" size="sm" className="text-[10px] py-0 px-1.5">
+                  Save 25%
+                </Badge>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </motion.div>
 
+        {billing === "annual" && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <p className="text-sm text-brand font-medium">
+              Founding Partner Schools — Exclusive 25% off annual plans. Limited availability.
+            </p>
+          </motion.div>
+        )}
+
+        {billing === "monthly" && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <p className="text-sm text-brand font-medium">
+              Founding Partner Schools — Exclusive 15% off annual plans. Limited availability.
+            </p>
+          </motion.div>
+        )}
+
         <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              variants={fadeUp}
-              custom={i}
-              className={`relative rounded-2xl border bg-card overflow-hidden ${plan.popular
-                ? "border-brand ring-1 ring-brand/20"
-                : "border-border/60"
-                }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 translate-y-0">
-                  <Badge variant="brand" size="sm" className="rounded-t-none">
-                    Recommended
-                  </Badge>
-                </div>
-              )}
+          {plans.map((plan, i) => {
+            const isFirstPayment = true; // Landing page shows first-payment pricing
+            const displayPrice = billing === "annual"
+              ? plan.foundingAnnualPrice
+              : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+            const regularPrice = billing === "annual"
+              ? plan.annualPrice
+              : plan.monthlyEstimate;
+            const effectiveMonthly = billing === "annual"
+              ? Math.round((plan.foundingAnnualPrice / 12) * 100) / 100
+              : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+            const discountPercent = billing === "annual" ? 25 : 15;
 
-              <div className="p-6 pb-0">
-                <h3 className="text-xl font-bold text-foreground">
-                  {plan.name}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                  {plan.description}
-                </p>
-
-                <div className="mt-6 mb-6 flex flex-col gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Setup fee (one-time)</p>
-                    <div className="text-lg font-semibold text-foreground">
-                      {fmt(plan.signupFee, currency)}
-                    </div>
+            return (
+              <motion.div
+                key={plan.name}
+                variants={fadeUp}
+                custom={i}
+                className={`relative rounded-2xl border bg-card overflow-hidden ${plan.popular
+                  ? "border-brand ring-1 ring-brand/20"
+                  : "border-border/60"
+                  }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 translate-y-0">
+                    <Badge variant="brand" size="sm" className="rounded-t-none">
+                      Recommended
+                    </Badge>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">Then per term</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold tracking-tight text-foreground italic">
-                        {fmt(plan.perTermCost, currency)}
-                      </span>
-                    </div>
+                )}
+
+                <div className="p-6 pb-0">
+                  <h3 className="text-xl font-bold text-foreground">
+                    {plan.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    {plan.description}
+                  </p>
+
+                  <div className="mt-6 mb-6">
+                    {billing === "annual" ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="success" size="sm" className="text-[10px]">
+                            {discountPercent}% off first year
+                          </Badge>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                            {fmt(displayPrice, currency)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/year</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          That&apos;s just {fmt(effectiveMonthly, currency)}/mo — <span className="line-through">{fmt(regularPrice, currency)}</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="success" size="sm" className="text-[10px]">
+                            {discountPercent}% off first month
+                          </Badge>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                            {fmt(displayPrice, currency)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/month</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Then {fmt(regularPrice, currency)}/mo
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  <Button
+                    variant={plan.popular ? "default" : "outline"}
+                    className="w-full"
+                    asChild
+                  >
+                    <a href="/auth/signup">Get Started</a>
+                  </Button>
                 </div>
 
-                <Button
-                  variant={plan.popular ? "default" : "outline"}
-                  className="w-full"
-                  asChild
-                >
-                  <a href="/auth/signup">Get Started</a>
-                </Button>
-              </div>
-
-              <div className="p-6 pt-5 mt-5 border-t border-border/40">
-                <p className="text-sm font-semibold text-foreground mb-4">
-                  {plan.includedFrom
-                    ? `Everything in ${plan.includedFrom}, plus:`
-                    : "What's included:"}
-                </p>
-                <ul className="space-y-2.5">
-                  {plan.features.map((f) => (
-                    <li
-                      key={f}
-                      className="flex items-start gap-2 text-sm text-muted-foreground"
-                    >
-                      <HugeiconsIcon
-                        icon={CheckmarkCircle02Icon}
-                        className="size-4 text-brand shrink-0 mt-0.5"
-                      />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </motion.div>
-          ))}
+                <div className="p-6 pt-5 mt-5 border-t border-border/40">
+                  <p className="text-sm font-semibold text-foreground mb-4">
+                    {plan.includedFrom
+                      ? `Everything in ${plan.includedFrom}, plus:`
+                      : "What's included:"}
+                  </p>
+                  <ul className="space-y-2.5">
+                    {plan.features.map((f) => (
+                      <li
+                        key={f}
+                        className="flex items-start gap-2 text-sm text-muted-foreground"
+                      >
+                        <HugeiconsIcon
+                          icon={CheckmarkCircle02Icon}
+                          className="size-4 text-brand shrink-0 mt-0.5"
+                        />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            );
+          })}
         </AnimatedSection>
 
-        <AnimatedSection className="mt-10 text-center">
+        {/* ROI nudge */}
+        <AnimatedSection className="mt-12 text-center">
+          <motion.p
+            variants={fadeUp}
+            className="text-sm text-muted-foreground max-w-lg mx-auto"
+          >
+            With 400 students each paying $50 per term, you process $20,000 per term.
+            If tracking errors are even 2%, that&apos;s $400 lost. Our system starts at $40/month.
+          </motion.p>
+        </AnimatedSection>
+
+        <AnimatedSection className="mt-6 text-center">
           <motion.div variants={fadeUp}>
             <Button variant="outline" size="lg" asChild>
               <a href="/pricing">View Full Plan Details</a>
@@ -696,8 +819,12 @@ function CTASection() {
               Ready to Modernize Your School?
             </h2>
             <p className="relative mx-auto mt-4 max-w-lg text-white/80">
-              Join thousands of schools around the world that have streamlined
-              their operations with Connect-Ed. Setup takes less than 10 minutes.
+              We&apos;re onboarding our first founding partner schools.
+              Setup takes less than 10 minutes — and reports that took days now take minutes.
+            </p>
+            <p className="relative mx-auto mt-2 max-w-md text-white/60 text-sm italic">
+              &ldquo;You&apos;ve processed 1,200 fee transactions digitally.
+              Reports generated in minutes instead of days.&rdquo;
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
               {isLoading ? (
@@ -737,10 +864,14 @@ function Footer() {
           {/* Brand column */}
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="relative size-9 rounded-xl bg-linear-to-br from-brand to-mid flex items-center justify-center shadow-sm shadow-brand/20">
-                <span className="text-xs font-bold text-white tracking-tight">
-                  CE
-                </span>
+              <div className="relative size-10">
+                <Image
+                  src="/logo.png"
+                  alt="Connect-Ed Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain rounded-full"
+                />
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-sm font-semibold text-foreground tracking-tight">
@@ -806,7 +937,7 @@ function Footer() {
             &copy; {new Date().getFullYear()} Connect-Ed. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            Built for schools everywhere 🌍
+            Built for schools everywhere
           </p>
         </div>
       </div>

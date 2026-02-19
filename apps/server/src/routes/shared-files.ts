@@ -20,7 +20,42 @@ const shareSchema = z.object({
   ).min(1, "At least one recipient is required"),
 });
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+
+// Allowed MIME types
+const ALLOWED_MIME_TYPES = new Set([
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "image/bmp",
+  "image/tiff",
+  // Documents
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "application/rtf",
+]);
+
+// Also check by extension as fallback (browsers sometimes send wrong MIME types)
+const ALLOWED_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff", "tif",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "rtf",
+]);
+
+function isAllowedFile(mimeType: string, fileName: string): boolean {
+  if (ALLOWED_MIME_TYPES.has(mimeType)) return true;
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  return ALLOWED_EXTENSIONS.has(ext);
+}
 
 // ─── Staff Routes (require auth) ─────────────────────────────
 
@@ -49,6 +84,13 @@ staffRoutes.post("/upload", async (c) => {
     if (file.size > MAX_FILE_SIZE) {
       return errors.validationError(c, {
         file: `File too large. Maximum size is ${formatFileSize(MAX_FILE_SIZE)}`,
+      });
+    }
+
+    // Validate file type
+    if (!isAllowedFile(file.type, file.name)) {
+      return errors.validationError(c, {
+        file: "File type not allowed. Please upload an image (JPG, PNG, GIF, WebP, SVG) or document (PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV).",
       });
     }
 
@@ -262,7 +304,7 @@ staffRoutes.get("/:id/download", async (c) => {
       return errors.notFound(c, "File");
     }
 
-    const downloadUrl = await getDownloadUrl(file.storedName);
+    const downloadUrl = await getDownloadUrl(file.storedName, file.originalName);
     return successResponse(c, { downloadUrl, fileName: file.originalName });
   } catch (error) {
     console.error("Download URL error:", error);
@@ -469,7 +511,7 @@ parentRoutes.get("/:id/download", async (c) => {
     const fileId = c.req.param("id");
     const file = await db.sharedFile.findFirst({ where: { id: fileId, schoolId } });
     if (!file) return errors.notFound(c, "File");
-    const downloadUrl = await getDownloadUrl(file.storedName);
+    const downloadUrl = await getDownloadUrl(file.storedName, file.originalName);
     return successResponse(c, { downloadUrl, fileName: file.originalName });
   } catch (error) {
     console.error("Parent download error:", error);
@@ -547,7 +589,7 @@ studentRoutes.get("/:id/download", async (c) => {
     const fileId = c.req.param("id");
     const file = await db.sharedFile.findFirst({ where: { id: fileId, schoolId } });
     if (!file) return errors.notFound(c, "File");
-    const downloadUrl = await getDownloadUrl(file.storedName);
+    const downloadUrl = await getDownloadUrl(file.storedName, file.originalName);
     return successResponse(c, { downloadUrl, fileName: file.originalName });
   } catch (error) {
     console.error("Student download error:", error);

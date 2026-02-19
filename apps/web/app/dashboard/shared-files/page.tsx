@@ -148,6 +148,41 @@ const ROLE_OPTIONS = [
     { value: "STUDENT", label: "All Students" },
 ];
 
+// ─── File validation constants ───────────────────────────────
+
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+
+const ALLOWED_EXTENSIONS = new Set([
+    // Images
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg",
+    // Documents
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv",
+]);
+
+const ACCEPTED_MIME_TYPES = [
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/csv",
+].join(",");
+
+function isAllowedFile(file: File): string | null {
+    const ext = ("." + (file.name.split(".").pop() || "")).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+        return "File type not allowed. Please upload an image or document.";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+        return `File too large. Maximum size is 500 MB.`;
+    }
+    return null;
+}
+
 // ─── Upload Dialog ───────────────────────────────────────────
 
 function UploadDialog({
@@ -162,23 +197,54 @@ function UploadDialog({
     const [description, setDescription] = useState("");
     const [recipients, setRecipients] = useState<ShareRecipient[]>([]);
     const [recipientSearch, setRecipientSearch] = useState("");
+    const [fileError, setFileError] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const uploadMutation = useUploadFile();
+    const { mutateAsync, isPending, uploadProgress } = useUploadFile();
     const { data: searchResults } = useSearchUsers(recipientSearch);
+
+    const validateAndSetFile = (file: File) => {
+        const error = isAllowedFile(file);
+        if (error) {
+            setFileError(error);
+            setSelectedFile(null);
+            return;
+        }
+        setFileError(null);
+        setSelectedFile(file);
+        if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            if (!title) setTitle(file.name.replace(/\.[^/.]+$/, ""));
-        }
+        if (file) validateAndSetFile(file);
     };
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) validateAndSetFile(file);
+    }, [title]);
 
     const handleUpload = async () => {
         if (!selectedFile || !title.trim()) return;
 
         try {
-            await uploadMutation.mutateAsync({
+            await mutateAsync({
                 file: selectedFile,
                 title: title.trim(),
                 description: description.trim() || undefined,
@@ -198,6 +264,7 @@ function UploadDialog({
         setDescription("");
         setRecipients([]);
         setRecipientSearch("");
+        setFileError(null);
     };
 
     const addRoleRecipient = (role: string) => {
@@ -225,35 +292,87 @@ function UploadDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    {/* File Input */}
+                    {/* Drag & Drop File Input */}
                     <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-brand/50 hover:bg-brand/5 transition-colors"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${isDragging
+                                ? "border-brand bg-brand/10"
+                                : fileError
+                                    ? "border-destructive/50 bg-destructive/5"
+                                    : "hover:border-brand/50 hover:bg-brand/5"
+                            }`}
                     >
                         {selectedFile ? (
                             <div className="space-y-1">
-                                <FileText className="mx-auto size-8 text-brand" />
+                                {(() => {
+                                    const Icon = getFileIcon(selectedFile.type);
+                                    return <Icon className="mx-auto size-8 text-brand" />;
+                                })()}
                                 <p className="font-medium text-sm">{selectedFile.name}</p>
                                 <p className="text-xs text-muted-foreground">
                                     {formatFileSize(selectedFile.size)}
                                 </p>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedFile(null);
+                                        setFileError(null);
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-destructive mt-1 underline"
+                                >
+                                    Remove
+                                </button>
                             </div>
                         ) : (
                             <div className="space-y-1">
-                                <Upload className="mx-auto size-8 text-muted-foreground" />
+                                <Upload className={`mx-auto size-8 ${isDragging ? "text-brand" : "text-muted-foreground"}`} />
                                 <p className="text-sm text-muted-foreground">
-                                    Click to select a file
+                                    {isDragging ? "Drop your file here" : "Click or drag & drop a file"}
                                 </p>
-                                <p className="text-xs text-muted-foreground">Max 50 MB</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Images & documents only · Max 500 MB
+                                </p>
+                                <p className="text-[10px] text-muted-foreground/60">
+                                    JPG, PNG, GIF, WebP, SVG, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV
+                                </p>
                             </div>
                         )}
                         <input
                             ref={fileInputRef}
                             type="file"
                             className="hidden"
+                            accept={ACCEPTED_MIME_TYPES}
                             onChange={handleFileSelect}
                         />
                     </div>
+
+                    {/* File error */}
+                    {fileError && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                            <X className="size-3" /> {fileError}
+                        </p>
+                    )}
+
+                    {/* Upload Progress */}
+                    {isPending && (
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Uploading…</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <motion.div
+                                    className="h-full bg-brand rounded-full"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${uploadProgress}%` }}
+                                    transition={{ ease: "easeOut", duration: 0.3 }}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Title */}
                     <div className="space-y-1.5">
@@ -336,11 +455,14 @@ function UploadDialog({
 
                     <Button
                         onClick={handleUpload}
-                        disabled={!selectedFile || !title.trim() || uploadMutation.isPending}
+                        disabled={!selectedFile || !title.trim() || isPending}
                         className="w-full"
                     >
-                        {uploadMutation.isPending ? (
-                            <Loader2 className="size-4 animate-spin" />
+                        {isPending ? (
+                            <>
+                                <Loader2 className="size-4 animate-spin" />
+                                Uploading… {uploadProgress}%
+                            </>
                         ) : (
                             <>
                                 <Upload className="size-4" />

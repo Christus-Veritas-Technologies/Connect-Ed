@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { db } from "@repo/db";
+import { db, BillingCycle } from "@repo/db";
 import {
   sendEmail,
   generateGraceReminderEmail,
@@ -7,7 +7,6 @@ import {
   generateFinalWarningEmail,
 } from "../lib/email";
 import { sendWhatsApp } from "../lib/whatsapp";
-import { sendSms } from "../lib/sms";
 import { getSchoolNotificationPrefs } from "./notifications";
 
 const billing = new Hono();
@@ -21,6 +20,10 @@ const billing = new Hono();
  *   • Day 4 (just locked) → send final lockdown email
  *   • Day 4+ → school is locked (guard on frontend handles UI)
  *
+ * Also handles annual billing cycle end:
+ *   • When billingCycleEnd has passed, reset foundingSchool flag so
+ *     the next renewal is at the standard annual rate.
+ *
  * Security: In production, protect with a shared secret header.
  */
 billing.post("/check-overdue", async (c) => {
@@ -33,6 +36,25 @@ billing.post("/check-overdue", async (c) => {
   const now = new Date();
 
   try {
+    // ── Annual founding-school reset ──
+    // Schools whose founding annual period has ended: reset the flag
+    // so their next renewal will be charged at the standard annual rate.
+    const expiredFoundingSchools = await db.school.findMany({
+      where: {
+        foundingSchool: true,
+        billingCycleEnd: { lt: now },
+      },
+    });
+
+    for (const school of expiredFoundingSchools) {
+      await db.school.update({
+        where: { id: school.id },
+        data: { foundingSchool: false },
+      });
+      console.log(`[BILLING] Founding school period ended for ${school.name} (${school.id})`);
+    }
+
+    // ── Overdue check ──
     // Find all schools that have a nextPaymentDate in the past and have completed signup
     const overdueSchools = await db.school.findMany({
       where: {
@@ -86,20 +108,13 @@ billing.post("/check-overdue", async (c) => {
           }
         }
 
-        // Send WhatsApp + SMS to admins with phone numbers
+        // Send WhatsApp to admins with phone numbers
         for (const user of school.users) {
           if (user.phone) {
             if (prefs.whatsapp) {
               await sendWhatsApp({
                 phone: user.phone,
                 content: `⏰ *Payment Reminder (Day ${graceDay}/3)*\n\nHi ${user.name},\n\nYour payment for *${schoolName}* is overdue. You have *${3 - graceDay} day${3 - graceDay !== 1 ? "s" : ""}* left before access is suspended.\n\nPlease make your payment as soon as possible.\n\n_Connect-Ed_`,
-                schoolId: school.id,
-              });
-            }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `Payment Reminder: Day ${graceDay}/3 for ${schoolName}. ${3 - graceDay} day(s) left before access is suspended. Pay now. - Connect-Ed`,
                 schoolId: school.id,
               });
             }
@@ -134,13 +149,6 @@ billing.post("/check-overdue", async (c) => {
                 schoolId: school.id,
               });
             }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `ACCESS SUSPENDED: ${schoolName} has been locked due to non-payment. Pay now to restore access. - Connect-Ed`,
-                schoolId: school.id,
-              });
-            }
           }
         }
 
@@ -172,13 +180,6 @@ billing.post("/check-overdue", async (c) => {
                 schoolId: school.id,
               });
             }
-            if (prefs.sms) {
-              await sendSms({
-                phone: user.phone,
-                content: `FINAL NOTICE: ${schoolName} will be removed from Connect-Ed. Pay immediately to prevent permanent data deletion. - Connect-Ed`,
-                schoolId: school.id,
-              });
-            }
           }
         }
 
@@ -193,6 +194,7 @@ billing.post("/check-overdue", async (c) => {
       graceReminders,
       lockdowns,
       alreadyLocked,
+      foundingSchoolsReset: expiredFoundingSchools.length,
       timestamp: now.toISOString(),
     });
   } catch (error) {

@@ -56,6 +56,7 @@ export const ChatMessageType = {
   EXAM_RESULT: "EXAM_RESULT" as const,
   GRADE: "GRADE" as const,
   SUBJECT_INFO: "SUBJECT_INFO" as const,
+  FILE: "FILE" as const,
 } as const;
 
 export const FeeStatus = {
@@ -92,4 +93,9 @@ export const PaymentStatus = {
 export const PaymentType = {
   SIGNUP_FEE: "SIGNUP_FEE" as const,
   TERM_PAYMENT: "TERM_PAYMENT" as const,
+} as const;
+
+export const BillingCycle = {
+  MONTHLY: "MONTHLY" as const,
+  ANNUAL: "ANNUAL" as const,
 } as const;

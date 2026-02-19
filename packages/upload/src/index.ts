@@ -104,16 +104,20 @@ export async function uploadFile(
 
 /**
  * Generate a pre-signed URL for downloading a file (valid for `expiresIn` seconds).
+ * Sets Content-Disposition: attachment to force download instead of inline display.
  */
 export async function getDownloadUrl(
   storedName: string,
+  originalName?: string,
   expiresIn: number = 3600
 ): Promise<string> {
   const client = getClient();
+  const filename = originalName || storedName.split("/").pop() || "download";
 
   const command = new GetObjectCommand({
     Bucket: bucketName,
     Key: storedName,
+    ResponseContentDisposition: `attachment; filename="${filename}"`,
   });
 
   return getSignedUrl(client, command, { expiresIn });

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db, Plan, Role, NotificationType, NotificationPriority } from "@repo/db";
-import { requireAuth, requirePlan, requireRole } from "../middleware/auth";
+import { requireAuth, requirePlan, requireRole, requireEmailVerified } from "../middleware/auth";
 import { hashPassword, generateRandomPassword } from "../lib/password";
 import { generateWelcomeEmailWithCredentials } from "../lib/email";
 import { createNotification } from "./notifications";
@@ -31,7 +31,7 @@ const updateTeacherSchema = z.object({
 const teachers = new Hono();
 
 // Apply auth middleware to all routes
-teachers.use("*", requireAuth);
+teachers.use("*", requireAuth, requireEmailVerified);
 // Require admin or receptionist role
 teachers.use("*", requireRole(Role.ADMIN, Role.RECEPTIONIST));
 // Require Growth+ plan for teacher management

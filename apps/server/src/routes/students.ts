@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, NotificationType, NotificationPriority } from "@repo/db";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireEmailVerified } from "../middleware/auth";
 import { createStudentSchema, updateStudentSchema } from "../lib/validation";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
@@ -13,7 +13,7 @@ import { syncChatMembers } from "../lib/chat-sync";
 const students = new Hono();
 
 // Apply auth middleware to all routes
-students.use("*", requireAuth);
+students.use("*", requireAuth, requireEmailVerified);
 
 // GET /students - List students
 students.get("/", async (c) => {
@@ -304,7 +304,7 @@ students.post("/", zValidator("json", createStudentSchema), async (c) => {
     // Execute all notifications
     await Promise.all(notifications);
 
-    // Send welcome email + WhatsApp + SMS with credentials if email provided (respects school preferences)
+    // Send welcome email + WhatsApp with credentials if email provided (respects school preferences)
     if (student.email && generatedPassword) {
       const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 
