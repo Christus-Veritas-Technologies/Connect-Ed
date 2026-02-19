@@ -170,7 +170,7 @@ webhooks.post("/dodo", async (c) => {
           });
         }
 
-        const successMsg = `✅ Payment of ${fmtServer(Number(intermediatePayment.amount), currency)} for your ${intermediatePayment.plan} plan has been processed successfully.`;
+        const successMsg = `Payment of ${fmtServer(Number(intermediatePayment.amount), currency)} for your ${intermediatePayment.plan} plan has been processed successfully.`;
         if (prefs.whatsapp && intermediatePayment.user.phone) {
           await sendWhatsApp({ phone: intermediatePayment.user.phone, content: successMsg, schoolId: intermediatePayment.schoolId });
         }

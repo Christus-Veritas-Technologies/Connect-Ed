@@ -460,7 +460,7 @@ payments.post("/callback", async (c) => {
           transactionId: intermediatePaymentId,
           currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
         }),
-        whatsappContent: `✅ *Payment Successful!*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${paymentAmount}* for the *${intermediatePayment.plan}* plan has been processed successfully.\n\nTransaction ID: ${intermediatePaymentId}\n\nYour school's plan is now active!\n\n_Connect-Ed_`,
+        whatsappContent: `*Payment Successful!*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${paymentAmount}* for the *${intermediatePayment.plan}* plan has been processed successfully.\n\nTransaction ID: ${intermediatePaymentId}\n\nYour school's plan is now active!\n\n_Connect-Ed_`,
         emailType: "SALES",
       });
     } else {
@@ -494,7 +494,7 @@ payments.post("/callback", async (c) => {
           plan: intermediatePayment.plan,
           currency: (intermediatePayment.school?.currency || "USD") as CurrencyCode,
         }),
-        whatsappContent: `❌ *Payment Failed*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${failPaymentAmount}* for the *${intermediatePayment.plan}* plan could not be processed.\n\nPlease try again or contact your bank.\n\n_Connect-Ed_`,
+        whatsappContent: `*Payment Failed*\n\nHi ${intermediatePayment.user.name},\n\nYour payment of *${failPaymentAmount}* for the *${intermediatePayment.plan}* plan could not be processed.\n\nPlease try again or contact your bank.\n\n_Connect-Ed_`,
         emailType: "SALES",
       });
     }

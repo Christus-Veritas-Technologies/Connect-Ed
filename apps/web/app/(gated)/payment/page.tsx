@@ -187,7 +187,7 @@ export default function PaymentPage() {
           className="text-center"
         >
           <p className="text-sm text-brand font-medium">
-            🏫 Founding Partner Schools — Exclusive 25% off annual plans
+            Founding Partner Schools — Exclusive 25% off annual plans
           </p>
         </motion.div>
       )}

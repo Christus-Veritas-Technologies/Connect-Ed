@@ -646,7 +646,7 @@ function PricingPreview() {
             className="text-center mb-8"
           >
             <p className="text-sm text-brand font-medium">
-              🏫 Founding Partner Schools — Exclusive 25% off annual plans. Limited availability.
+              Founding Partner Schools — Exclusive 25% off annual plans. Limited availability.
             </p>
           </motion.div>
         )}
