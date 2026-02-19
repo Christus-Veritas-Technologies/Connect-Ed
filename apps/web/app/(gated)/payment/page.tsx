@@ -71,9 +71,15 @@ export default function PaymentPage() {
   const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
   const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
 
+  // First payment gets discount: 15% monthly or 25% annual
+  const isFirstPayment = !school?.firstPaymentCompleted;
   const displayAmount = billingCycle === "annual"
     ? amounts.foundingAnnualPrice
+    : (isFirstPayment ? amounts.firstMonthlyPrice : amounts.monthlyEstimate);
+  const regularPrice = billingCycle === "annual"
+    ? amounts.annualPrice
     : amounts.monthlyEstimate;
+  const discountPercent = billingCycle === "annual" ? 25 : 15;
   const totalRemaining = monthlyAlreadyPaid ? 0 : displayAmount;
 
   const handlePayOnline = async () => {
@@ -238,6 +244,13 @@ export default function PaymentPage() {
                   <div className="text-center">
                     {billingCycle === "annual" ? (
                       <div>
+                        {isFirstPayment && (
+                          <div className="flex items-center gap-2 mb-1 justify-center">
+                            <Badge variant="success" size="sm" className={`text-[10px] ${isSelected ? "bg-emerald-500 text-white" : ""}`}>
+                              {discountPercent}% off first year
+                            </Badge>
+                          </div>
+                        )}
                         <div className="flex items-baseline justify-center gap-1">
                           <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
                             {fmt(planAmounts.foundingAnnualPrice, paymentCurrency)}
@@ -247,17 +260,31 @@ export default function PaymentPage() {
                           </span>
                         </div>
                         <p className={`text-xs mt-1 ${isSelected ? "text-blue-200" : "text-muted-foreground"}`}>
-                          {fmt(Math.round((planAmounts.foundingAnnualPrice / 12) * 100) / 100, paymentCurrency)}/mo — <span className="line-through">{fmt(planAmounts.annualPrice, paymentCurrency)}</span>
+                          {fmt(Math.round((planAmounts.foundingAnnualPrice / 12) * 100) / 100, paymentCurrency)}/mo{isFirstPayment && <> — <span className="line-through">{fmt(planAmounts.annualPrice, paymentCurrency)}</span></>}
                         </p>
                       </div>
                     ) : (
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                          {fmt(planAmounts.monthlyEstimate, paymentCurrency)}
-                        </span>
-                        <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
-                          /month
-                        </span>
+                      <div>
+                        {isFirstPayment && (
+                          <div className="flex items-center gap-2 mb-1 justify-center">
+                            <Badge variant="success" size="sm" className={`text-[10px] ${isSelected ? "bg-emerald-500 text-white" : ""}`}>
+                              {discountPercent}% off first month
+                            </Badge>
+                          </div>
+                        )}
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
+                            {fmt(isFirstPayment ? planAmounts.firstMonthlyPrice : planAmounts.monthlyEstimate, paymentCurrency)}
+                          </span>
+                          <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
+                            /month
+                          </span>
+                        </div>
+                        {isFirstPayment && (
+                          <p className={`text-xs mt-1 ${isSelected ? "text-blue-200" : "text-muted-foreground"}`}>
+                            Then {fmt(regularPrice, paymentCurrency)}/mo
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -306,6 +333,11 @@ export default function PaymentPage() {
                   <span className="text-xs text-muted-foreground">
                     {billingCycle === "annual" ? "annual" : "monthly"}
                   </span>
+                  {isFirstPayment && !monthlyAlreadyPaid && (
+                    <Badge variant="success" className="ml-2">
+                      {billingCycle === "annual" ? "25% off first year" : "15% off first month"}
+                    </Badge>
+                  )}
                 </span>
                 {monthlyAlreadyPaid ? (
                   <Badge variant="outline" className="text-success border-success/40">
@@ -316,10 +348,17 @@ export default function PaymentPage() {
                   <span className="font-semibold">{fmt(displayAmount, paymentCurrency)}</span>
                 )}
               </div>
-              {billingCycle === "annual" && !monthlyAlreadyPaid && (
+              {!monthlyAlreadyPaid && isFirstPayment && (
                 <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>Standard annual price</span>
-                  <span className="line-through">{fmt(amounts.annualPrice, paymentCurrency)}</span>
+                  <span>
+                    {billingCycle === "annual" ? "Standard annual price" : "Standard monthly price"}
+                  </span>
+                  <span className="line-through">
+                    {fmt(
+                      billingCycle === "annual" ? amounts.annualPrice : amounts.monthlyEstimate,
+                      paymentCurrency
+                    )}
+                  </span>
                 </div>
               )}
             </div>
@@ -337,13 +376,31 @@ export default function PaymentPage() {
                 <span>
                   {billingCycle === "annual" ? (
                     <>
-                      You&apos;ll be charged {fmt(amounts.foundingAnnualPrice, paymentCurrency)} for the year as a founding partner school.
-                      After 12 months, renewal is at the standard annual rate.
+                      {isFirstPayment ? (
+                        <>
+                          You&apos;ll be charged {fmt(amounts.foundingAnnualPrice, paymentCurrency)} for your first year as a new customer.
+                          After 12 months, renewal is at the standard annual rate of {fmt(amounts.annualPrice, paymentCurrency)}.
+                        </>
+                      ) : (
+                        <>
+                          You&apos;ll be charged {fmt(amounts.annualPrice, paymentCurrency)} for the year.
+                          After 12 months, you&apos;ll be charged again at the same rate.
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
-                      You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
-                      You can cancel or change your plan at any time.
+                      {isFirstPayment ? (
+                        <>
+                          You&apos;ll be charged {fmt(amounts.firstMonthlyPrice, paymentCurrency)} for your first month as a new customer.
+                          Subsequent monthly payments will be {fmt(amounts.monthlyEstimate, paymentCurrency)}.
+                        </>
+                      ) : (
+                        <>
+                          You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
+                          You can cancel or change your plan at any time.
+                        </>
+                      )}
                     </>
                   )}
                 </span>

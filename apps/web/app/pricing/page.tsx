@@ -187,13 +187,18 @@ export default function PricingPage() {
                             const plan = PRICING[planKey];
                             const isPopular = planKey === "GROWTH";
                             const includedFrom = planKey === "GROWTH" ? "Lite" : planKey === "ENTERPRISE" ? "Growth" : null;
+                            const isFirstPayment = true; // Show first-payment pricing on public page
 
                             const displayPrice = billing === "annual"
                                 ? plan.foundingAnnualPrice
+                                : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+                            const regularPrice = billing === "annual"
+                                ? plan.annualPrice
                                 : plan.monthlyEstimate;
                             const effectiveMonthly = billing === "annual"
                                 ? Math.round((plan.foundingAnnualPrice / 12) * 100) / 100
-                                : plan.monthlyEstimate;
+                                : (isFirstPayment ? plan.firstMonthlyPrice : plan.monthlyEstimate);
+                            const discountPercent = billing === "annual" ? 25 : 15;
 
                             return (
                                 <motion.div
@@ -224,6 +229,11 @@ export default function PricingPage() {
                                         <div className="mt-6 mb-2">
                                             {billing === "annual" ? (
                                                 <div>
+                                                    <div className="flex items-center gap-2 mb-1 justify-center">
+                                                        <Badge variant="success" size="sm" className="text-[10px]">
+                                                            {discountPercent}% off first year
+                                                        </Badge>
+                                                    </div>
                                                     <div className="flex items-baseline gap-1 justify-center mt-1">
                                                         <span className="text-4xl font-bold tracking-tight text-foreground italic">
                                                             {fmt(displayPrice, "USD")}
@@ -233,17 +243,27 @@ export default function PricingPage() {
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground text-center mt-1">
-                                                        {fmt(effectiveMonthly, "USD")}/mo — <span className="line-through">{fmt(plan.annualPrice, "USD")}</span>
+                                                        {fmt(effectiveMonthly, "USD")}/mo — <span className="line-through">{fmt(regularPrice, "USD")}</span>
                                                     </p>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-baseline gap-1 justify-center mt-1">
-                                                    <span className="text-4xl font-bold tracking-tight text-foreground italic">
-                                                        {fmt(plan.monthlyEstimate, "USD")}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        /month
-                                                    </span>
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1 justify-center">
+                                                        <Badge variant="success" size="sm" className="text-[10px]">
+                                                            {discountPercent}% off first month
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-1 justify-center mt-1">
+                                                        <span className="text-4xl font-bold tracking-tight text-foreground italic">
+                                                            {fmt(displayPrice, "USD")}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            /month
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground text-center mt-1">
+                                                        Then {fmt(regularPrice, "USD")}/mo
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>

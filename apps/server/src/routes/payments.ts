@@ -31,18 +31,23 @@ function getNextPaymentDate(billingCycle: "monthly" | "annual" = "monthly"): Dat
 }
 
 /**
- * Determine payment amount based on billing cycle.
+ * Determine payment amount based on billing cycle and whether this is first payment.
  */
 function resolvePaymentAmount(
   planPricing: PlanAmounts,
   paymentType: string,
   planPayment: { monthlyPaymentPaid: boolean } | null,
-  billingCycle: "monthly" | "annual" = "monthly"
+  billingCycle: "monthly" | "annual" = "monthly",
+  isFirstPayment: boolean = true
 ): { amount: number; effectiveType: "MONTHLY_ONLY" | "ANNUAL" } {
   if (billingCycle === "annual") {
-    return { amount: planPricing.foundingAnnualPrice, effectiveType: "ANNUAL" };
+    // Annual: 25% off for first payment only
+    const price = isFirstPayment ? planPricing.foundingAnnualPrice : planPricing.annualPrice;
+    return { amount: price, effectiveType: "ANNUAL" };
   }
-  return { amount: planPricing.monthlyEstimate, effectiveType: "MONTHLY_ONLY" };
+  // Monthly: 15% off for first payment only
+  const price = isFirstPayment ? planPricing.firstMonthlyPrice : planPricing.monthlyEstimate;
+  return { amount: price, effectiveType: "MONTHLY_ONLY" };
 }
 
 /** Build school data updates for a successful payment */
@@ -60,6 +65,7 @@ function buildSchoolPaymentData(
     emailQuota: planFeatures.emailQuota,
     whatsappQuota: planFeatures.whatsappQuota,
     billingCycle: isAnnual ? "ANNUAL" as const : "MONTHLY" as const,
+    firstPaymentCompleted: true, // Mark first payment as done
     ...(isAnnual ? {
       foundingSchool: true,
       billingCycleEnd: getNextPaymentDate("annual"),
@@ -119,13 +125,18 @@ payments.post("/create-checkout", requireAuth, zValidator("json", createCheckout
     const data = c.req.valid("json");
 
     // Get school's current plan payment status
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: { firstPaymentCompleted: true },
+    });
     const planPayment = await db.planPayment.findFirst({
       where: { schoolId },
     });
 
     const planPricing = getPlanAmounts(data.planType as PlanType);
     const billingCycle = data.billingCycle || "monthly";
-    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle);
+    const isFirstPayment = !school?.firstPaymentCompleted;
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle, isFirstPayment);
 
     // Create intermediate payment record first
     const intermediatePayment = await db.intermediatePayment.create({
@@ -255,7 +266,8 @@ payments.post("/create-dodo-checkout", requireAuth, zValidator("json", createDod
 
     const planPricing = getPlanAmounts(data.planType as PlanType, "ZAR");
     const billingCycle = data.billingCycle || "monthly";
-    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle);
+    const isFirstPayment = !school.firstPaymentCompleted;
+    const { amount, effectiveType } = resolvePaymentAmount(planPricing, data.paymentType, planPayment, billingCycle, isFirstPayment);
 
     // Select the monthly product
     const planType = data.planType as PlanType;
