@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useLogout } from "@/lib/hooks";
 import { api } from "@/lib/api";
-import { PRICING, getPlanAmounts } from "@/lib/pricing";
+import { PRICING } from "@/lib/pricing";
 import { fmt, type CurrencyCode } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -66,17 +66,16 @@ export default function PaymentPage() {
   }, []);
 
   const planMeta = PRICING[selectedPlan];
-  const amounts = getPlanAmounts(selectedPlan, paymentCurrency);
   const monthlyAlreadyPaid = planStatus?.monthlyPaymentPaid ?? false;
 
   // First payment gets discount: 15% monthly or 25% annual
   const isFirstPayment = !school?.firstPaymentCompleted;
   const displayAmount = billingCycle === "annual"
-    ? amounts.foundingAnnualPrice
-    : (isFirstPayment ? amounts.firstMonthlyPrice : amounts.monthlyEstimate);
+    ? planMeta.foundingAnnualPrice
+    : (isFirstPayment ? planMeta.firstMonthlyPrice : planMeta.monthlyEstimate);
   const regularPrice = billingCycle === "annual"
-    ? amounts.annualPrice
-    : amounts.monthlyEstimate;
+    ? planMeta.annualPrice
+    : planMeta.monthlyEstimate;
   const discountPercent = billingCycle === "annual" ? 25 : 15;
   const totalRemaining = monthlyAlreadyPaid ? 0 : displayAmount;
 
@@ -85,30 +84,16 @@ export default function PaymentPage() {
     setError("");
 
     try {
-      if (paymentCurrency === "ZAR") {
-        const response = await api.post<{
-          checkoutUrl: string;
-          paymentId: string;
-        }>("/payments/create-dodo-checkout", {
-          planType: selectedPlan,
-          paymentType: "MONTHLY_ONLY",
-          billingCycle,
-          email: user?.email,
-          currency: "ZAR",
-        });
-        window.location.href = response.checkoutUrl;
-      } else {
-        const response = await api.post<{
-          checkoutUrl: string;
-          intermediatePaymentId: string;
-        }>("/payments/create-checkout", {
-          planType: selectedPlan,
-          paymentType: "MONTHLY_ONLY",
-          billingCycle,
-          email: user?.email,
-        });
-        window.location.href = response.checkoutUrl;
-      }
+      const response = await api.post<{
+        checkoutUrl: string;
+        intermediatePaymentId: string;
+      }>("/payments/create-checkout", {
+        planType: selectedPlan,
+        paymentType: "MONTHLY_ONLY",
+        billingCycle,
+        email: user?.email,
+      });
+      window.location.href = response.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
       setIsPaymentLoading(false);
@@ -208,7 +193,6 @@ export default function PaymentPage() {
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map((plan, index) => {
           const planInfo = PRICING[plan];
-          const planAmounts = getPlanAmounts(plan, paymentCurrency);
           const isSelected = selectedPlan === plan;
           const isPopular = plan === "GROWTH";
           const isLocked = monthlyAlreadyPaid && planStatus?.selectedPlan !== plan;
@@ -254,14 +238,14 @@ export default function PaymentPage() {
                         )}
                         <div className="flex items-baseline justify-center gap-1">
                           <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                            {fmt(planAmounts.foundingAnnualPrice, paymentCurrency)}
+                            {fmt(planInfo.foundingAnnualPrice, paymentCurrency)}
                           </span>
                           <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
                             /year
                           </span>
                         </div>
                         <p className={`text-xs mt-1 ${isSelected ? "text-blue-200" : "text-muted-foreground"}`}>
-                          {fmt(Math.round((planAmounts.foundingAnnualPrice / 12) * 100) / 100, paymentCurrency)}/mo{isFirstPayment && <> — <span className="line-through">{fmt(planAmounts.annualPrice, paymentCurrency)}</span></>}
+                          {fmt(Math.round((planInfo.foundingAnnualPrice / 12) * 100) / 100, paymentCurrency)}/mo{isFirstPayment && <> — <span className="line-through">{fmt(planInfo.annualPrice, paymentCurrency)}</span></>}
                         </p>
                       </div>
                     ) : (
@@ -275,7 +259,7 @@ export default function PaymentPage() {
                         )}
                         <div className="flex items-baseline justify-center gap-1">
                           <span className={`text-4xl font-bold ${isSelected ? "text-white" : ""}`}>
-                            {fmt(isFirstPayment ? planAmounts.firstMonthlyPrice : planAmounts.monthlyEstimate, paymentCurrency)}
+                            {fmt(isFirstPayment ? planInfo.firstMonthlyPrice : planInfo.monthlyEstimate, paymentCurrency)}
                           </span>
                           <span className={`text-sm ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>
                             /month
@@ -356,7 +340,7 @@ export default function PaymentPage() {
                   </span>
                   <span className="line-through">
                     {fmt(
-                      billingCycle === "annual" ? amounts.annualPrice : amounts.monthlyEstimate,
+                      billingCycle === "annual" ? planMeta.annualPrice : planMeta.monthlyEstimate,
                       paymentCurrency
                     )}
                   </span>
@@ -379,12 +363,12 @@ export default function PaymentPage() {
                     <>
                       {isFirstPayment ? (
                         <>
-                          You&apos;ll be charged {fmt(amounts.foundingAnnualPrice, paymentCurrency)} for your first year as a new customer.
-                          After 12 months, renewal is at the standard annual rate of {fmt(amounts.annualPrice, paymentCurrency)}.
+                          You&apos;ll be charged {fmt(planMeta.foundingAnnualPrice, paymentCurrency)} for your first year as a new customer.
+                          After 12 months, renewal is at the standard annual rate of {fmt(planMeta.annualPrice, paymentCurrency)}.
                         </>
                       ) : (
                         <>
-                          You&apos;ll be charged {fmt(amounts.annualPrice, paymentCurrency)} for the year.
+                          You&apos;ll be charged {fmt(planMeta.annualPrice, paymentCurrency)} for the year.
                           After 12 months, you&apos;ll be charged again at the same rate.
                         </>
                       )}
@@ -393,12 +377,12 @@ export default function PaymentPage() {
                     <>
                       {isFirstPayment ? (
                         <>
-                          You&apos;ll be charged {fmt(amounts.firstMonthlyPrice, paymentCurrency)} for your first month as a new customer.
-                          Subsequent monthly payments will be {fmt(amounts.monthlyEstimate, paymentCurrency)}.
+                          You&apos;ll be charged {fmt(planMeta.firstMonthlyPrice, paymentCurrency)} for your first month as a new customer.
+                          Subsequent monthly payments will be {fmt(planMeta.monthlyEstimate, paymentCurrency)}.
                         </>
                       ) : (
                         <>
-                          You&apos;ll be charged {fmt(amounts.monthlyEstimate, paymentCurrency)} every month.
+                          You&apos;ll be charged {fmt(planMeta.monthlyEstimate, paymentCurrency)} every month.
                           You can cancel or change your plan at any time.
                         </>
                       )}
@@ -431,9 +415,7 @@ export default function PaymentPage() {
             )}
 
             <p className="text-xs text-center text-muted-foreground">
-              {paymentCurrency === "ZAR"
-                ? "Secure payment powered by Dodo Payments"
-                : "Secure payment powered by PayNow"}
+              Secure payment powered by PayNow
             </p>
           </CardContent>
         </Card>
