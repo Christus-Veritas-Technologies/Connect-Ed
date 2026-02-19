@@ -29,6 +29,14 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 });
 
+export const verifyEmailSchema = z.object({
+  code: z.string().length(6, "Verification code must be 6 digits"),
+});
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 // Onboarding schema
 export const onboardingSchema = z.object({
   country: z.string().optional(),

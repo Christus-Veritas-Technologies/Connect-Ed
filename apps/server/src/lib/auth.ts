@@ -338,3 +338,30 @@ export async function authGuard(c: Context): Promise<AccessTokenPayload | null> 
 
   return user;
 }
+/**
+ * Email verification guard middleware for Hono routes
+ * Checks if the user has verified their email address
+ * Should be used after authGuard
+ *
+ * Usage in routes:
+ *   const payload = await authGuard(c);
+ *   if (!payload) return c.json({ error: "Unauthorized" }, 401);
+ *   
+ *   const isVerified = await emailVerifiedGuard(c, payload.sub);
+ *   if (!isVerified) return c.json({ error: "Email not verified" }, 403);
+ *
+ * @param c - Hono context
+ * @param userId - The user ID from the JWT payload
+ * @returns True if email is verified, false otherwise
+ */
+export async function emailVerifiedGuard(c: Context, userId: string): Promise<boolean> {
+  // Import db here to avoid circular dependency
+  const { db } = await import("@repo/db");
+  
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { emailVerified: true },
+  });
+
+  return user?.emailVerified ?? false;
+}

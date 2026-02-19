@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
-import { Role, Plan } from "@repo/db";
+import { Role, Plan, db } from "@repo/db";
 import { verifyAccessToken, verifyParentAccessToken, verifyStudentAccessToken, type AccessTokenPayload, type ParentAccessTokenPayload, type StudentAccessTokenPayload } from "../lib/auth";
-import { errors } from "../lib/response";
+import { errors, errorResponse } from "../lib/response";
 
 // Extend Hono context with user info
 declare module "hono" {
@@ -165,3 +165,27 @@ export const requirePlan = (...allowedPlans: Array<(typeof Plan)[keyof typeof Pl
 
     await next();
   });
+// Email verification middleware - requires email to be verified
+export const requireEmailVerified = createMiddleware(async (c, next) => {
+  const userId = c.get("userId");
+  
+  if (!userId) {
+    return errors.unauthorized(c, "User ID not found");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { emailVerified: true },
+  });
+
+  if (!user?.emailVerified) {
+    return errorResponse(
+      c,
+      "EMAIL_NOT_VERIFIED",
+      "Please verify your email address to access this feature",
+      403
+    );
+  }
+
+  await next();
+});
