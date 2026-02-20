@@ -16,6 +16,7 @@ interface User {
   name: string;
   role: "ADMIN" | "RECEPTIONIST" | "TEACHER" | "PARENT" | "STUDENT";
   onboardingComplete: boolean;
+  emailVerified: boolean;
   // Additional fields for specific roles
   children?: Array<{ id: string; name: string; class?: string }>; // For parents
   admissionNumber?: string; // For students
@@ -54,6 +55,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<boolean>;
+  refreshUser: () => Promise<void>;
   setAuthData: (user: User | null, school: School | null, userType: UserType | null) => void;
 }
 
@@ -90,6 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async (): Promise<void> => {
+    await checkAuth();
+  };
+
   // Initialize auth state on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -124,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         checkAuth,
+        refreshUser,
         setAuthData: (newUser: User | null, newSchool: School | null, newUserType: UserType | null) => {
           setUser(newUser);
           setSchool(newSchool);
