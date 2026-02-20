@@ -90,6 +90,9 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
       verificationLink,
     });
 
+    console.log("User email: ", email.toLowerCase());
+    console.log("Verification email HTML: ", verificationEmailHtml);
+
     await sendSystemEmail({
       to: email.toLowerCase(),
       subject: "Verify your Connect-Ed account",
