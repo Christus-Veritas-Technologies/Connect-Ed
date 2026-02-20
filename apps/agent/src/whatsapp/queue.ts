@@ -35,9 +35,14 @@ const lastSendTimes = new Map<string, number>();
 
 /**
  * Format phone number to WhatsApp Chat ID
- * Accepts: +263771234567, 263771234567, 0771234567
+ * Accepts: +263771234567, 263771234567, 0771234567, or 230567417233464@lid (Meta/Facebook user IDs)
  */
 function toChatId(phone: string): string {
+  // If already in @lid format (Facebook/Meta user), return as-is
+  if (phone.includes("@lid")) {
+    return phone;
+  }
+
   let cleaned = phone.replace(/[\s\-\(\)\+]/g, "");
 
   // Handle local Zimbabwe numbers starting with 0
@@ -165,7 +170,17 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
 
     return { success: true, messageId: msg.id?.id };
   } catch (error: any) {
-    console.error(`[Queue:${item.schoolId}] Send failed for ${item.phone}:`, error.message);
+    // Extract error message properly, handling various error types
+    let errorMsg = "Unknown error";
+    if (error instanceof Error) {
+      errorMsg = error.message;
+    } else if (typeof error === "string") {
+      errorMsg = error;
+    } else if (error && typeof error === "object") {
+      errorMsg = error.toString() || JSON.stringify(error);
+    }
+
+    console.error(`[Queue:${item.schoolId}] Send failed for ${item.phone}: ${errorMsg}`);
 
     // Log the failure
     try {
@@ -175,7 +190,7 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
           recipient: item.phone,
           content: item.content.slice(0, 2000),
           status: "FAILED",
-          errorMessage: error.message?.slice(0, 500),
+          errorMessage: errorMsg.slice(0, 500),
           schoolId: item.schoolId,
         },
       });
@@ -183,7 +198,7 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
       // Don't fail the queue if logging fails
     }
 
-    return { success: false, error: error.message };
+    return { success: false, error: errorMsg };
   }
 }
 
