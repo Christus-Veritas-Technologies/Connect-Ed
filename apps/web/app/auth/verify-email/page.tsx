@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
             setLoading(true);
             try {
                 const response = await fetch(`/api/auth/verify-email-link/${token}`);
-                
+
                 if (response.ok) {
                     setSuccess(true);
                     await refreshUser();
