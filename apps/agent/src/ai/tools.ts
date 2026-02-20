@@ -10,6 +10,94 @@ import { db } from "@repo/db";
 import bcrypt from "bcryptjs";
 
 // ============================================
+// EMAIL EXTRACTION TOOLS
+// ============================================
+
+/**
+ * Extract email address from natural language text
+ * The AI uses this to intelligently find emails in conversational messages
+ */
+export const extractEmail = createTool({
+  id: "extract-email",
+  description:
+    "Extract an email address from a message. Use this when a user sends a message that might contain their email, even if it's in natural language like 'My email is john@example.com' or 'Hey, it's kinzinzombe07@gmail.com'.",
+  inputSchema: z.object({
+    message: z.string().describe("The user's message that might contain an email"),
+  }),
+  outputSchema: z.object({
+    found: z.boolean(),
+    email: z.string().optional().describe("The extracted email address if found"),
+  }),
+  execute: async ({ context: inputData }) => {
+    const { message } = inputData;
+    
+    // Use regex to find email patterns
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const matches = message.match(emailRegex);
+    
+    if (matches && matches.length > 0) {
+      return { found: true, email: matches[0].toLowerCase() };
+    }
+    
+    return { found: false };
+  },
+});
+
+/**
+ * Check if an email exists in the system
+ * Returns which type of account it is (user/parent/student)
+ */
+export const checkEmailExists = createTool({
+  id: "check-email-exists",
+  description:
+    "Check if an email address exists in the system and return the account type. Use this after extracting an email to verify it exists before asking for a password.",
+  inputSchema: z.object({
+    email: z.string().email().describe("The email address to check"),
+  }),
+  outputSchema: z.object({
+    exists: z.boolean(),
+    accountType: z.enum(["user", "parent", "student", "none"]).optional(),
+    name: z.string().optional().describe("The user's name if found"),
+  }),
+  execute: async ({ context: inputData }) => {
+    const { email } = inputData;
+
+    // Try User (Admin/Teacher/Receptionist)
+    const user = await db.user.findUnique({
+      where: { email },
+      select: { id: true, name: true },
+    });
+    if (user) {
+      return { exists: true, accountType: "user" as const, name: user.name };
+    }
+
+    // Try Parent
+    const parent = await db.parent.findUnique({
+      where: { email },
+      select: { id: true, name: true },
+    });
+    if (parent) {
+      return { exists: true, accountType: "parent" as const, name: parent.name };
+    }
+
+    // Try Student
+    const student = await db.student.findFirst({
+      where: { email },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (student) {
+      return { 
+        exists: true, 
+        accountType: "student" as const, 
+        name: `${student.firstName} ${student.lastName}` 
+      };
+    }
+
+    return { exists: false, accountType: "none" as const };
+  },
+});
+
+// ============================================
 // AUTH TOOLS
 // ============================================
 
@@ -484,6 +572,8 @@ export const getClassStudents = createTool({
 
 // Export all tools as a map for the agent
 export const agentTools = {
+  extractEmail,
+  checkEmailExists,
   verifyCredentials,
   getStudentReport,
   getParentChildren,

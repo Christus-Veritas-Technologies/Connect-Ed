@@ -10,6 +10,8 @@ export interface UserSession {
   authAttempts: number;
   authStage: "none" | "awaiting_email" | "awaiting_password" | "verified";
   email?: string;
+  emailExtractionMode: "ai" | "regex"; // Track extraction mode
+  aiEmailFailures: number; // Count AI extraction failures
   userData?: {
     userId: string;
     userType: string;
@@ -45,6 +47,8 @@ export function getSession(phoneNumber: string): UserSession {
       isVerified: false,
       authAttempts: 0,
       authStage: "none",
+      emailExtractionMode: "ai", // Start with AI mode
+      aiEmailFailures: 0,
       lastActivity: Date.now(),
     };
     sessions.set(phoneNumber, session);
