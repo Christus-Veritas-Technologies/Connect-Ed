@@ -4,7 +4,7 @@ import { db, NotificationType, NotificationPriority } from "@repo/db";
 import { requireAuth } from "../middleware/auth";
 import { successResponse, errors } from "../lib/response";
 import { hashPassword, generateRandomPassword } from "../lib/password";
-import { sendEmail, generateWelcomeEmailWithCredentials } from "../lib/email";
+import { sendEmail, generateWelcomeEmailWithCredentials, sendSystemEmail, generateEmailVerificationEmail } from "../lib/email";
 import { createNotification, getSchoolNotificationPrefs } from "./notifications";
 import { notifyWelcome, notifyGeneric } from "../lib/notify";
 import { z } from "zod";
@@ -190,6 +190,10 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
     const generatedPassword = generateRandomPassword();
     const hashedPassword = await hashPassword(generatedPassword);
 
+    // Generate verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     // Create parent
     console.log(`[POST /parents] Inserting parent: ${fullName}`);
     const parent = await db.parent.create({
@@ -200,8 +204,30 @@ parents.post("/", zValidator("json", createParentSchema), async (c) => {
         password: hashedPassword,
         onboardingComplete: false,
         schoolId,
+        emailVerified: false,
+        emailVerificationCode: verificationCode,
+        emailVerificationExpiry: verificationExpiry,
       },
     });
+
+    // Send verification email
+    try {
+      const verificationEmailHtml = generateEmailVerificationEmail({
+        name: fullName,
+        verificationCode,
+      });
+
+      await sendSystemEmail({
+        to: data.email.toLowerCase(),
+        subject: "Verify your Connect-Ed parent account",
+        html: verificationEmailHtml,
+        type: "NOREPLY",
+      });
+      console.log(`[POST /parents] ✅ Verification email sent to ${data.email}`);
+    } catch (emailError) {
+      console.error(`[POST /parents] ❌ Failed to send verification email:`, emailError);
+      // Don't fail parent creation if email fails
+    }
 
     // Link all selected students to the new parent (allows multiple parents per student via separate parent records)
     if (students.length > 0) {
