@@ -148,7 +148,10 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
     }
 
     const chatId = toChatId(item.phone);
+    console.log(`[Queue:${item.schoolId}] Attempting to send to ${chatId}: "${item.content.slice(0, 50)}..."`);
+    
     const msg = await client.sendMessage(chatId, item.content);
+    console.log(`[Queue:${item.schoolId}] Successfully sent to ${chatId}: ${msg.id?.id}`);
 
     // Increment school WhatsApp quota
     await db.school.update({
@@ -180,7 +183,7 @@ async function sendMessage(item: QueueItem): Promise<SendResult> {
       errorMsg = error.toString() || JSON.stringify(error);
     }
 
-    console.error(`[Queue:${item.schoolId}] Send failed for ${item.phone}: ${errorMsg}`);
+    console.error(`[Queue:${item.schoolId}] Send failed for ${item.phone}: ${errorMsg}`, error);
 
     // Log the failure
     try {
