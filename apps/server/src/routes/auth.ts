@@ -23,7 +23,7 @@ import {
   resendVerificationSchema,
 } from "../lib/validation";
 import { successResponse, errors, errorResponse } from "../lib/response";
-import { sendEmail, generatePasswordResetEmail, sendSystemEmail, generateEmailVerificationEmail, generateNewSignupNotification } from "../lib/email";
+import { sendEmail, generatePasswordResetEmail, sendSystemEmail, generateEmailVerificationEmail, generateEmailVerificationLinkEmail, generateNewSignupNotification } from "../lib/email";
 import { randomBytes } from "crypto";
 
 const auth = new Hono();
@@ -45,9 +45,9 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Generate 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    // Generate verification token (random hex string)
+    const verificationToken = randomBytes(32).toString("hex");
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Create school and admin user in a transaction
     const { user, school } = await db.$transaction(async (tx) => {
@@ -72,7 +72,7 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
           role: Role.ADMIN,
           schoolId: school.id,
           emailVerified: false,
-          emailVerificationCode: verificationCode,
+          emailVerificationCode: verificationToken,
           emailVerificationExpiry: verificationExpiry,
         },
       });
@@ -80,10 +80,14 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
       return { user, school };
     });
 
+    // Generate verification link
+    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const verificationLink = `${appUrl}/auth/verify-email?token=${verificationToken}`;
+
     // Send verification email to user
-    const verificationEmailHtml = generateEmailVerificationEmail({
+    const verificationEmailHtml = generateEmailVerificationLinkEmail({
       name,
-      verificationCode,
+      verificationLink,
     });
 
     await sendSystemEmail({
@@ -211,6 +215,55 @@ auth.post("/verify-email", zValidator("json", verifyEmailSchema), async (c) => {
     });
   } catch (error) {
     console.error("Email verification error:", error);
+    return errors.internalError(c);
+  }
+});
+
+// GET /auth/verify-email-link/:token - Verify email using link token
+auth.get("/verify-email-link/:token", async (c) => {
+  try {
+    const token = c.req.param("token");
+
+    // Find user with this verification token
+    const user = await db.user.findFirst({
+      where: {
+        emailVerificationCode: token,
+      },
+    });
+
+    if (!user) {
+      return errorResponse(c, "INVALID_TOKEN", "Verification link is invalid or expired", 400);
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return successResponse(c, {
+        message: "Email already verified",
+        emailVerified: true,
+      });
+    }
+
+    // Check if token is expired (24 hours)
+    if (!user.emailVerificationExpiry || user.emailVerificationExpiry < new Date()) {
+      return errorResponse(c, "TOKEN_EXPIRED", "Verification link has expired. Please request a new one.", 400);
+    }
+
+    // Mark email as verified
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationExpiry: null,
+      },
+    });
+
+    return successResponse(c, {
+      message: "Email verified successfully",
+      emailVerified: true,
+    });
+  } catch (error) {
+    console.error("Email link verification error:", error);
     return errors.internalError(c);
   }
 });
