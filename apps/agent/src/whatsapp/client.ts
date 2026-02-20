@@ -8,6 +8,7 @@ const { Client, LocalAuth } = pkg;
 import { db } from "@repo/db";
 import { existsSync, rmSync } from "fs";
 import { join } from "path";
+import { handleIncomingMessage } from "./handler.js";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -221,6 +222,30 @@ export async function initSchoolClient(schoolId: string): Promise<SchoolClient> 
         console.error(`[WhatsApp:${schoolId}] Reconnection failed:`, err);
       }
     }, 30_000);
+  });
+
+  // ── Incoming Message Handler ────────────────────────────
+  client.on("message", async (msg: any) => {
+    try {
+      // Skip group messages and self-messages
+      if (msg.isGroupMsg || msg.from === client.info?.wid?.user) {
+        return;
+      }
+
+      // Extract phone number (sender's WhatsApp ID)
+      const phone = msg.from;
+      const body = msg.body || "";
+
+      if (!phone || !body.trim()) {
+        return;
+      }
+
+      // Route to handler with school ID
+      schoolClient.lastActivity = Date.now();
+      await handleIncomingMessage(phone, body, schoolId);
+    } catch (err) {
+      console.error(`[WhatsApp:${schoolId}] Error handling message:`, err);
+    }
   });
 
   // Start initialization (don't await — let QR flow happen asynchronously)
