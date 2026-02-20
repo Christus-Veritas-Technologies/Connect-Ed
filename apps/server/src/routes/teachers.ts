@@ -117,6 +117,7 @@ teachers.post("/", async (c) => {
           role: Role.TEACHER,
           schoolId,
           onboardingComplete: false,
+          emailVerified: true, // Auto-verify staff/teachers
         },
       });
 
