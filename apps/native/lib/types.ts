@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: Role;
   onboardingComplete: boolean;
+  emailVerified: boolean;
   children?: Array<{ id: string; name: string; class?: string }>;
   admissionNumber?: string;
   class?: string;
