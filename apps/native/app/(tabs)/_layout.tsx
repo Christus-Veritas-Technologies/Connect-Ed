@@ -12,6 +12,7 @@ import {
     Settings02Icon,
 } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/lib/auth-context';
+import { EmailVerificationGuard } from '@/lib/email-verification-guard';
 import type { Role } from '@/lib/types';
 
 const BRAND_COLOR = '#3B82F6';
@@ -49,45 +50,47 @@ export default function TabsLayout() {
     const userRole = user.role as Role;
 
     return (
-        <Tabs
-            screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: BRAND_COLOR,
-                tabBarInactiveTintColor: MUTED_COLOR,
-                tabBarStyle: {
-                    borderTopColor: '#E2E8F0',
-                    backgroundColor: '#FFFFFF',
-                    height: Platform.OS === 'ios' ? 88 : 64,
-                    paddingTop: 8,
-                    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-                },
-                tabBarLabelStyle: {
-                    fontSize: 11,
-                    fontWeight: '600',
-                },
-            }}
-        >
-            {TAB_CONFIG.map((tab) => {
-                const hasAccess = tab.roles.includes(userRole);
+        <EmailVerificationGuard>
+            <Tabs
+                screenOptions={{
+                    headerShown: false,
+                    tabBarActiveTintColor: BRAND_COLOR,
+                    tabBarInactiveTintColor: MUTED_COLOR,
+                    tabBarStyle: {
+                        borderTopColor: '#E2E8F0',
+                        backgroundColor: '#FFFFFF',
+                        height: Platform.OS === 'ios' ? 88 : 64,
+                        paddingTop: 8,
+                        paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+                    },
+                    tabBarLabelStyle: {
+                        fontSize: 11,
+                        fontWeight: '600',
+                    },
+                }}
+            >
+                {TAB_CONFIG.map((tab) => {
+                    const hasAccess = tab.roles.includes(userRole);
 
-                return (
-                    <Tabs.Screen
-                        key={tab.name}
-                        name={tab.name}
-                        options={{
-                            title: tab.title,
-                            href: hasAccess ? undefined : null,
-                            tabBarIcon: ({ color, size }) => (
-                                <HugeiconsIcon
-                                    icon={tab.icon}
-                                    size={size}
-                                    color={color}
-                                />
-                            ),
-                        }}
-                    />
-                );
-            })}
-        </Tabs>
+                    return (
+                        <Tabs.Screen
+                            key={tab.name}
+                            name={tab.name}
+                            options={{
+                                title: tab.title,
+                                href: hasAccess ? undefined : null,
+                                tabBarIcon: ({ color, size }) => (
+                                    <HugeiconsIcon
+                                        icon={tab.icon}
+                                        size={size}
+                                        color={color}
+                                    />
+                                ),
+                            }}
+                        />
+                    );
+                })}
+            </Tabs>
+        </EmailVerificationGuard>
     );
 }
