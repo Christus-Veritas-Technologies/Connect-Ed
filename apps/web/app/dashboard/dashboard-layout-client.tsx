@@ -25,6 +25,7 @@ import { useParentChildren } from "@/lib/hooks/use-parent-children";
 import { DashboardGuard } from "@/components/auth-guard";
 import { BillingGuard } from "@/components/billing-guard";
 import { SetupFeeGuard } from "@/components/setup-fee-guard";
+import { EmailVerificationGuard } from "@/components/email-verification-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -405,48 +406,50 @@ export default function DashboardLayoutClient({
 
   return (
     <DashboardGuard>
-      <SetupFeeGuard>
-        <BillingGuard>
-          <SidebarProvider defaultOpen={true}>
-            {user && school && (
-              <AppSidebar
-                pathname={pathname}
-                user={user}
-                school={school}
-                logout={handleLogout}
-              />
-            )}
+      <BillingGuard>
+        <SetupFeeGuard>
+          <EmailVerificationGuard>
+            <SidebarProvider defaultOpen={true}>
+              {user && school && (
+                <AppSidebar
+                  pathname={pathname}
+                  user={user}
+                  school={school}
+                  logout={handleLogout}
+                />
+              )}
 
-            <SidebarInset>
-              {/* Mobile header with trigger */}
-              <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 md:hidden">
-                <SidebarTrigger className="-ml-1" />
-                <div className="flex items-center gap-2">
-                  <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
-                    <span className="text-sm font-bold text-white">CE</span>
+              <SidebarInset>
+                {/* Mobile header with trigger */}
+                <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 md:hidden">
+                  <SidebarTrigger className="-ml-1" />
+                  <div className="flex items-center gap-2">
+                    <div className="size-8 rounded-lg bg-gradient-to-br from-brand to-mid flex items-center justify-center">
+                      <span className="text-sm font-bold text-white">CE</span>
+                    </div>
+                    <span className="font-semibold text-sm">Connect-Ed</span>
                   </div>
-                  <span className="font-semibold text-sm">Connect-Ed</span>
-                </div>
-              </header>
+                </header>
 
-              {/* Main Content */}
-              <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </main>
-            </SidebarInset>
-          </SidebarProvider>
-        </BillingGuard>
-      </SetupFeeGuard>
+                {/* Main Content */}
+                <main className="flex-1 lg:p-8 p-4 overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pathname}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {children}
+                    </motion.div>
+                  </AnimatePresence>
+                </main>
+              </SidebarInset>
+            </SidebarProvider>
+          </EmailVerificationGuard>
+        </SetupFeeGuard>
+      </BillingGuard>
     </DashboardGuard>
   );
 }
