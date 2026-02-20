@@ -272,6 +272,7 @@ async function reply(
     console.warn(`[Handler] Cannot reply to ${phone}: no schoolId provided. Message: ${content.slice(0, 50)}...`);
     return;
   }
+  console.log(`[Handler] Sending reply to ${phone}: "${content.slice(0, 50)}..."`);
   await enqueueMessage(phone, content, schoolId, false);
 }
 
