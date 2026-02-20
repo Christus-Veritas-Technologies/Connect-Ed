@@ -227,8 +227,16 @@ export async function initSchoolClient(schoolId: string): Promise<SchoolClient> 
   // ── Incoming Message Handler ────────────────────────────
   client.on("message", async (msg: any) => {
     try {
+      console.log(`[WhatsApp:${schoolId}] Received message from ${msg.from}: ${(msg.body || "").slice(0, 50)}...`);
+
       // Skip group messages and self-messages
-      if (msg.isGroupMsg || msg.from === client.info?.wid?.user) {
+      if (msg.isGroupMsg) {
+        console.log(`[WhatsApp:${schoolId}] Skipping group message`);
+        return;
+      }
+
+      if (msg.from === client.info?.wid?.user) {
+        console.log(`[WhatsApp:${schoolId}] Skipping self-message`);
         return;
       }
 
@@ -237,11 +245,13 @@ export async function initSchoolClient(schoolId: string): Promise<SchoolClient> 
       const body = msg.body || "";
 
       if (!phone || !body.trim()) {
+        console.log(`[WhatsApp:${schoolId}] Skipping: empty phone or body`);
         return;
       }
 
       // Route to handler with school ID
       schoolClient.lastActivity = Date.now();
+      console.log(`[WhatsApp:${schoolId}] Routing message from ${phone} to handler`);
       await handleIncomingMessage(phone, body, schoolId);
     } catch (err) {
       console.error(`[WhatsApp:${schoolId}] Error handling message:`, err);
