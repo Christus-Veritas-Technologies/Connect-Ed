@@ -809,6 +809,67 @@ export function generateEmailVerificationEmail(params: {
   `;
 }
 
+export function generateEmailVerificationLinkEmail(params: {
+  name: string;
+  verificationLink: string;
+}): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .button { background: #10b981; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 25px 0; font-weight: bold; text-align: center; }
+          .button-container { text-align: center; }
+          .link-box { background: #f3f4f6; padding: 15px; border-radius: 6px; word-break: break-all; margin: 20px 0; font-size: 12px; color: #6b7280; }
+          .warning { background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; font-size: 14px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✉️ Verify Your Email</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${params.name},</p>
+            <p>Welcome to Connect-Ed! Please verify your email address to complete your registration and access your dashboard.</p>
+            
+            <div class="button-container">
+              <a href="${params.verificationLink}" class="button">Verify Email Address</a>
+            </div>
+
+            <p style="text-align: center; color: #6b7280; margin: 20px 0;">
+              Or copy and paste this link in your browser:
+            </p>
+            
+            <div class="link-box">
+              ${params.verificationLink}
+            </div>
+
+            <div class="warning">
+              <strong>⏱️ Important:</strong> This verification link expires in <strong>24 hours</strong>. After that, you'll need to request a new link.
+            </div>
+
+            <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+              If you didn't create an account with Connect-Ed, you can safely ignore this email or contact our support team.
+            </p>
+          </div>
+          <div class="footer">
+            <p>Connect-Ed School Management System</p>
+            <p style="margin-top: 15px; font-size: 12px;">
+              This is an automated message. Please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
 export function generateNewSignupNotification(params: {
   userName: string;
   userEmail: string;
