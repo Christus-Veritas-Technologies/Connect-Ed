@@ -395,14 +395,14 @@ function generateReportEmailHtml(
     if (report.insights.strongestSubject) {
       insightHtml.push(
         `<div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 10px;">
-          <strong style="color: #166534;">⭐ Strongest Subject:</strong> <span style="color: #15803d;">${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)</span>
+          <strong style="color: #166534;">Strongest Subject:</strong> <span style="color: #15803d;">${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)</span>
         </div>`
       );
     }
     if (report.insights.weakestSubject) {
       insightHtml.push(
         `<div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 12px 16px; border-radius: 0 8px 8px 0;">
-          <strong style="color: #9a3412;">⚠ Needs Improvement:</strong> <span style="color: #c2410c;">${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)</span>
+          <strong style="color: #9a3412;">Needs Improvement:</strong> <span style="color: #c2410c;">${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)</span>
         </div>`
       );
     }
@@ -421,7 +421,7 @@ function generateReportEmailHtml(
           <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center;">
-              ${settings.showSchoolBranding && report.school.logo ? `<img src="${report.school.logo}" alt="${report.school.name}" style="max-height: 80px; margin-bottom: 16px;" />` : '<div style="font-size: 48px; margin-bottom: 12px;">📊</div>'}
+              ${settings.showSchoolBranding && report.school.logo ? `<img src="${report.school.logo}" alt="${report.school.name}" style="max-height: 80px; margin-bottom: 16px;" />` : '<div style="font-size: 48px; margin-bottom: 12px;"></div>'}
               ${settings.showSchoolBranding ? `<h1 style="margin: 0 0 4px 0; font-size: 28px;">${report.school.name}</h1>` : ''}
               ${settings.showSchoolBranding && report.school.motto ? `<p style="margin: 0 0 16px 0; opacity: 0.9; font-style: italic; font-size: 14px;">${report.school.motto}</p>` : ''}
               <h2 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 600;">Academic Report</h2>
@@ -442,8 +442,8 @@ function generateReportEmailHtml(
               <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Class Teacher</h3>
                 <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${report.classTeacher.name}</p>
-                ${report.classTeacher.email ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">📧 ${report.classTeacher.email}</p>` : ''}
-                ${report.classTeacher.phone ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">📞 ${report.classTeacher.phone}</p>` : ''}
+                ${report.classTeacher.email ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">${report.classTeacher.email}</p>` : ''}
+                ${report.classTeacher.phone ? `<p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">${report.classTeacher.phone}</p>` : ''}
               </div>
               ` : ''}
 
@@ -528,7 +528,7 @@ function generateReportWhatsAppText(
 ): string {
   const settings = report.reportSettings;
   const lines = [
-    `📊 *Academic Report*`,
+    `*Academic Report*`,
   ];
 
   if (settings.showSchoolBranding) {
@@ -541,8 +541,8 @@ function generateReportWhatsAppText(
   lines.push(
     ``,
     `👤 *Student:* ${report.student.name}`,
-    `📋 *Admission #:* ${report.student.admissionNumber}`,
-    `🏷️ *Class:* ${report.student.className}`
+    `*Admission #:* ${report.student.admissionNumber}`,
+    `*Class:* ${report.student.className}`
   );
 
   if (settings.showTeacherDetails && report.classTeacher) {
@@ -569,7 +569,7 @@ function generateReportWhatsAppText(
   if (report.subjects.length > 0 && settings.showExamDetails) {
     lines.push(``, `📚 *Subject Results:*`);
     for (const s of report.subjects) {
-      const icon = s.averageIsPass ? "✅" : "❌";
+      const icon = s.averageIsPass ? "" : "";
       let subjectLine = `${icon} ${s.subjectName}: *${s.averageMark}%*`;
       if (settings.showGrades) {
         subjectLine += ` (${s.averageGrade})`;
@@ -586,12 +586,12 @@ function generateReportWhatsAppText(
     if (report.insights.strongestSubject) {
       lines.push(
         ``,
-        `⭐ *Best Subject:* ${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)`
+        `*Best Subject:* ${report.insights.strongestSubject.name} (${report.insights.strongestSubject.averageMark}%)`
       );
     }
     if (report.insights.weakestSubject) {
       lines.push(
-        `⚠️ *Needs Improvement:* ${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)`
+        `*Needs Improvement:* ${report.insights.weakestSubject.name} (${report.insights.weakestSubject.averageMark}%)`
       );
     }
   }

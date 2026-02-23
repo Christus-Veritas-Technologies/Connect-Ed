@@ -230,7 +230,7 @@ webhooks.post("/dodo", async (c) => {
             });
           }
 
-          const failMsg = `⚠️ Your payment of ${fmtServer(Number(failedPayment.amount), failCurrency)} for the ${failedPayment.plan} plan failed. Please try again or contact support.`;
+          const failMsg = `Your payment of ${fmtServer(Number(failedPayment.amount), failCurrency)} for the ${failedPayment.plan} plan failed. Please try again or contact support.`;
           if (failPrefs.whatsapp && failedPayment.user.phone) {
             await sendWhatsApp({ phone: failedPayment.user.phone, content: failMsg, schoolId: failedPayment.schoolId });
           }

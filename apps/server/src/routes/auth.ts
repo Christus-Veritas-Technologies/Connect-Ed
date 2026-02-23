@@ -821,9 +821,9 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
     });
 
     if (emailSent) {
-      console.log(`✅ Password reset email sent to ${user.email}`);
+      console.log(`Password reset email sent to ${user.email}`);
     } else {
-      console.error(`❌ Failed to send password reset email to ${user.email}`);
+      console.error(`Failed to send password reset email to ${user.email}`);
     }
 
     return successResponse(c, {

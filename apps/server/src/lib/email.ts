@@ -67,13 +67,13 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     });
 
     if (!school) {
-      console.error("❌ School not found:", schoolId);
+      console.error("School not found:", schoolId);
       return false;
     }
 
     // Check if quota exceeded
     if (school.emailUsed >= school.emailQuota) {
-      console.error(`❌ Email quota exceeded for ${school.name}:`, {
+      console.error(`Email quota exceeded for ${school.name}:`, {
         used: school.emailUsed,
         quota: school.emailQuota,
         plan: school.plan,
@@ -95,7 +95,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       return false;
     }
 
-    console.log(`📧 Sending ${type} email (${school.emailUsed + 1}/${school.emailQuota}):`, {
+    console.log(`Sending ${type} email (${school.emailUsed + 1}/${school.emailQuota}):`, {
       to,
       subject,
       preview: html.substring(0, 100) + "...",
@@ -129,7 +129,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       html,
     });
 
-    console.log(`✅ ${type} email sent successfully:`, info.messageId);
+    console.log(`${type} email sent successfully:`, info.messageId);
 
     // Increment email quota usage
     await db.school.update({
@@ -141,7 +141,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       },
     });
 
-    console.log(`📊 Email quota updated: ${school.emailUsed + 1}/${school.emailQuota}`);
+    console.log(`Email quota updated: ${school.emailUsed + 1}/${school.emailQuota}`);
 
     // Log the successful email in the database
     await db.messageLog.create({
@@ -158,7 +158,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error(`❌ ${type} email sending failed:`, error);
+    console.error(`${type} email sending failed:`, error);
 
     // Log the failure
     await db.messageLog.create({
@@ -189,7 +189,7 @@ export async function sendSystemEmail(params: {
   const { to, subject, html, type = "NOREPLY" } = params;
 
   try {
-    console.log(`📧 Sending system ${type} email:`, { to, subject });
+    console.log(`Sending system ${type} email:`, { to, subject });
 
     // Create appropriate transporter based on email type
     let transporter;
@@ -219,10 +219,10 @@ export async function sendSystemEmail(params: {
       html,
     });
 
-    console.log(`✅ System ${type} email sent successfully:`, info.messageId);
+    console.log(`System ${type} email sent successfully:`, info.messageId);
     return true;
   } catch (error) {
-    console.error(`❌ System ${type} email sending failed:`, error);
+    console.error(`System ${type} email sending failed:`, error);
     return false;
   }
 }
@@ -257,7 +257,7 @@ export function generatePaymentSuccessEmail(params: {
             <p>Thank you for choosing Connect-Ed</p>
           </div>
           <div class="content">
-            <div class="success-badge">✓ Payment Confirmed</div>
+            <div class="success-badge">Payment Confirmed</div>
             <p>Hi ${params.name},</p>
             <p>Your payment has been successfully processed. Here are the details:</p>
             <div class="details">
@@ -375,17 +375,17 @@ export function generateWelcomeEmailWithCredentials(params: {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Welcome to Connect-Ed!</h1>
+            <h1>Welcome to Connect-Ed!</h1>
             <p>Your ${roleTitle} Account Has Been Created</p>
           </div>
           <div class="content">
-            <div class="welcome-badge">✓ Account Active</div>
+            <div class="welcome-badge">Account Active</div>
             <p>Hi ${params.name},</p>
             <p>Welcome to Connect-Ed${params.schoolName ? ` at ${params.schoolName}` : ""}! Your ${roleTitle.toLowerCase()} account has been successfully created.</p>
             ${params.additionalInfo ? `<p>${params.additionalInfo}</p>` : ""}
             
             <div class="credentials">
-              <h3 style="margin-top: 0;">🔐 Your Login Credentials</h3>
+              <h3 style="margin-top: 0;">Your Login Credentials</h3>
               <div class="credential-item">
                 <div class="credential-label">Email Address:</div>
                 <div class="credential-value">${params.email}</div>
@@ -397,7 +397,7 @@ export function generateWelcomeEmailWithCredentials(params: {
             </div>
 
             <div class="warning">
-              <strong>⚠️ Important Security Notice:</strong>
+              <strong>Important Security Notice:</strong>
               <p style="margin: 10px 0 0 0;">This is a temporary password. Please change it immediately after your first login to keep your account secure.</p>
             </div>
 
@@ -406,7 +406,7 @@ export function generateWelcomeEmailWithCredentials(params: {
             </div>
 
             <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">💬 Need Help or Have Questions?</p>
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">Need Help or Have Questions?</p>
               <p style="margin: 0; color: #1e40af;">I'm Kin, and I'm here to help! Feel free to reach out to me directly at <a href="mailto:kin@connect-ed.co.zw" style="color: #3b82f6; text-decoration: none; font-weight: bold;">kin@connect-ed.co.zw</a> if you have any questions, need assistance getting started, or just want to share feedback. I'd love to hear from you!</p>
             </div>
 
@@ -773,7 +773,7 @@ export function generateEmailVerificationEmail(params: {
       <body>
         <div class="container">
           <div class="header">
-            <h1>✉️ Verify Your Email</h1>
+            <h1>Verify Your Email</h1>
           </div>
           <div class="content">
             <p>Hi ${params.name},</p>
@@ -790,7 +790,7 @@ export function generateEmailVerificationEmail(params: {
             </p>
 
             <div class="warning">
-              <strong>⏱️ Important:</strong> This verification code expires in <strong>15 minutes</strong>.
+              <strong>Important:</strong> This verification code expires in <strong>15 minutes</strong>.
             </div>
 
             <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
@@ -833,7 +833,7 @@ export function generateNewSignupNotification(params: {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 New Signup Alert</h1>
+            <h1>New Signup Alert</h1>
           </div>
           <div class="content">
             <p>Hi Kin,</p>
@@ -891,7 +891,7 @@ export function generatePasswordResetEmail(params: {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🔐 Password Reset Request</h1>
+            <h1>Password Reset Request</h1>
           </div>
           <div class="content">
             <p>Hi ${params.name},</p>
@@ -907,7 +907,7 @@ export function generatePasswordResetEmail(params: {
             </p>
 
             <div class="warning">
-              <strong>⏱️ Important:</strong> This password reset link expires in <strong>1 hour</strong>. If you don't reset your password within this time, you'll need to request a new reset link.
+              <strong>Important:</strong> This password reset link expires in <strong>1 hour</strong>. If you don't reset your password within this time, you'll need to request a new reset link.
             </div>
 
             <p style="margin-top: 30px;">
