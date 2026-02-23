@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { fmt } from "@/lib/currency";
+import { getPlansByCurrency } from "@/lib/pricing";
 
 /* ─────────────── Animations ─────────────── */
 
@@ -537,58 +538,25 @@ function PricingPreview() {
   const currency = "USD";
   const [billing, setBilling] = React.useState<"monthly" | "annual">("monthly");
 
+  const plansData = getPlansByCurrency(currency as "USD" | "ZAR");
   const plans = [
     {
-      name: "Lite",
-      description: "For schools with up to 300 students starting their digital journey.",
-      features: [
-        "Up to 300 students",
-        "Student management",
-        "Fee tracking & automated reminders",
-        "Expense tracking",
-        "Report generation in minutes",
-        "150 GB cloud storage",
-        "Email & WhatsApp messaging",
-      ],
-      monthlyEstimate: currency === "USD" ? 40 : 800,
-      firstMonthlyPrice: currency === "USD" ? 34 : 680,
-      annualPrice: currency === "USD" ? 480 : 9600,
-      foundingAnnualPrice: currency === "USD" ? 360 : 7200,
+      ...plansData.LITE,
+      features: plansData.LITE.landingPageFeatures,
+      popular: false,
+      includedFrom: undefined,
     },
     {
-      name: "Growth",
-      description: "For mid-size schools with up to 800 students.",
-      popular: true,
-      includedFrom: "Lite",
-      features: [
-        "Up to 800 students",
-        "Teacher portal & management",
-        "Class management & channels",
-        "Shared files & resources",
-        "400 GB cloud storage",
-        "Premium support",
-      ],
-      monthlyEstimate: currency === "USD" ? 75 : 1500,
-      firstMonthlyPrice: currency === "USD" ? 64 : 1275,
-      annualPrice: currency === "USD" ? 900 : 18000,
-      foundingAnnualPrice: currency === "USD" ? 675 : 13500,
+      ...plansData.GROWTH,
+      features: plansData.GROWTH.landingPageFeatures,
+      popular: plansData.GROWTH.popular || false,
+      includedFrom: plansData.GROWTH.includedFrom,
     },
     {
-      name: "Enterprise",
-      description: "For large institutions with 2,000+ students — custom capacity.",
-      includedFrom: "Growth",
-      features: [
-        "2,000+ students (custom)",
-        "Student & parent portals",
-        "Online fee payments",
-        "Exam & report card system",
-        "1,000 GB cloud storage",
-        "24/7 dedicated support",
-      ],
-      monthlyEstimate: currency === "USD" ? 120 : 2400,
-      firstMonthlyPrice: currency === "USD" ? 102 : 2040,
-      annualPrice: currency === "USD" ? 1440 : 28800,
-      foundingAnnualPrice: currency === "USD" ? 1080 : 21600,
+      ...plansData.ENTERPRISE,
+      features: plansData.ENTERPRISE.landingPageFeatures,
+      popular: false,
+      includedFrom: plansData.ENTERPRISE.includedFrom,
     },
   ];
 
