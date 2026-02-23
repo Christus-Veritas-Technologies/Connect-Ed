@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navbar, Footer } from "@/components/marketing-layout";
-import { PRICING } from "@/lib/pricing";
+import { getPlansByCurrency, PRICING } from "@/lib/pricing";
 import { fmt } from "@/lib/currency";
 import type { Plan } from "@repo/db";
 
@@ -184,9 +184,11 @@ export default function PricingPage() {
                 <div className="mx-auto max-w-6xl px-6">
                     <AnimatedSection className="grid gap-6 sm:grid-cols-3 items-start">
                         {planOrder.map((planKey, i) => {
+                            const plansData = getPlansByCurrency("USD");
+                            const planData = plansData[planKey as keyof typeof plansData];
                             const plan = PRICING[planKey];
                             const isPopular = planKey === "GROWTH";
-                            const includedFrom = planKey === "GROWTH" ? "Lite" : planKey === "ENTERPRISE" ? "Growth" : null;
+                            const includedFrom = (planData as any).includedFrom || null;
                             const isFirstPayment = true; // Show first-payment pricing on public page
 
                             const displayPrice = billing === "annual"
